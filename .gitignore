@@ -1,0 +1,24 @@
+# dependencies & build
+node_modules/
+dist/
+.output/
+.vinxi/
+.vercel/
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# local / research — not for GitHub
+artifacts/
+attachments/
+screenshots/
+*.log
+.DS_Store
+.python-version

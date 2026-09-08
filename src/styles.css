@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --color-bis-navy: #1e3a8a;
+  --color-bis-navy-deep: #172554;
+  --color-bis-saffron: #f97316;
+  --color-paper: #f8fafc;
+  --color-ink: #0f172a;
+  --color-muted: #475569;
+  --color-line: #e2e8f0;
+  --radius-mm: 1.25rem;
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-growWidth: growWidth 1s ease-out forwards;
+
+  @keyframes growWidth {
+    0% { width: 0%; }
+    100% { width: 100%; }
+  }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .sidebar-container {
+    padding: 0 !important;
+  }
+}
+
+/* Landing — one-shot enter only. Interactive states use transitions. */
+@keyframes mm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.mm-rise {
+  opacity: 0;
+  animation: mm-rise 500ms var(--ease-out-soft) forwards;
+}
+
+.mm-d1 { animation-delay: 40ms; }
+.mm-d2 { animation-delay: 100ms; }
+.mm-d3 { animation-delay: 160ms; }
+.mm-d4 { animation-delay: 220ms; }
+.mm-d5 { animation-delay: 280ms; }
+.mm-d6 { animation-delay: 340ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
