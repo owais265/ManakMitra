@@ -4,6 +4,7 @@ dist/
 .output/
 .vinxi/
 .vercel/
+.tanstack/
 
 # secrets
 .env
@@ -22,3 +23,12 @@ screenshots/
 *.log
 .DS_Store
 .python-version
+
+# builder workspace (keep on disk, never publish)
+.grok/
+AGENTS.md
+AGENTS.project.md
+.project_id
+.github_repo
+.node_modules.lock
+public/__grok/

@@ -18,10 +18,10 @@ This repo does the same, as a **free MVP** (no Pinecone, no extra server):
 | Vector store | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
 | Search | [`src/lib/rag.ts`](src/lib/rag.ts) inside the website |
 | Chat API | [`src/routes/api/chat.ts`](src/routes/api/chat.ts) |
-| LLM key | `XAI_API_KEY` (Grok) |
+| LLM key | `XAI_API_KEY` |
 
 ```
-Question → /api/chat → search rag-pack.json → Grok answers from hits only
+Question → /api/chat → search rag-pack.json → LLM answers from hits only
 ```
 
 ## Run locally
