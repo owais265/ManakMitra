@@ -58,8 +58,8 @@ Editable sources live in [`data/`](data/). After edits run the pack rebuild comm
 
 ## GitHub: commit vs never
 
-**Commit:** app code, `src/data/*.json`, `data/*.csv`, this README.  
-**Never:** `.env`, API keys, `artifacts/`, full IS PDF text, `.grok/`.
+**Commit:** app code, `src/data/rag-pack.json`, `data/*.csv`, this README.  
+**Never:** `.env`, API keys, scrape dumps, `artifacts/`, full IS PDF text, `.grok/`.
 
 ## Jury checks
 

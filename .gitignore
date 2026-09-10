@@ -24,6 +24,9 @@ screenshots/
 .DS_Store
 .python-version
 
+# generated scrape dump (already baked into src/data/rag-pack.json)
+data/manakmitra_bis_knowledge.json
+
 # builder workspace (keep on disk, never publish)
 .grok/
 AGENTS.md
