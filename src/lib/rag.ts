@@ -2,6 +2,7 @@ import bundledPack from "@/data/rag-pack.json";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceHit, Retrieval } from "@/lib/rag-types";
+import { matchProductFamily, schemeNeedles, CLAUSE_ASK, type ProductFamily } from "@/lib/product-playbook";
 
 type Chunk = { id: string; kind: EvidenceHit["kind"]; title: string; body: string; url: string };
 type Pack = {
@@ -61,13 +62,24 @@ const HI_GLOSS: Record<string, string> = {
   मार्क: "mark",
   योजना: "scheme",
   पंजीकरण: "registration",
+  हेलमेट: "helmet",
+  सीमेंट: "cement",
+  मिक्सर: "mixer",
+  ग्राइंडर: "grinder",
+  लैपटॉप: "laptop",
+  चार्जर: "charger",
+  बोतल: "bottle",
+  टायर: "tyre",
+  प्रक्रिया: "process",
 };
 
 const SYNONYMS: Record<string, string[]> = {
   bottle: ["pet", "container", "packaging", "packaged", "terephthalate", "polyalkylene"],
   plastic: ["plastics", "pet", "pbt", "packaging"],
   pet: ["terephthalate", "polyalkylene", "pbt"],
-  gold: ["hallmark", "huid", "jewellery", "jewelry", "carat", "fineness"],
+  gold: ["hallmark", "huid", "jewellery", "jewelry", "carat", "fineness", "1417", "1418"],
+  jewellery: ["gold", "hallmark", "huid", "fineness"],
+  jewelry: ["gold", "hallmark", "huid"],
   hallmark: ["huid", "gold", "jewellery", "fineness"],
   huid: ["hallmark", "gold", "verify"],
   lab: ["laboratory", "testing", "recognised"],
@@ -85,6 +97,13 @@ const SYNONYMS: Record<string, string[]> = {
   registration: ["crs", "compulsory", "scheme"],
   explore: ["bureau", "services", "act", "know"],
   bureau: ["national", "standards", "body"],
+  helmet: ["helmets", "protective", "industrial", "safety", "visor", "bicycle", "scooter"],
+  helmets: ["helmet", "protective", "industrial", "safety"],
+  cement: ["portland", "ordinary", "clinker"],
+  portland: ["cement", "ordinary"],
+  mixer: ["mixers", "dough", "planetary", "food"],
+  grinder: ["grinding", "household"],
+  tyre: ["tire", "tyres", "automotive"],
 };
 
 function tokens(text: string): string[] {
@@ -212,11 +231,149 @@ function toHit(ch: Chunk, score: number): EvidenceHit {
   };
 }
 
+const CITIES =
+  /\b(raipur|mumbai|delhi|chennai|kolkata|hyderabad|bengaluru|bangalore|pune|ahmedabad|lucknow|jaipur|nagpur|nashik|bhopal|indore|surat|kanpur|patna|chandigarh|guwahati)\b/i;
+
+function exactIsChunk(id: string, prefer?: string): Chunk | undefined {
+  let fallback: Chunk | undefined;
+  for (const i of catPost.isn.get(id) || []) {
+    const ch = catalogue[i];
+    const nums = isNumbers(ch.title);
+    if (nums[0] !== id) continue;
+    if (!fallback) fallback = ch;
+    if (prefer && `${ch.title} ${ch.body}`.toLowerCase().includes(prefer.toLowerCase())) return ch;
+  }
+  return fallback;
+}
+
+function pinFamilyHits(family: ProductFamily, seen: Set<string>): EvidenceHit[] {
+  const out: EvidenceHit[] = [];
+  for (const id of family.is) {
+    const ch = exactIsChunk(id, family.preferTitle?.[id]);
+    if (!ch || seen.has(ch.title)) continue;
+    seen.add(ch.title);
+    out.push(toHit(ch, 0.92));
+  }
+  return out;
+}
+
+function injectScheme(scheme: ProductFamily["scheme"], seen: Set<string>, out: EvidenceHit[]) {
+  if (!scheme) return;
+  const re = schemeNeedles(scheme);
+  const rows = rag.chunks.filter(
+    (c) => (c.kind === "process" || c.kind === "faq" || c.kind === "product" || c.kind === "crs" || c.kind === "hallmark") && re.test(`${c.title} ${c.body}`),
+  );
+  for (const c of rows.slice(0, 5)) {
+    if (seen.has(c.title)) continue;
+    seen.add(c.title);
+    out.push(toHit(c, 0.55));
+  }
+}
+
+function injectKeywordExtras(query: string, seen: Set<string>, out: EvidenceHit[]) {
+  const ql = query.toLowerCase();
+  const wantConsumer = /complaint|grievance|consumer|शिकायत/.test(ql);
+  const wantTrain = /training|workshop|standards club|मानक क्लब|प्रशिक्षण/.test(ql);
+  const wantClause = CLAUSE_ASK.test(query);
+  const wantLabLink = CITIES.test(query) || /\blab(?:orator(?:y|ies))?|प्रयोगशाला\b/i.test(query);
+  if (!wantConsumer && !wantTrain && !wantClause && !wantLabLink) return;
+  for (const c of rag.chunks) {
+    if (c.kind !== "consumer" && c.kind !== "link" && c.kind !== "faq") continue;
+    const blob = `${c.title} ${c.body}`.toLowerCase();
+    if (wantConsumer && /complaint|grievance|consumer|care/.test(blob)) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.5));
+    }
+    if (wantTrain && /training|enquiry|directory|contact/.test(blob)) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.45));
+    }
+    if (wantClause && /know your standard|e-sale|esale|download \/ purchase|purchase indian standards/.test(blob)) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.7));
+    }
+    if (wantLabLink && /lims|group-1|group 1|recognised laborator|testing laboratory directory/.test(blob)) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.48));
+    }
+    if (out.length >= 16) break;
+  }
+}
+function attachAllied(merged: EvidenceHit[], query: string, seen: Set<string>, family: ProductFamily | null): EvidenceHit[] {
+  const out = [...merged];
+  const ids = new Set<string>();
+  for (const h of merged) {
+    for (const id of isNumbers(`${h.title} ${h.body}`)) ids.add(id);
+  }
+  for (const id of ids) {
+    for (const i of (catPost.isn.get(id) || []).slice(0, 3)) {
+      const ch = catalogue[i];
+      if (!ch || seen.has(ch.title)) continue;
+      const titleIds = isNumbers(ch.title);
+      if (!titleIds.includes(id)) continue;
+      seen.add(ch.title);
+      out.push(toHit(ch, 0.22));
+      if (out.length >= 10) break;
+    }
+    if (out.length >= 10) break;
+  }
+
+  const wantProcess =
+    Boolean(family?.scheme) ||
+    /\bprocess|steps?|scheme|certif|fee|licence|license|crs|isi|hallmark\b/i.test(query);
+  const cityM = query.match(CITIES);
+  const city = cityM ? cityM[1].toLowerCase() : "";
+
+  if (city) {
+    const labs = rag.chunks.filter((c) => c.kind === "lab");
+    const ranked = labs
+      .map((c) => {
+        const blob = `${c.title} ${c.body}`.toLowerCase();
+        let s = 0;
+        if (blob.includes(city)) s += 2;
+        return { c, s };
+      })
+      .filter((r) => r.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 3);
+    for (const { c, s } of ranked) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.3 + s * 0.1));
+    }
+  }
+
+  if (family?.scheme) injectScheme(family.scheme, seen, out);
+  else if (wantProcess) {
+    const kinds = new Set(["process", "faq", "product", "hallmark", "crs"]);
+    const qToks = tokens(expandQuery(query));
+    const scored = rag.chunks
+      .filter((c) => kinds.has(c.kind))
+      .map((c) => ({ c, s: coverage(qToks, `${c.title} ${c.body}`) }))
+      .filter((r) => r.s >= 0.12)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 4);
+    for (const { c, s } of scored) {
+      if (seen.has(c.title)) continue;
+      seen.add(c.title);
+      out.push(toHit(c, 0.18 + s));
+    }
+  }
+
+  injectKeywordExtras(query, seen, out);
+  return out.slice(0, 14);
+}
+
 export function vectorRetrieve(query: string): Retrieval {
   const q = query.trim();
+  const family = matchProductFamily(q);
   const queryToks = tokens(q);
-  const ids = isNumbers(q);
-  const expanded = expandQuery(q);
+  const ids = [...new Set([...isNumbers(q), ...(family?.is || [])])];
+  const expanded = family ? `${expandQuery(q)} ${family.id} ${family.is.map((n) => `IS ${n}`).join(" ")}` : expandQuery(q);
   const expToks = tokens(expanded);
   const qv = embedSparse(expanded);
 
@@ -254,20 +411,31 @@ export function vectorRetrieve(query: string): Retrieval {
     const cov = coverage(queryToks.length ? queryToks : expToks, blob);
     s += cov * 0.45;
     if (queryToks.some((t) => ch.title.toLowerCase().includes(t))) s += 0.08;
+    const titleL = ch.title.toLowerCase();
+    const bodyL = blob;
+    const distinctive = (queryToks.length ? queryToks : expToks).filter((t) => t.length > 3);
+    const titleHits = distinctive.filter((t) => titleL.includes(t)).length;
+    if (titleHits) s += 0.28 * titleHits;
+    // Prefer specification rows over incidental keyword hits (e.g. "cement" in a test method).
+    if (distinctive.some((t) => t === "cement") && /portland|ordinary portland/.test(bodyL)) s += 0.35;
+    if (distinctive.some((t) => t === "helmet") && /helmet/.test(titleL)) s += 0.3;
+    if (distinctive.some((t) => t === "gold" || t === "jewellery" || t === "jewelry") && /1417|1418|hallmark/.test(bodyL))
+      s += 0.25;
     return { i, s, cov };
   });
   catScored.sort((a, b) => b.s - a.s);
   for (const row of catScored.slice(0, 8)) {
     if (row.s < 0.12 && !ids.length) continue;
     catHits.push(toHit(catalogue[row.i], row.s));
-    if (catHits.length >= 5) break;
+    if (catHits.length >= 6) break;
   }
 
   const schemeQuery = /crs|scheme|isi|fmcs|hallmark|huid|fee|licence|license|iso|iec|lab|complaint|explore|bureau|act 2016|registration/.test(
     q.toLowerCase(),
   );
-  const merged: EvidenceHit[] = [];
   const seen = new Set<string>();
+  const pinned = family ? pinFamilyHits(family, seen) : [];
+  const merged: EvidenceHit[] = [...pinned];
   const prefer = schemeQuery && !ids.length ? [...richHits, ...catHits] : [...catHits, ...richHits];
   if (schemeQuery && richHits.length) {
     for (const h of richHits) {
@@ -275,7 +443,7 @@ export function vectorRetrieve(query: string): Retrieval {
       if (seen.has(k)) continue;
       seen.add(k);
       merged.push(h);
-      if (merged.length >= 6) break;
+      if (merged.length >= 8) break;
     }
   }
   for (const h of prefer) {
@@ -283,37 +451,87 @@ export function vectorRetrieve(query: string): Retrieval {
     if (seen.has(k)) continue;
     seen.add(k);
     merged.push(h);
-    if (merged.length >= 6) break;
+    if (merged.length >= 8) break;
   }
 
-  const best = merged[0];
+  const allied = attachAllied(merged, q, seen, family);
+  let finalHits = allied.length ? allied : merged;
+
+  const labAsk = CITIES.test(q) || /\blab(?:orator(?:y|ies))?|प्रयोगशाला\b/i.test(q);
+  if (!labAsk) finalHits = finalHits.filter((h) => h.kind !== "lab");
+  else {
+    finalHits = finalHits.map((h) =>
+      h.kind === "lab"
+        ? {
+            ...h,
+            body: `${h.body}\nNOTE: Group-1 list is a published name/city list. Do not claim this lab is accredited to test a named IS. Confirm live scope on BIS LIMS https://lims.bis.gov.in/home/search_is_number/ and the Group-1 PDF.`,
+          }
+        : h,
+    );
+  }
+
+  if (CLAUSE_ASK.test(q) && finalHits[0]) {
+    finalHits[0] = {
+      ...finalHits[0],
+      body: `${finalHits[0].body}\nNOTE: Full clause text of paid Indian Standards is NOT stored. Do not invent clause wording. Direct the user to Know Your Standard and the official e-Sale portal in these hits.`,
+    };
+  }
+
+  if (family?.disambiguate && finalHits[0]) {
+    finalHits[0] = {
+      ...finalHits[0],
+      body: `${finalHits[0].body}\nNOTE: ${family.disambiguate}`,
+    };
+  }
+
+  const wantTrainFinal = /training|workshop|standards club|मानक क्लब|प्रशिक्षण/i.test(q);
+  if (wantTrainFinal) {
+    const pin = finalHits.filter((h) => /enquiry|directory|contact|training/i.test(`${h.title} ${h.body}`) && h.kind !== "standard");
+    const rest = finalHits.filter((h) => !pin.includes(h) && h.kind !== "standard");
+    finalHits = pin.length ? [...pin, ...rest] : rest;
+  }
+
+  if (CLAUSE_ASK.test(q) && ids.length) {
+    const keepIs = finalHits.filter((h) => {
+      const n = isNumbers(h.title);
+      return n[0] && ids.includes(n[0]);
+    });
+    const portals = finalHits.filter((h) => /know your standard|e-sale|esale|download \/ purchase|purchase indian/i.test(`${h.title} ${h.body}`));
+    finalHits = [...keepIs, ...portals.filter((p) => !keepIs.includes(p))];
+  }
+
+  const best = finalHits[0];
   const bestCov = best ? coverage(queryToks, `${best.title} ${best.body}`) : 0;
   const bestScore = best?.score ?? 0;
   const schemeKind =
     best && ["faq", "process", "hallmark", "product", "crs", "lab", "consumer", "link"].includes(best.kind);
   const hasEvidence = Boolean(
-    merged.length &&
-      (ids.length
-        ? bestScore >= 0.12
-        : schemeKind
-          ? bestScore >= 0.1
-          : bestScore >= 0.14 || bestCov >= 0.3),
+    finalHits.length &&
+      (family
+        ? true
+        : ids.length
+          ? bestScore >= 0.12
+          : schemeKind
+            ? bestScore >= 0.1
+            : bestScore >= 0.14 || bestCov >= 0.3),
   );
 
   const ql = q.toLowerCase();
   let mode: Retrieval["mode"] = "general";
-  if (/hallmark|huid|gold|jewel/.test(ql) || merged.some((h) => h.kind === "hallmark")) mode = "hallmarking";
-  else if (merged.some((h) => h.kind === "standard" || h.kind === "crs" || h.kind === "product")) mode = "standards";
+  if (family?.scheme === "hallmark" || /hallmark|huid|gold|jewel/.test(ql) || finalHits.some((h) => h.kind === "hallmark"))
+    mode = "hallmarking";
+  else if (finalHits.some((h) => h.kind === "standard" || h.kind === "crs" || h.kind === "product") || family)
+    mode = "standards";
 
   const confidence: Retrieval["confidence"] = !hasEvidence
     ? "low"
-    : bestScore >= 0.35
+    : family || bestScore >= 0.35
       ? "high"
       : bestScore >= 0.18
         ? "medium"
         : "low";
 
-  return { query: q, hits: hasEvidence ? merged : [], mode, confidence, hasEvidence };
+  return { query: q, hits: hasEvidence ? finalHits : [], mode, confidence, hasEvidence };
 }
 
 export const RAG_VERIFIED = rag.verified;

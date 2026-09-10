@@ -30,7 +30,7 @@ export function speechLang(lang: AppLang): string {
   return APP_LANGS.find((l) => l.id === lang)?.speech || "en-IN";
 }
 
-/** Detect script of the typed text. Keep the toggle language if the text is Latin. */
+/** Script helper only. Do not auto-switch the UI language from typed text. */
 export function detectLanguage(text: string, current: AppLang = "en"): AppLang {
   if (/[\u0900-\u097F]/.test(text)) {
     if (current === "mr") return "mr";

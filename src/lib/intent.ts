@@ -1,12 +1,14 @@
 import type { AppLang } from "@/lib/language";
+import { FOLLOW_CUE, MICRO_FOLLOW, historyLooksBis, type ChatTurn } from "@/lib/query-context";
+import { matchProductFamily } from "@/lib/product-playbook";
 
 export type ChatIntent = "social" | "bis" | "offtopic";
 
 const BIS_HINT =
-  /\b(is[\s/.-]*\d+|indian standard|standard mark|bis\b|isi\b|crs\b|fmcs\b|qco\b|iso\b|iec\b|hallmark|huid|lab(?:orator)?y?|licence|license|certif|fee|gold|silver|jewell|msme|manak|testing|complaint|grievance|scheme(?:-?[i12x])?|option-?2|packaged|pet\b|plastic|electronics|registration|compulsory|explore)\b/i;
+  /\b(is[\s/.-]*\d+|indian standard|standard mark|bis\b|isi\b|crs\b|fmcs\b|qco\b|iso\b|iec\b|hallmark|huid|lab(?:orator)?y?|licence|license|certif|fee|gold|silver|jewell|msme|manak|testing|complaint|grievance|scheme(?:-?[i12x])?|option-?2|packaged|pet\b|plastic|electronics|registration|compulsory|explore|helmet|cement|mixer|grinder|laptop|charger|tyre|tire|portland|cooker|training|club)\b/i;
 
 const BIS_NATIVE =
-  /मानक|प्रमाणन|हॉलमार्क|हालमार्क|प्रयोगशाला|लाइसेंस|लाइसेंस|फीस|सोना|चांदी|शिकायत|आईएसआई|सीआरएस|ब्यूरो|मानचित्र|মান|প্রমাণ|হলমার্ক|ప్రమాణం|ధృవీకరణ|தரம்|சான்றிதழ்|മാനകം|ಗುಣಮಟ್ಟ|ધોરણ|ਮਾਪਦੰਡ/;
+  /मानक|प्रमाणन|हॉलमार्क|हालमार्क|प्रयोगशाला|लाइसेंस|लाइसेंस|फीस|सोना|चांदी|शिकायत|आईएसआई|सीआरएस|ब्यूरो|हेलमेट|सीमेंट|मिक्सर|गहना|आभूषण|মান|প্রমাণ|হলমার্ক|ప్రమాణం|ధృవీకరణ|தரம்|சான்றிதழ்|മാനകം|ಗುಣಮಟ್ಟ|ધોરણ|ਮਾਪਦੰਡ/;
 
 const SOCIAL_CUE =
   /\b(hi+|hii+|hello|hey|namaste|namaskar|thanks?|thank you|ok+|okay|bye|goodbye|good\s*(morning|evening|afternoon|night)|how are you|who are you|what(?:'s| is) your name|tell (me )?(about )?(your\s*)?self|about yourself|what can you do|introduce yourself|help( me)?|kaun ho|kya kar (sakte|sakti)|apna parichay)\b/i;
@@ -15,10 +17,11 @@ const SOCIAL_NATIVE = /नमस्ते|नमस्कार|धन्यव�
 
 const INDIC = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0600-\u06FF]/;
 
-export function classifyIntent(query: string): ChatIntent {
+export function classifyIntent(query: string, history?: ChatTurn[]): ChatIntent {
   const q = query.trim();
   if (!q) return "social";
-  if (/\bIS[\s/.-]*\d+/i.test(q) || BIS_HINT.test(q) || BIS_NATIVE.test(q)) return "bis";
+  if (/\bIS[\s/.-]*\d+/i.test(q) || BIS_HINT.test(q) || BIS_NATIVE.test(q) || matchProductFamily(q)) return "bis";
+  if (q.length < 160 && (FOLLOW_CUE.test(q) || MICRO_FOLLOW.test(q)) && historyLooksBis(history)) return "bis";
   if ((SOCIAL_CUE.test(q) || SOCIAL_NATIVE.test(q)) && q.length < 220) return "social";
   if (q.length <= 24 && /^(hi+|hello|hey|namaste)[!.\s]*$/i.test(q)) return "social";
   if (INDIC.test(q)) return "bis";
@@ -40,6 +43,8 @@ export function socialReply(language: AppLang): string {
 
 जो बात आधिकारिक BIS सूची में नहीं है, उसे मैं गढ़ूँगा नहीं — साफ बोल दूँगा।
 
+मैं tender/procurement specification engine नहीं हूँ — MSME और उपभोक्ता के BIS सवाल (standard, scheme, hallmark, lab, शिकायत) पर काम करता हूँ।
+
 आज किस प्रोडक्ट या सेवा पर काम करना है?
 
 [SOURCE] ManakMitra | assistant | 2026-09-07 | https://www.bis.gov.in
@@ -58,6 +63,8 @@ I can:
 * Show where to file a **consumer complaint**
 
 If it is not in the authorised BIS pack, I will say so instead of inventing an IS number.
+
+I am not a tender/procurement specification engine — I handle MSME and consumer BIS questions (standards, schemes, hallmarking, labs, complaints).
 
 What should we look up — a product, a mark, a lab, or a process?
 

@@ -9,7 +9,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" },
       { title: APP_NAME },
       { name: "theme-color", content: "#1e3a8a" },
       {
@@ -39,15 +39,15 @@ function RootDocument() {
   const isChat = pathname === "/chat" || pathname.startsWith("/chat/");
 
   return (
-    <html lang="en" className={isChat ? "overscroll-none" : undefined} suppressHydrationWarning>
+    <html lang="en" className={isChat ? "mm-chat overscroll-none" : "overflow-y-auto"} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
       <body
         className={
           isChat
-            ? "antialiased overscroll-none overflow-hidden h-[100dvh] w-full"
-            : "antialiased min-h-[100dvh] w-full overflow-x-hidden bg-white text-slate-900"
+            ? "mm-chat antialiased overscroll-none overflow-hidden h-[100dvh] w-full min-w-full bg-white"
+            : "antialiased min-h-[100dvh] w-full overflow-x-clip overflow-y-auto bg-white text-slate-900"
         }
       >
         <PreviewHostBridge />

@@ -9,7 +9,7 @@ import {
   ChevronRight, Menu, X, Info, Loader2, ArrowRight, Copy, Check, Share, RotateCcw, WifiOff
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { APP_LANGS, detectLanguage, speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
+import { APP_LANGS, speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -106,19 +106,30 @@ export default function ChatBotApp() {
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop === 0) {
+    const el = scrollContainerRef.current;
+    if (el && el.scrollTop <= 0) {
       setPullStartY(e.touches[0].clientY);
+    } else {
+      setPullStartY(null);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (pullStartY !== null) {
-      const currentY = e.touches[0].clientY;
-      const distance = currentY - pullStartY;
-      if (distance > 0) {
-        setPullMoveY(distance);
-        setIsPulling(true);
-      }
+    if (pullStartY === null) return;
+    const el = scrollContainerRef.current;
+    if (el && el.scrollTop > 0) {
+      setPullStartY(null);
+      setIsPulling(false);
+      setPullMoveY(0);
+      return;
+    }
+    const distance = e.touches[0].clientY - pullStartY;
+    if (distance > 20) {
+      setPullMoveY(distance);
+      setIsPulling(true);
+    } else if (distance <= 0) {
+      setIsPulling(false);
+      setPullMoveY(0);
     }
   };
 
@@ -185,6 +196,41 @@ export default function ChatBotApp() {
       };
     }
   }, [language]);
+
+  // Keep the chat shell flush to the visible screen (no right/bottom empty band on mobile zoom).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    const apply = () => {
+      const vv = window.visualViewport;
+      const scale = vv?.scale ?? 1;
+      const w = scale <= 1.02
+        ? Math.ceil(vv?.width ?? window.innerWidth)
+        : window.innerWidth;
+      const h = scale <= 1.02
+        ? Math.ceil(vv?.height ?? window.innerHeight)
+        : window.innerHeight;
+      root.style.setProperty("--mm-vvw", `${w}px`);
+      root.style.setProperty("--mm-vvh", `${h}px`);
+      root.style.setProperty("--mm-vvt", `${Math.round(vv?.offsetTop ?? 0)}px`);
+      root.style.setProperty("--mm-vvl", `${Math.round(vv?.offsetLeft ?? 0)}px`);
+    };
+    apply();
+    window.visualViewport?.addEventListener("resize", apply);
+    window.visualViewport?.addEventListener("scroll", apply);
+    window.addEventListener("orientationchange", apply);
+    window.addEventListener("resize", apply);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", apply);
+      window.visualViewport?.removeEventListener("scroll", apply);
+      window.removeEventListener("orientationchange", apply);
+      window.removeEventListener("resize", apply);
+      root.style.removeProperty("--mm-vvw");
+      root.style.removeProperty("--mm-vvh");
+      root.style.removeProperty("--mm-vvt");
+      root.style.removeProperty("--mm-vvl");
+    };
+  }, []);
 
   // Cleanup speech recognition on unmount
   useEffect(() => {
@@ -382,9 +428,8 @@ export default function ChatBotApp() {
       return;
     }
     
-    // Detect and set language dynamically based on input
-    const detectedLang = detectLanguage(text, language);
-    setLanguage(detectedLang);
+    // Reply language is only the header dropdown — never auto-switch from the query.
+    const replyLang = language;
 
     const newMsg: Message = {
       id: createUniqueId(),
@@ -414,10 +459,10 @@ export default function ChatBotApp() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           query: text, 
-          language: detectedLang,
+          language: replyLang,
           history: messages
             .filter((m) => m.text?.trim())
-            .slice(-4)
+            .slice(-8)
             .map((m) => ({ role: m.role, text: m.text.slice(0, 500) })),
         })
       });
@@ -490,7 +535,7 @@ export default function ChatBotApp() {
           const msg = newMsgs[msgIndex];
           msg.isStreaming = false;
           if (!msg.text || !msg.text.trim()) {
-            msg.text = UI_DICTIONARY[detectedLang].errorServer;
+            msg.text = UI_DICTIONARY[replyLang].errorServer;
             msg.confidence = 'low';
             msg.isError = true;
             msg.retryQuery = text;
@@ -509,7 +554,7 @@ export default function ChatBotApp() {
           if (msgIndex !== -1) {
             newMsgs[msgIndex] = {
               ...newMsgs[msgIndex],
-              text: UI_DICTIONARY[detectedLang].errorServer,
+              text: UI_DICTIONARY[replyLang].errorServer,
               confidence: 'low',
               isError: true,
               isStreaming: false,
@@ -521,7 +566,7 @@ export default function ChatBotApp() {
         return [...prev, {
           id: createUniqueId(),
           role: 'ai',
-          text: UI_DICTIONARY[detectedLang].errorServer,
+          text: UI_DICTIONARY[replyLang].errorServer,
           timestamp: getFormattedTime(),
           confidence: 'low',
           isError: true,
@@ -546,28 +591,37 @@ export default function ChatBotApp() {
   }, [sessionId]);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full bg-white text-slate-800 font-sans overflow-hidden">
+    <div
+      className="relative flex flex-col bg-white text-slate-800 font-sans overflow-hidden min-w-0 min-h-0 z-0"
+      style={{
+        position: "fixed",
+        top: "var(--mm-vvt, 0px)",
+        left: "var(--mm-vvl, 0px)",
+        width: "var(--mm-vvw, 100%)",
+        height: "var(--mm-vvh, 100dvh)",
+      }}
+    >
       {/* Header (Fixed Top) */}
-      <header className="h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-4 sm:px-6 shrink-0">
-        <div className="flex items-center">
-          <button aria-label="Toggle sidebar" onClick={() => setSidebarOpen(!sidebarOpen)} className="mr-3 p-2 -ml-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg">
-            <Menu className="w-6 h-6" />
+      <header className="h-12 sm:h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-6 shrink-0 min-w-0">
+        <div className="flex items-center min-w-0">
+          <button aria-label="Toggle sidebar" onClick={() => setSidebarOpen(!sidebarOpen)} className="mr-1 sm:mr-3 p-1.5 sm:p-2 -ml-0.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <ShieldCheck className="h-8 w-8 text-blue-800 mr-2" />
-          <div className="flex flex-col">
-            <h1 className="text-lg md:text-xl font-bold text-slate-900 leading-tight">ManakMitra <span className="text-blue-700 hidden sm:inline">- AI Assistant</span></h1>
-            <p className="text-[10px] md:text-xs text-slate-500 font-medium tracking-wide">BUREAU OF INDIAN STANDARDS</p>
+          <ShieldCheck className="h-5 w-5 sm:h-8 sm:w-8 text-blue-800 mr-1.5 sm:mr-2 shrink-0" />
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-sm sm:text-lg md:text-xl font-bold text-slate-900 leading-tight truncate">ManakMitra <span className="text-blue-700 hidden sm:inline">- AI Assistant</span></h1>
+            <p className="text-[8px] sm:text-[10px] md:text-xs text-slate-500 font-medium tracking-wide truncate">BUREAU OF INDIAN STANDARDS</p>
           </div>
         </div>
         
-        <div className="flex items-center space-x-2 md:space-x-4">
+        <div className="flex items-center gap-0.5 sm:gap-2 md:space-x-4 shrink-0">
           <label className="sr-only" htmlFor="mm-lang">Language</label>
           <select
             id="mm-lang"
             aria-label="Reply language"
             value={language}
             onChange={(e) => setLanguage(e.target.value as AppLang)}
-            className="px-2 py-1 text-sm font-medium rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition-colors mr-2 max-w-[9.5rem]"
+            className="px-1 sm:px-2 py-0.5 sm:py-1 text-[16px] sm:text-sm font-medium rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition-colors max-w-[6.5rem] sm:max-w-[9.5rem] sm:mr-2"
           >
             {APP_LANGS.map((l) => (
               <option key={l.id} value={l.id}>{l.native}</option>
@@ -577,7 +631,7 @@ export default function ChatBotApp() {
           <button 
             aria-label={UI_DICTIONARY[language].shareConversation}
             onClick={shareConversation}
-            className="p-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+            className="p-1.5 sm:p-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
             title={UI_DICTIONARY[language].shareConversation}
           >
             <Share className="w-5 h-5" />
@@ -587,23 +641,23 @@ export default function ChatBotApp() {
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-[60] bg-slate-800 text-white px-4 py-2 rounded-full shadow-lg text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-4">
+        <div className="absolute top-16 sm:top-20 left-3 right-3 sm:left-1/2 sm:right-auto sm:w-auto sm:max-w-md sm:transform sm:-translate-x-1/2 z-[60] bg-slate-800 text-white px-3 py-2 rounded-full shadow-lg text-xs sm:text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-4 max-w-[calc(100%-1.5rem)] mx-auto">
           <Info className="w-4 h-4" />
           {toastMessage}
         </div>
       )}
 
       {/* Main Layout */}
-      <div className="flex flex-1 overflow-hidden w-full relative">
+      <div className="flex flex-1 min-h-0 overflow-hidden w-full min-w-0 relative">
         {/* Sidebar */}
         <div className={`sidebar-container
           fixed inset-y-0 left-0 z-40 bg-slate-50 border-r border-slate-200 shadow-2xl transition-transform duration-300 transform
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:relative lg:translate-x-0 lg:shadow-none lg:transition-[width] lg:duration-300 lg:ease-in-out
           ${sidebarOpen ? 'lg:w-[320px]' : 'lg:w-0 lg:border-transparent'}
-          flex flex-col shrink-0 overflow-hidden w-[320px]
+          flex flex-col shrink-0 overflow-hidden w-[min(18rem,85vw)]
         `}>
-          <div className="w-[320px] h-full flex flex-col p-0">
+          <div className="w-full h-full flex flex-col p-0">
             {isMobile && (
               <button aria-label="Close sidebar" onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm text-slate-500 z-50">
                 <X className="w-5 h-5" />
@@ -619,7 +673,7 @@ export default function ChatBotApp() {
         )}
 
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col h-full bg-white relative">
+        <div className="flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden">
           
           {/* Offline / Limited Connectivity Banner */}
           {!isOnline && (
@@ -654,7 +708,7 @@ export default function ChatBotApp() {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 scroll-smooth pb-4 relative"
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-clip px-2.5 py-2.5 sm:p-6 lg:p-8 scroll-smooth relative overscroll-y-contain touch-pan-y"
           >
             {isPulling && (
               <div className="absolute top-0 left-0 right-0 flex justify-center z-50 pointer-events-none transition-transform" style={{ transform: `translateY(${Math.min(pullMoveY / 2, 50)}px)` }}>
@@ -666,7 +720,7 @@ export default function ChatBotApp() {
               {messages.length === 0 ? (
                <WelcomeState language={language} />
              ) : (
-               <div className="max-w-4xl mx-auto space-y-6">
+               <div className="max-w-4xl mx-auto w-full min-w-0 space-y-3 sm:space-y-6">
                  {/* ARIA Live Region for screen readers */}
                  <div className="sr-only" aria-live="polite" aria-atomic="true">
                    {messages.length > 0 && messages[messages.length - 1].role === 'ai' ? messages[messages.length - 1].text : ''}
@@ -690,11 +744,11 @@ export default function ChatBotApp() {
                  ))}
                  
                   {isTyping && (
-                    <div className="flex items-start gap-4 animate-in fade-in">
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-                        <div className="w-5 h-5 bg-slate-200 rounded-full animate-pulse"></div>
+                    <div className="flex items-start gap-2 sm:gap-4 animate-in fade-in min-w-0">
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
+                        <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 bg-slate-200 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="flex-1 w-full sm:min-w-[400px] max-w-2xl bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                      <div className="flex-1 min-w-0 max-w-2xl bg-white border border-slate-200 rounded-2xl p-3 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
                         <div className="h-4 bg-slate-100 rounded w-1/4 animate-pulse"></div>
                         <div className="space-y-2">
                           <div className="h-3 bg-slate-100 rounded w-full animate-pulse"></div>
@@ -711,15 +765,15 @@ export default function ChatBotApp() {
           </div>
           
           {/* Input Area (Fixed Bottom) */}
-          <div className="w-full p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-20">
+          <div className="w-full min-w-0 px-2.5 pt-2 sm:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <form
-              className="max-w-4xl mx-auto relative flex items-end gap-2"
+              className="max-w-4xl mx-auto relative flex items-end gap-1.5 sm:gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend(inputTextRef.current);
               }}
             >
-              <div className={`relative flex-1 bg-slate-50 border border-slate-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all flex flex-col ${isTyping ? 'animate-pulse opacity-80 border-blue-300' : ''} ${isListening ? 'border-red-400 ring-2 ring-red-200' : ''}`}>
+              <div className={`relative flex-1 min-w-0 overflow-hidden bg-slate-50 border border-slate-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all flex flex-col ${isTyping ? 'animate-pulse opacity-80 border-blue-300' : ''} ${isListening ? 'border-red-400 ring-2 ring-red-200' : ''}`}>
                 {isWaitingForMic && (
                   <div className="absolute -top-8 left-0 right-0 flex justify-center">
                     <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow-sm animate-pulse">
@@ -760,7 +814,7 @@ export default function ChatBotApp() {
                     }
                   }}
                   placeholder={isListening ? (language === 'hi' ? 'बोलिए... आपकी आवाज़ टेक्स्ट में बदल रही है' : 'Listening... your words will appear here') : (language === 'hi' ? 'मानक-मित्र से बात करें...' : 'Talk with ManakMitra')}
-                  className={`w-full bg-transparent p-4 pr-14 focus:outline-none resize-none max-h-32 min-h-[56px] text-slate-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${language === 'hi' ? 'font-sans' : ''}`}
+                  className={`w-full bg-transparent py-2.5 pl-3 pr-11 sm:p-4 sm:pr-14 focus:outline-none resize-none max-h-24 sm:max-h-32 min-h-[44px] sm:min-h-[56px] text-base leading-snug text-slate-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${language === 'hi' ? 'font-sans' : ''}`}
                   rows={1}
                   dir="auto"
                 />
@@ -770,8 +824,8 @@ export default function ChatBotApp() {
                   onClick={toggleListening}
                   onTouchStart={(e) => e.stopPropagation()}
                   disabled={isWaitingForMic}
-                  className={`absolute right-2 bottom-2 min-h-[44px] min-w-[44px] p-2 rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 ${
-                    isListening ? 'bg-red-600 text-white border-red-700 ring-4 ring-red-200 shadow-md' : 
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-11 sm:w-11 sm:right-2 sm:bottom-2 sm:top-auto sm:translate-y-0 p-0 rounded-lg sm:rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 overflow-hidden ${
+                    isListening ? 'bg-red-600 text-white border-red-700 sm:ring-4 sm:ring-red-200 shadow-md' : 
                     isWaitingForMic ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' :
                     'bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 border-slate-200 active:scale-95'
                   }`}
@@ -786,7 +840,7 @@ export default function ChatBotApp() {
                       <span className="w-[3px] bg-white h-2.5 animate-[bounce_1s_infinite_800ms] rounded-full"></span>
                     </div>
                   ) : (
-                    <Mic className="w-5 h-5" />
+                    <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
                   )}
                 </button>
               </div>
@@ -794,13 +848,13 @@ export default function ChatBotApp() {
                 type="submit"
                 aria-label="Send message"
                 disabled={!inputText.trim()}
-                className={`p-3.5 rounded-xl shrink-0 transition-colors mb-0.5 ${inputText.trim() ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+              className={`p-2 sm:p-3.5 rounded-xl shrink-0 transition-colors mb-0 ${inputText.trim() ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
               >
                 <Send className={`w-5 h-5 ${inputText.trim() ? 'text-white' : 'text-slate-400'}`} />
               </button>
             </form>
             
-            <p className="text-center text-[10px] text-slate-400 mt-3 font-medium">
+            <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-3 font-medium px-1 leading-snug mm-break">
               {UI_DICTIONARY[language].disclaimer}
             </p>
           </div>
@@ -813,18 +867,18 @@ export default function ChatBotApp() {
 // --- Sub Components ---
 
 const WelcomeState = ({ language }: { language: AppLang }) => (
-  <div className="max-w-4xl mx-auto w-full flex flex-col items-center justify-center py-8 animate-in fade-in zoom-in-95 duration-500">
-    <div className="w-20 h-20 bg-blue-900 rounded-3xl flex items-center justify-center mb-6 shadow-lg border-4 border-blue-100">
-      <ShieldCheck className="w-10 h-10 text-white" />
+  <div className="max-w-4xl mx-auto w-full min-w-0 flex flex-col items-center justify-center py-5 sm:py-8 animate-in fade-in zoom-in-95 duration-500 px-1">
+    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-blue-900 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg border-4 border-blue-100">
+      <ShieldCheck className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
     </div>
-    <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-3 text-center tracking-tight">
+    <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mb-1.5 sm:mb-3 text-center tracking-tight">
       {UI_DICTIONARY[language].welcomeTitle}
     </h1>
-    <p className="text-lg text-slate-600 mb-8 text-center max-w-2xl">
+    <p className="text-xs sm:text-lg text-slate-600 mb-5 sm:mb-8 text-center max-w-2xl px-2">
       {UI_DICTIONARY[language].welcomeDesc}
     </p>
     
-    <div className="flex flex-wrap justify-center gap-3 mb-12 text-xs font-semibold text-slate-600">
+    <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-12 text-[10px] sm:text-xs font-semibold text-slate-600">
       <span className="flex items-center bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200">
         <FileText className="w-4 h-4 mr-1.5"/> Source-backed Answers
       </span>
@@ -927,15 +981,15 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
   };
   
   return (
-    <div className={`flex gap-4 ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
+    <div className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
       {isAI && (
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border mt-1 ${msg.isError ? 'bg-red-100 border-red-200' : 'bg-blue-100 border-blue-200'}`}>
-          {msg.isError ? <X className="w-5 h-5 text-red-700" /> : <ShieldCheck className="w-5 h-5 text-blue-700" />}
+        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 border mt-0.5 sm:mt-1 ${msg.isError ? 'bg-red-100 border-red-200' : 'bg-blue-100 border-blue-200'}`}>
+          {msg.isError ? <X className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-red-700" /> : <ShieldCheck className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-700" />}
         </div>
       )}
       
-      <div className={`max-w-[90%] md:max-w-[85%] flex flex-col ${!isAI ? 'items-end' : 'items-start'}`}>
-        <div className={`p-5 rounded-2xl shadow-sm relative group ${
+      <div className={`min-w-0 max-w-[92%] sm:max-w-[90%] md:max-w-[85%] flex flex-col ${!isAI ? 'items-end' : 'items-start'}`}>
+        <div className={`p-3 sm:p-5 rounded-2xl shadow-sm relative group min-w-0 max-w-full overflow-hidden ${
           !isAI 
             ? 'bg-blue-900 text-white rounded-tr-sm border border-blue-800' 
             : msg.isError
@@ -965,7 +1019,7 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
               </span>
             </div>
           ) : (
-            <div className="whitespace-pre-wrap leading-relaxed text-[15px]">
+            <div className="whitespace-pre-wrap leading-snug sm:leading-relaxed text-[13px] sm:text-[15px] mm-break">
               {/* Parse markdown bold and IS Codes */}
               {displayedText.split('**').map((part, i) => {
                 const isBold = i % 2 === 1;
@@ -1010,7 +1064,7 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           {/* Confidence Badge */}
           {msg.confidence && (isFinishedTyping || !isAI) && (
             <div className="mt-4 flex items-center animate-in fade-in duration-300">
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold border cursor-help ${
+              <span className={`inline-flex items-center max-w-full px-2 py-1 sm:px-2.5 rounded-md text-[11px] sm:text-xs font-bold border cursor-help whitespace-normal ${
                 msg.confidence === 'high' ? 'bg-green-100 text-green-800 border-green-200' :
                 msg.confidence === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' :
                 'bg-red-100 text-red-800 border-red-200'
@@ -1038,12 +1092,20 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           )}
 
           {msg.processSteps && msg.processSteps.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-200 w-full overflow-x-auto pb-2">
-              <div className="flex items-center min-w-max">
+            <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 w-full min-w-0">
+              <div className="flex flex-wrap gap-1.5 sm:hidden">
                 {msg.processSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-center">
-                    <div className="flex flex-col items-center group relative">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-600 flex items-center justify-center z-10 animate-in zoom-in duration-500" style={{ animationDelay: `${idx * 150}ms` }}>
+                  <div key={idx} className="inline-flex items-center gap-1 max-w-full rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5">
+                    <span className="w-4 h-4 rounded-full bg-blue-100 border border-blue-600 flex items-center justify-center shrink-0 text-[9px] font-bold text-blue-700">{idx + 1}</span>
+                    <span className="text-[10px] font-medium text-slate-600 leading-tight mm-break">{step}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden sm:flex items-center min-w-0 overflow-x-auto pb-8">
+                {msg.processSteps.map((step, idx) => (
+                  <div key={idx} className="flex items-center shrink-0">
+                    <div className="flex flex-col items-center relative">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-600 flex items-center justify-center z-10">
                         <span className="text-xs font-bold text-blue-700">{idx + 1}</span>
                       </div>
                       <span className="absolute top-10 w-24 text-center text-[10px] font-medium text-slate-600 leading-tight">
@@ -1051,8 +1113,8 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
                       </span>
                     </div>
                     {idx < msg.processSteps!.length - 1 && (
-                      <div className="h-0.5 w-16 bg-blue-200 relative -top-3">
-                        <div className="absolute top-0 left-0 h-full bg-blue-500 animate-[growWidth_1s_ease-out_forwards]" style={{ animationDelay: `${idx * 150}ms`, width: '100%' }}></div>
+                      <div className="h-0.5 w-16 bg-blue-200 relative -top-0">
+                        <div className="absolute top-0 left-0 h-full bg-blue-500 w-full"></div>
                       </div>
                     )}
                   </div>
@@ -1063,7 +1125,7 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
 
           {/* Follow-up Questions */}
           {msg.followUpQuestions && (
-            <div className="mt-5 bg-orange-50 border border-orange-200 rounded-xl p-4">
+            <div className="mt-4 sm:mt-5 bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4 min-w-0">
               <p className="font-bold text-orange-900 mb-3 flex items-center gap-2">
                 <HelpCircle className="w-4 h-4" /> 
                 {UI_DICTIONARY[language].followUp}
@@ -1081,7 +1143,7 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
 
           {/* Source Citations */}
           {msg.sources && msg.sources.length > 0 && (
-            <div className="mt-5 bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="mt-4 sm:mt-5 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-0">
               <h4 className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
                 <FileText className="w-4 h-4 text-blue-600" />
                 {UI_DICTIONARY[language].sources} ({msg.sources.length} {UI_DICTIONARY[language].documents})
@@ -1089,8 +1151,8 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
               <ul className="space-y-3">
                 {msg.sources.map(s => (
                   <li key={s.id} className="group">
-                    <a href={s.link} className="text-blue-700 font-semibold text-sm hover:underline flex items-start gap-1.5">
-                      <span className="mt-0.5">{s.title}</span>
+                    <a href={s.link} className="text-blue-700 font-semibold text-sm hover:underline flex items-start gap-1.5 min-w-0">
+                      <span className="mt-0.5 mm-break">{s.title}</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                     <div className="flex items-center gap-3 mt-1.5">
@@ -1121,25 +1183,16 @@ const SidebarContext = ({ contextMode, language }: { contextMode: string, langua
       </div>
       
       <div className="p-0 overflow-y-auto flex-1">
-        {contextMode === 'standards' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <SidebarSection title={UI_DICTIONARY[language].relatedStandards} icon={<FileText className="w-4 h-4 text-slate-500"/>} items={[
-              'IS 14543 (Packaged Drinking Water)', 
-              'IS 13428 (Natural Mineral Water)', 
-              'IS 12252 (Polyalkylene Terephthalate for safe packaging)'
+        <div>
+            <SidebarSection title={UI_DICTIONARY[language].quickLinks} icon={<ExternalLink className="w-4 h-4 text-slate-500"/>} items={[
+              { label: 'All Certification Schemes (ISI, CRS)', url: 'https://www.bis.gov.in/index.php/product-certification/' },
+              { label: 'Search QCO Notifications', url: 'https://www.bis.gov.in/index.php/quality-control-orders/' },
+              { label: 'Accredited Testing Labs Directory', url: 'https://www.bis.gov.in/index.php/laboratory/' }
             ]} />
-            <SidebarSection title={UI_DICTIONARY[language].certRoadmap} icon={<CheckCircle className="w-4 h-4 text-slate-500"/>} items={[
-              '1. Identify applicable IS Code', 
-              '2. Test sample at BIS Lab', 
-              '3. File online application on e-BIS',
-              '4. Factory inspection by BIS',
-              '5. Grant of License (GoL)'
-            ]} numbered />
-          </div>
-        )}
-        
+        </div>
+
         {contextMode === 'hallmarking' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+          <div>
              <SidebarSection title={UI_DICTIONARY[language].understandingPurity} icon={<Award className="w-4 h-4 text-amber-500"/>} items={[
               '24K995 (99.5% Gold)', 
               '22K916 (91.6% Gold)', 
@@ -1151,16 +1204,6 @@ const SidebarContext = ({ contextMode, language }: { contextMode: string, langua
                <input type="text" value={huid} onChange={(e) => setHuid(e.target.value)} maxLength={6} placeholder={UI_DICTIONARY[language].enterHuid} className="w-full text-sm p-2 rounded-lg border border-amber-300 mb-2 uppercase font-mono" />
                <button type="button" onClick={() => window.open('https://www.bis.gov.in/bis-apps/?lang=en', '_blank', 'noopener,noreferrer')} className="w-full bg-amber-600 text-white text-sm font-bold py-2 rounded-lg">{UI_DICTIONARY[language].verifyJeweller}</button>
              </div>
-          </div>
-        )}
-
-        {contextMode === 'general' && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <SidebarSection title={UI_DICTIONARY[language].quickLinks} icon={<ExternalLink className="w-4 h-4 text-slate-500"/>} items={[
-              { label: 'All Certification Schemes (ISI, CRS)', url: 'https://www.bis.gov.in/index.php/product-certification/' },
-              { label: 'Search QCO Notifications', url: 'https://www.bis.gov.in/index.php/quality-control-orders/' },
-              { label: 'Accredited Testing Labs Directory', url: 'https://www.bis.gov.in/index.php/laboratory/' }
-            ]} />
           </div>
         )}
       </div>
