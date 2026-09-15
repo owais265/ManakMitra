@@ -416,13 +416,22 @@ export default function ChatBotApp() {
     }
   };
 
-  const pinToBottom = () => {
-    stickToBottomRef.current = true;
+  // Single, centralized instant scroll-to-bottom. Never CSS smooth.
+  // The programmatic flag is cleared on the next frame — after the async
+  // scroll event has dispatched — so onChatScroll doesn't fight it.
+  const scrollToBottomInstant = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
     programmaticScrollRef.current = true;
     el.scrollTop = el.scrollHeight;
-    programmaticScrollRef.current = false;
+    requestAnimationFrame(() => {
+      programmaticScrollRef.current = false;
+    });
+  };
+
+  const pinToBottom = () => {
+    stickToBottomRef.current = true;
+    scrollToBottomInstant();
   };
 
   const onChatWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -456,29 +465,13 @@ export default function ChatBotApp() {
     stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
   };
 
-  const followStream = isTyping || Boolean(messages[messages.length - 1]?.isStreaming);
-
-  // Follow tokens only while pinned. Instant scrollTop — never CSS smooth.
-  useEffect(() => {
-    if (!followStream) {
-      if (stickToBottomRef.current) pinToBottom();
-      return;
-    }
-    let raf = 0;
-    const tick = () => {
-      if (stickToBottomRef.current) {
-        const el = scrollContainerRef.current;
-        if (el) {
-          programmaticScrollRef.current = true;
-          el.scrollTop = el.scrollHeight;
-          programmaticScrollRef.current = false;
-        }
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [followStream]);
+  // Centralized scroll follow: react to actual content changes (new messages
+  // and each streamed token) instead of a continuously spinning rAF loop.
+  // Only auto-follow when the user is pinned to the bottom; if they scrolled
+  // up, stickToBottomRef is false and we leave their scroll position alone.
+  useLayoutEffect(() => {
+    if (stickToBottomRef.current) scrollToBottomInstant();
+  }, [messages]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -955,74 +948,15 @@ const WelcomeState = ({ language }: { language: AppLang }) => (
 
 const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: AppLang, onRetry?: () => void }) => {
   const isAI = msg.role === 'ai';
-  // If historical or non-streaming/non-animated, start at full length so it renders immediately without replay
-  const [displayedLength, setDisplayedLength] = useState<number>(() => {
-    return isAI && (msg.isStreaming || msg.animate) ? 0 : msg.text.length;
-  });
   const [copied, setCopied] = useState(false);
 
   const isActivelyTyping = isAI && (msg.isStreaming || msg.animate) && !msg.isError;
-  const isFinishedTyping = !msg.isStreaming && displayedLength >= msg.text.length;
+  const isFinishedTyping = !msg.isStreaming;
 
-  // Fluid, natural typing animation loop
-  useEffect(() => {
-    if (!isAI || msg.isError || (!msg.isStreaming && !msg.animate)) {
-      return;
-    }
-
-    if (displayedLength >= msg.text.length && !msg.isStreaming) {
-      return;
-    }
-
-    let animationFrameId: number;
-    let lastTick = performance.now();
-
-    const loop = (now: number) => {
-      const targetLen = msg.text.length;
-      const diff = targetLen - displayedLength;
-
-      if (diff > 0) {
-        // Natural adaptive cadence:
-        // - Small difference (1-10 chars): smooth single character typing (~20ms per char)
-        // - Medium difference (11-35 chars): 1-2 chars per tick (~16ms)
-        // - Large difference (>35 chars): accelerate smoothly to prevent backlog
-        const interval = diff > 40 ? 12 : diff > 15 ? 16 : 20;
-
-        if (now - lastTick >= interval) {
-          lastTick = now;
-          let step = 1;
-          if (diff > 80) {
-            step = Math.min(diff, Math.ceil(diff / 6));
-          } else if (diff > 40) {
-            step = 3;
-          } else if (diff > 15) {
-            step = 2;
-          }
-
-          setDisplayedLength(prev => Math.min(targetLen, prev + step));
-        }
-      }
-
-      if (displayedLength < msg.text.length || msg.isStreaming) {
-        animationFrameId = requestAnimationFrame(loop);
-      }
-    };
-
-    animationFrameId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [isAI, msg.isError, msg.isStreaming, msg.animate, msg.text.length, displayedLength]);
-
-  // Safety completion fallback when streaming ends
-  useEffect(() => {
-    if (!msg.isStreaming && displayedLength < msg.text.length) {
-      const timer = setTimeout(() => {
-        setDisplayedLength(msg.text.length);
-      }, 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [msg.isStreaming, msg.text.length, displayedLength]);
-
-  const displayedText = isActivelyTyping ? msg.text.slice(0, displayedLength) : msg.text;
+  // Render streamed text directly. No per-bubble typewriter loop — the parent
+  // chat container is the single place that follows the stream, which keeps
+  // scrolling fluid and jitter-free.
+  const displayedText = msg.text;
 
   const handleCopy = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1080,7 +1014,7 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
             <div className="whitespace-pre-wrap leading-snug sm:leading-relaxed text-[13px] sm:text-[15px] mm-break">
               {renderInline(displayedText, msg.sources, isAI)}
               {/* Natural glowing typing cursor while streaming */}
-              {isActivelyTyping && (!isFinishedTyping || displayedLength < msg.text.length) && displayedText.length > 0 && (
+              {isActivelyTyping && !isFinishedTyping && displayedText.length > 0 && (
                 <span 
                   className="inline-block w-2 h-4 ml-1 -mb-0.5 align-middle bg-blue-600 rounded-[1px] animate-pulse motion-reduce:animate-none" 
                   style={{ animationDuration: '650ms' }}
