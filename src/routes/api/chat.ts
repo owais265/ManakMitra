@@ -110,7 +110,16 @@ async function streamXaiMessages(
     }),
   });
 
-  if (!res.ok || !res.body) return null;
+  if (!res.ok || !res.body) {
+    // Swallowed on purpose for the user (canned fallback keeps the chat responsive),
+    // but a bad/expired key or wrong model must still be visible in server logs —
+    // otherwise every request silently skips the LLM and looks like "instant" fallback replies.
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.error(`[chat] xAI request failed (${res.status}):`, detail.slice(0, 500));
+    }
+    return null;
+  }
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
