@@ -79,46 +79,68 @@ function streamText(text: string): Response {
   });
 }
 
+type XaiResult =
+  | { response: Response; attempted: true; error: null }
+  | { response: null; attempted: false; error: "missing_key" }
+  | { response: null; attempted: true; error: "request_failed" | "empty_stream" };
+
+function xaiFailure(language: AppLang, reason: XaiResult["error"]): Response {
+  const message =
+    reason === "missing_key"
+      ? UI_DICTIONARY[language].catalogueLoadError
+      : "The live AI service could not complete this response. Please try again.";
+  return new Response(message, {
+    status: reason === "missing_key" ? 503 : 502,
+    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
+  });
+}
+
 async function streamXaiMessages(
   query: string,
   language: AppLang,
   system: string,
-  fallbackText: string,
+  _fallbackText: string,
   temperature = 0.1,
   maxTokens = 900,
-): Promise<Response | null> {
+): Promise<XaiResult> {
   const apiKey = (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim();
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn("[chat] xAI not called: no XAI_API_KEY_2 or XAI_API_KEY configured");
+    return { response: null, attempted: false, error: "missing_key" };
+  }
+  const model = process.env.XAI_MODEL?.trim() || "grok-4.5";
+  console.info(`[chat] xAI request starting model=${model} keyAlias=${process.env.XAI_API_KEY_2?.trim() ? "XAI_API_KEY_2" : "XAI_API_KEY"}`);
 
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: system },
     { role: "user", content: query.slice(0, 1200) },
   ];
 
-  const res = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "grok-4.5",
-      stream: true,
-      max_tokens: maxTokens,
-      temperature,
-      messages,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        stream: true,
+        max_tokens: maxTokens,
+        temperature,
+        messages,
+      }),
+    });
+  } catch (error) {
+    console.error("[chat] xAI request threw:", error instanceof Error ? error.message : error);
+    return { response: null, attempted: true, error: "request_failed" };
+  }
 
   if (!res.ok || !res.body) {
-    // Swallowed on purpose for the user (canned fallback keeps the chat responsive),
-    // but a bad/expired key or wrong model must still be visible in server logs —
-    // otherwise every request silently skips the LLM and looks like "instant" fallback replies.
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      console.error(`[chat] xAI request failed (${res.status}):`, detail.slice(0, 500));
-    }
-    return null;
+    const detail = await res.text().catch(() => "");
+    console.error(`[chat] xAI request failed (${res.status || "no-body"}):`, detail.slice(0, 500));
+    return { response: null, attempted: true, error: "request_failed" };
   }
 
   const encoder = new TextEncoder();
@@ -156,12 +178,14 @@ async function streamXaiMessages(
           }
         }
         if (total === 0) {
-          controller.enqueue(encoder.encode(fallbackText));
+          console.error("[chat] xAI stream completed without content");
+          controller.enqueue(encoder.encode("The live AI service returned no content. Please try again."));
         }
         controller.close();
-      } catch {
+      } catch (error) {
+        console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
         try {
-          controller.enqueue(encoder.encode("\n\n" + fallbackText));
+          controller.enqueue(encoder.encode("\n\nThe live AI service interrupted this response. Please try again."));
         } catch {
           // ignore
         }
@@ -170,12 +194,16 @@ async function streamXaiMessages(
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
-  });
+  return {
+    response: new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    }),
+    attempted: true,
+    error: null,
+  };
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -205,7 +233,7 @@ export const Route = createFileRoute("/api/chat")({
               0.4,
               500,
             );
-            return live ?? streamText(socialReply(language));
+            return live.response ?? xaiFailure(language, live.error);
           }
           if (intent === "offtopic") {
             return streamText(offtopicReply(language));
@@ -213,6 +241,7 @@ export const Route = createFileRoute("/api/chat")({
           const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
           const retrieved = await retrieveHybrid(retrievalQuery);
+          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode}`);
           if (retrieved.hasEvidence) {
             const evidence = formatEvidenceBlock(retrieved);
             const live = await streamXaiMessages(
@@ -221,7 +250,7 @@ export const Route = createFileRoute("/api/chat")({
               SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
               getFallbackBISResponse(retrievalQuery, language),
             );
-            return live ?? streamText(getFallbackBISResponse(retrievalQuery, language));
+            return live.response ?? xaiFailure(language, live.error);
           }
           return streamText(getFallbackBISResponse(retrievalQuery, language));
         } catch {
