@@ -1,15 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import { 
-  FileText, Award, 
-  HelpCircle, ShieldCheck, 
+  FileText, 
   Send, Mic, CheckCircle, 
-  AlertTriangle, XCircle, ExternalLink, 
-  ChevronRight, Menu, X, Info, Loader2, ArrowRight, Copy, Check, Share, RotateCcw, WifiOff
+  AlertTriangle, XCircle, ExternalLink, X,
+  Info, Copy, Check, Share, RotateCcw, WifiOff
 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { APP_LANGS, speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
+import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
+import { initTheme } from '@/lib/theme';
+import ManakMark from '@/components/manak-mark';
+import {
+  subscribeLang,
+  getLangSnapshot,
+  getLangServerSnapshot,
+  initLang,
+} from '@/lib/lang-store';
+import SiteHeader from '@/components/site-header';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -49,6 +56,123 @@ function getFormattedTime(): string {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+const KYS_URL = 'https://standards.bis.gov.in/website/know-your-standards';
+
+function isOfficialUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    return (
+      h === 'bis.gov.in' ||
+      h.endsWith('.bis.gov.in') ||
+      h === 'manakonline.in' ||
+      h.endsWith('.manakonline.in') ||
+      h === 'crsbis.in' ||
+      h.endsWith('.crsbis.in') ||
+      h === 'standardsbis.bsbedge.com' ||
+      h === 'india.gov.in' ||
+      h.endsWith('.india.gov.in')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function officialIsHref(sources?: Source[]): string {
+  const hit = sources?.find((s) => s.link && isOfficialUrl(s.link));
+  return hit?.link || KYS_URL;
+}
+
+function isQuestionChip(t: string): boolean {
+  const s = t.trim();
+  if (/[?？؟]/.test(s)) return true;
+  return /^(which|what|where|who|whom|how|why|can you|could you|would you|do you|should we|tell me|क्या|कौन|कहाँ|कैसे|किसे|कोन)\b/i.test(s);
+}
+
+const DEFAULT_REC_CHIPS = [
+  "Verify HUID on gold jewellery",
+  "ISI licence for cement",
+  "CRS registration for laptops",
+];
+
+function suggestionChips(msg: Message | undefined): string[] {
+  if (!msg || msg.role !== 'ai' || msg.isError || msg.isStreaming) return [];
+  const out: string[] = [];
+  for (const q of msg.followUpQuestions || []) {
+    const t = q.replace(/\bakonline\.in\b/gi, 'manakonline.in').trim();
+    if (!t || t.length >= 140) continue;
+    if (/add hindi|translation|grok meta/i.test(t)) continue;
+    if (isQuestionChip(t)) continue;
+    out.push(t);
+    if (out.length >= 3) return out;
+  }
+  let extra = 0;
+  for (const s of msg.sources || []) {
+    if (out.length >= 3 || extra >= 2) break;
+    if (!/product|process|lab|hallmark|faq|consumer/i.test(s.type)) continue;
+    const t = s.title.replace(/\s+/g, ' ').trim();
+    if (t.length < 8 || t.length > 72) continue;
+    if (/add hindi|translation/i.test(t)) continue;
+    if (isQuestionChip(t)) continue;
+    const key = t.slice(0, 18).toLowerCase();
+    if (out.some((x) => x.toLowerCase().includes(key) || t.toLowerCase().includes(x.slice(0, 18).toLowerCase()))) continue;
+    out.push(t);
+    extra += 1;
+  }
+  if (out.length) return out.slice(0, 3);
+  if (!msg.sources?.length) return DEFAULT_REC_CHIPS;
+  return [];
+}
+
+function renderInline(text: string, sources: Source[] | undefined, isAI: boolean) {
+  const isCodeRegex = /(\bIS\s+\d+(?:[:\-]\s*\d{2,4})?(?:\s*\(?Part\s*\d+\)?)?\b)/gi;
+  const urlRe = /(https?:\/\/[^\s)\]>]+)/gi;
+  return text.split('**').map((part, i) => {
+    const isBold = i % 2 === 1;
+    const subParts = part.split(isCodeRegex);
+    const rendered = subParts.map((subPart, j) => {
+      if (j % 2 === 1) {
+        return (
+          <a
+            key={j}
+            href={officialIsHref(sources)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 underline decoration-orange-300 font-semibold transition-colors mx-0.5"
+            title="Open official BIS catalogue for this Indian Standard"
+          >
+            {subPart}
+          </a>
+        );
+      }
+      const bits = subPart.split(urlRe);
+      return bits.map((bit, k) => {
+        if (k % 2 === 1) {
+          const href = bit.replace(/[.,;:]+$/, '');
+          if (isOfficialUrl(href) && !/google\.com\/search/i.test(href)) {
+            return (
+              <a
+                key={`${j}-${k}`}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-700 dark:text-blue-300 underline break-all"
+              >
+                {href}
+              </a>
+            );
+          }
+          return <span key={`${j}-${k}`}>{bit}</span>;
+        }
+        return <React.Fragment key={`${j}-${k}`}>{bit}</React.Fragment>;
+      });
+    });
+    if (isBold) {
+      return <strong key={i} className={!isAI ? 'text-white' : 'text-slate-900 dark:text-slate-50 font-bold'}>{rendered}</strong>;
+    }
+    return <React.Fragment key={i}>{rendered}</React.Fragment>;
+  });
+}
+
 function subscribeOnline(callback: () => void) {
   if (typeof window === 'undefined') return () => {};
   window.addEventListener('online', callback);
@@ -68,119 +192,43 @@ function getOnlineServerSnapshot() {
 }
 
 export default function ChatBotApp() {
-  const isMobile = useIsMobile();
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState<string>('');
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [contextMode, setContextMode] = useState<string>('general');
+  const [, setContextMode] = useState<string>('general');
   const [isListening, setIsListening] = useState(false);
   const [isWaitingForMic, setIsWaitingForMic] = useState(false);
-  const [language, setLanguage] = useState<AppLang>('en');
-  const [pullStartY, setPullStartY] = useState<number | null>(null);
-  const [pullMoveY, setPullMoveY] = useState<number>(0);
-  const [isPulling, setIsPulling] = useState(false);
+  const language = useSyncExternalStore(subscribeLang, getLangSnapshot, getLangServerSnapshot);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const isOnline = useSyncExternalStore(subscribeOnline, getOnlineSnapshot, getOnlineServerSnapshot);
-  const isRestoredRef = useRef(false);
   const sendingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
+  const touchStartYRef = useRef(0);
+  const programmaticScrollRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const speechBaseTextRef = useRef<string>('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputTextRef = useRef('');
   inputTextRef.current = inputText;
 
-  const startNewSession = () => {
-    const newSessionId = createUniqueId();
-    setSessionId(newSessionId);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('chat_session_id', newSessionId);
-      sessionStorage.setItem('chat_history', JSON.stringify([]));
-      sessionStorage.setItem('chat_context_mode', 'general');
-    }
-    setMessages([]);
-    setContextMode('general');
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const el = scrollContainerRef.current;
-    if (el && el.scrollTop <= 0) {
-      setPullStartY(e.touches[0].clientY);
-    } else {
-      setPullStartY(null);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (pullStartY === null) return;
-    const el = scrollContainerRef.current;
-    if (el && el.scrollTop > 0) {
-      setPullStartY(null);
-      setIsPulling(false);
-      setPullMoveY(0);
-      return;
-    }
-    const distance = e.touches[0].clientY - pullStartY;
-    if (distance > 20) {
-      setPullMoveY(distance);
-      setIsPulling(true);
-    } else if (distance <= 0) {
-      setIsPulling(false);
-      setPullMoveY(0);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (isPulling && pullMoveY > 100) {
-      startNewSession();
-    }
-    setPullStartY(null);
-    setPullMoveY(0);
-    setIsPulling(false);
-  };
-
-  // Restore state after mount to ensure initial SSR render matches client hydration perfectly
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        const stored = sessionStorage.getItem('chat_history');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setMessages(parsed);
-          }
-        }
-        let currentSessionId = sessionStorage.getItem('chat_session_id');
-        if (!currentSessionId) {
-          currentSessionId = createUniqueId();
-          sessionStorage.setItem('chat_session_id', currentSessionId);
-        }
-        setSessionId(currentSessionId);
-
-        const storedContextMode = sessionStorage.getItem('chat_context_mode');
-        if (storedContextMode) {
-          setContextMode(storedContextMode);
-        }
-      } catch (e) {
-        console.error("Failed to restore chat session", e);
-      } finally {
-        isRestoredRef.current = true;
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
+  useLayoutEffect(() => {
+    initTheme();
+    initLang();
   }, []);
 
-  // Save to session storage only after restoration is complete
   useEffect(() => {
-    if (isRestoredRef.current && typeof window !== 'undefined') {
-      sessionStorage.setItem('chat_history', JSON.stringify(messages));
-      sessionStorage.setItem('chat_context_mode', contextMode);
+    setSessionId(createUniqueId());
+    try {
+      sessionStorage.removeItem('chat_history');
+      sessionStorage.removeItem('chat_context_mode');
+      sessionStorage.removeItem('chat_session_id');
+    } catch {
+      // ignore
     }
-  }, [messages, contextMode]);
+  }, []);
 
   // Network online/offline toast feedback
   useEffect(() => {
@@ -368,21 +416,69 @@ export default function ChatBotApp() {
     }
   };
 
-  // Sync sidebar open state with isMobile initially
-  useEffect(() => {
-    // Only run on client after hydration to avoid hydration mismatch
-    if (typeof window !== 'undefined') {
-      const timer = setTimeout(() => {
-        setSidebarOpen(!isMobile);
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile]);
+  const pinToBottom = () => {
+    stickToBottomRef.current = true;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    programmaticScrollRef.current = true;
+    el.scrollTop = el.scrollHeight;
+    programmaticScrollRef.current = false;
+  };
 
-  // Auto-scroll to bottom
+  const onChatWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.deltaY < 0) {
+      stickToBottomRef.current = false;
+      return;
+    }
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 96) {
+      stickToBottomRef.current = true;
+    }
+  };
+
+  const onChatTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartYRef.current = e.touches[0]?.clientY ?? 0;
+  };
+
+  const onChatTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const y = e.touches[0]?.clientY ?? touchStartYRef.current;
+    if (y - touchStartYRef.current > 8) {
+      stickToBottomRef.current = false;
+    }
+    touchStartYRef.current = y;
+  };
+
+  const onChatScroll = () => {
+    if (programmaticScrollRef.current) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+
+  const followStream = isTyping || Boolean(messages[messages.length - 1]?.isStreaming);
+
+  // Follow tokens only while pinned. Instant scrollTop — never CSS smooth.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+    if (!followStream) {
+      if (stickToBottomRef.current) pinToBottom();
+      return;
+    }
+    let raf = 0;
+    const tick = () => {
+      if (stickToBottomRef.current) {
+        const el = scrollContainerRef.current;
+        if (el) {
+          programmaticScrollRef.current = true;
+          el.scrollTop = el.scrollHeight;
+          programmaticScrollRef.current = false;
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [followStream]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -420,6 +516,7 @@ export default function ChatBotApp() {
     if (!text.trim()) return;
     if (sendingRef.current) return;
     sendingRef.current = true;
+    stickToBottomRef.current = true;
 
     if (!isOnline) {
       sendingRef.current = false;
@@ -460,10 +557,6 @@ export default function ChatBotApp() {
         body: JSON.stringify({ 
           query: text, 
           language: replyLang,
-          history: messages
-            .filter((m) => m.text?.trim())
-            .slice(-8)
-            .map((m) => ({ role: m.role, text: m.text.slice(0, 500) })),
         })
       });
 
@@ -498,21 +591,33 @@ export default function ChatBotApp() {
               let processSteps: string[] = [];
 
               for (const line of lines) {
-                if (line.startsWith('[SOURCE]')) {
-                  const parts = line.replace('[SOURCE]', '').split('|').map(s => s.trim());
-                  if (parts.length >= 4) {
+                const raw = line.trim().replace(/^\*+\s*|\s*\*+$/g, "").trim();
+                if (raw.startsWith('[SOURCE]')) {
+                  const parts = raw.replace('[SOURCE]', '').split('|').map(s => s.trim());
+                  const link = parts[parts.length - 1] || "";
+                  if (parts.length >= 4 && isOfficialUrl(parts[3]) && !/google\.com\/search/i.test(parts[3])) {
                     sources.push({ id: createUniqueId(), title: parts[0], type: parts[1], date: parts[2], link: parts[3] });
+                  } else if (isOfficialUrl(link) && !/google\.com\/search/i.test(link)) {
+                    sources.push({ id: createUniqueId(), title: parts[0] || "BIS", type: parts[1] || "link", date: parts[2] || "", link });
                   }
-                } else if (line.startsWith('[FOLLOW_UP]')) {
-                  followUps.push(line.replace('[FOLLOW_UP]', '').trim());
-                } else if (line.startsWith('[META]')) {
-                  const parts = line.replace('[META]', '').split('|').map(s => s.trim());
+                } else if (raw.startsWith('[FOLLOW_UP]')) {
+                  const fu = raw.replace('[FOLLOW_UP]', '').trim();
+                  if (fu && !isQuestionChip(fu)) followUps.push(fu);
+                } else if (raw.startsWith('[META]')) {
+                  const parts = raw.replace('[META]', '').split('|').map(s => s.trim());
                   if (parts[0]) msg.confidence = parts[0] as Confidence;
                   if (parts[1]) setContextMode(parts[1]);
-                } else if (line.startsWith('[PROCESS_STEPS]')) {
-                  processSteps = line.replace('[PROCESS_STEPS]', '').split('|').map(s => s.trim()).filter(Boolean);
+                } else if (raw.startsWith('[PROCESS_STEPS]')) {
+                  processSteps = raw.replace('[PROCESS_STEPS]', '').split('|').map(s => s.trim()).filter(Boolean)
+                    .map((s) => s.replace(/\bakonline\.in\b/gi, 'manakonline.in'))
+                    .filter((s) => !/no docs\/fee|instant registration|Apply online as jeweller|Sell only AHC/i.test(s));
+                  const consumerVerify = processSteps.some((s) => /CARE|Verify HUID|6-digit HUID/i.test(s));
+                  if (consumerVerify) {
+                    processSteps = processSteps.filter((s) => !/Register online with BIS|Assaying & Hallmarking Centre|Apply online as jeweller|Sell only AHC/i.test(s));
+                  }
                 } else {
-                  pureText += line + '\n';
+                  const visible = line.replace(/^\s{0,3}#{1,6}\s+/, '');
+                  pureText += visible + '\n';
                 }
               }
 
@@ -592,7 +697,7 @@ export default function ChatBotApp() {
 
   return (
     <div
-      className="relative flex flex-col bg-white text-slate-800 font-sans overflow-hidden min-w-0 min-h-0 z-0"
+      className="relative flex flex-col bg-white text-slate-800 font-sans overflow-hidden min-w-0 min-h-0 z-0 mm-theme-fade dark:bg-[#0c1222] dark:text-slate-100"
       style={{
         position: "fixed",
         top: "var(--mm-vvt, 0px)",
@@ -601,43 +706,19 @@ export default function ChatBotApp() {
         height: "var(--mm-vvh, 100dvh)",
       }}
     >
-      {/* Header (Fixed Top) */}
-      <header className="h-12 sm:h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-6 shrink-0 min-w-0">
-        <div className="flex items-center min-w-0">
-          <button aria-label="Toggle sidebar" onClick={() => setSidebarOpen(!sidebarOpen)} className="mr-1 sm:mr-3 p-1.5 sm:p-2 -ml-0.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
-            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <ShieldCheck className="h-5 w-5 sm:h-8 sm:w-8 text-blue-800 mr-1.5 sm:mr-2 shrink-0" />
-          <div className="flex flex-col min-w-0">
-            <h1 className="text-sm sm:text-lg md:text-xl font-bold text-slate-900 leading-tight truncate">ManakMitra <span className="text-blue-700 hidden sm:inline">- AI Assistant</span></h1>
-            <p className="text-[8px] sm:text-[10px] md:text-xs text-slate-500 font-medium tracking-wide truncate">BUREAU OF INDIAN STANDARDS</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-0.5 sm:gap-2 md:space-x-4 shrink-0">
-          <label className="sr-only" htmlFor="mm-lang">Language</label>
-          <select
-            id="mm-lang"
-            aria-label="Reply language"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as AppLang)}
-            className="px-1 sm:px-2 py-0.5 sm:py-1 text-[16px] sm:text-sm font-medium rounded-md border border-slate-300 bg-white hover:bg-slate-50 transition-colors max-w-[6.5rem] sm:max-w-[9.5rem] sm:mr-2"
-          >
-            {APP_LANGS.map((l) => (
-              <option key={l.id} value={l.id}>{l.native}</option>
-            ))}
-          </select>
-          
-          <button 
+      <SiteHeader
+        variant="chat"
+        trailing={
+          <button
             aria-label={UI_DICTIONARY[language].shareConversation}
             onClick={shareConversation}
-            className="p-1.5 sm:p-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded border border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-[#151d30]"
             title={UI_DICTIONARY[language].shareConversation}
           >
             <Share className="w-5 h-5" />
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -649,38 +730,15 @@ export default function ChatBotApp() {
 
       {/* Main Layout */}
       <div className="flex flex-1 min-h-0 overflow-hidden w-full min-w-0 relative">
-        {/* Sidebar */}
-        <div className={`sidebar-container
-          fixed inset-y-0 left-0 z-40 bg-slate-50 border-r border-slate-200 shadow-2xl transition-transform duration-300 transform
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:translate-x-0 lg:shadow-none lg:transition-[width] lg:duration-300 lg:ease-in-out
-          ${sidebarOpen ? 'lg:w-[320px]' : 'lg:w-0 lg:border-transparent'}
-          flex flex-col shrink-0 overflow-hidden w-[min(18rem,85vw)]
-        `}>
-          <div className="w-full h-full flex flex-col p-0">
-            {isMobile && (
-              <button aria-label="Close sidebar" onClick={() => setSidebarOpen(false)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm text-slate-500 z-50">
-                <X className="w-5 h-5" />
-              </button>
-            )}
-            <SidebarContext contextMode={contextMode} language={language} />
-          </div>
-        </div>
-        
-        {/* Mobile Sidebar Overlay */}
-        {isMobile && sidebarOpen && (
-          <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-30" onClick={() => setSidebarOpen(false)} />
-        )}
-
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden mm-theme-fade dark:bg-[#0c1222]">
           
           {/* Offline / Limited Connectivity Banner */}
           {!isOnline && (
             <div 
               role="status" 
               aria-live="polite"
-              className="bg-amber-50 border-b border-amber-200/80 px-4 py-2.5 text-xs sm:text-sm text-amber-900 flex items-center justify-between gap-3 shrink-0 z-30 animate-in fade-in slide-in-from-top-1 duration-200"
+              className="bg-amber-50 border-b border-amber-200/80 px-4 py-2.5 text-xs sm:text-sm text-amber-900 flex items-center justify-between gap-3 shrink-0 z-30 animate-in fade-in slide-in-from-top-1 duration-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-100"
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="p-1 rounded-md bg-amber-100 text-amber-800 shrink-0">
@@ -705,18 +763,12 @@ export default function ChatBotApp() {
           <div 
             id="chat-scroll-container"
             ref={scrollContainerRef}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-clip px-2.5 py-2.5 sm:p-6 lg:p-8 scroll-smooth relative overscroll-y-contain touch-pan-y"
+            onScroll={onChatScroll}
+            onWheel={onChatWheel}
+            onTouchStart={onChatTouchStart}
+            onTouchMove={onChatTouchMove}
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-clip px-2.5 py-2.5 sm:p-6 lg:p-8 relative overscroll-y-contain touch-pan-y [overflow-anchor:none] [scroll-behavior:auto]"
           >
-            {isPulling && (
-              <div className="absolute top-0 left-0 right-0 flex justify-center z-50 pointer-events-none transition-transform" style={{ transform: `translateY(${Math.min(pullMoveY / 2, 50)}px)` }}>
-                <div className="bg-white shadow-md rounded-full p-2 text-slate-500 border border-slate-200">
-                  {pullMoveY > 100 ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <ArrowRight className="w-5 h-5 transform rotate-90 transition-transform" style={{ transform: `rotate(90deg) scale(${Math.min(pullMoveY / 100, 1)})` }} />}
-                </div>
-              </div>
-            )}
               {messages.length === 0 ? (
                <WelcomeState language={language} />
              ) : (
@@ -745,17 +797,17 @@ export default function ChatBotApp() {
                  
                   {isTyping && (
                     <div className="flex items-start gap-2 sm:gap-4 animate-in fade-in min-w-0">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200">
-                        <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 bg-slate-200 rounded-full animate-pulse"></div>
+                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200 dark:bg-[#151d30] dark:border-slate-600">
+                        <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 bg-slate-200 dark:bg-slate-600 rounded-full animate-pulse"></div>
                       </div>
-                      <div className="flex-1 min-w-0 max-w-2xl bg-white border border-slate-200 rounded-2xl p-3 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
-                        <div className="h-4 bg-slate-100 rounded w-1/4 animate-pulse"></div>
+                      <div className="flex-1 min-w-0 max-w-2xl bg-white border border-slate-200 rounded-2xl p-3 sm:p-5 shadow-sm space-y-3 sm:space-y-4 dark:bg-[#151d30] dark:border-slate-700">
+                        <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/4 animate-pulse"></div>
                         <div className="space-y-2">
-                          <div className="h-3 bg-slate-100 rounded w-full animate-pulse"></div>
-                          <div className="h-3 bg-slate-100 rounded w-full animate-pulse"></div>
-                          <div className="h-3 bg-slate-100 rounded w-5/6 animate-pulse"></div>
+                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full animate-pulse"></div>
+                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-5/6 animate-pulse"></div>
                         </div>
-                        <div className="h-6 bg-slate-100 rounded w-32 animate-pulse mt-4"></div>
+                        <div className="h-6 bg-slate-100 dark:bg-slate-700 rounded w-32 animate-pulse mt-4"></div>
                       </div>
                     </div>
                   )}
@@ -765,7 +817,26 @@ export default function ChatBotApp() {
           </div>
           
           {/* Input Area (Fixed Bottom) */}
-          <div className="w-full min-w-0 px-2.5 pt-2 sm:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="w-full min-w-0 px-2.5 pt-2 sm:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))] mm-theme-fade dark:bg-[#0c1222] dark:border-slate-700 dark:shadow-none">
+            {(() => {
+              const lastAi = [...messages].reverse().find((m) => m.role === 'ai');
+              const chips = isTyping ? [] : suggestionChips(lastAi);
+              if (!chips.length) return null;
+              return (
+                <div className="max-w-4xl mx-auto mb-2 flex flex-wrap gap-1.5 motion-reduce:transition-none motion-reduce:animate-none">
+                  {chips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => handleSend(chip)}
+                      className="max-w-full px-3 py-1.5 rounded-full border border-slate-300 bg-slate-50 text-slate-700 text-xs sm:text-sm font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-800 transition-colors mm-break text-left dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-200 dark:hover:bg-[#1c2640] dark:hover:border-blue-400/40 dark:hover:text-blue-200"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <form
               className="max-w-4xl mx-auto relative flex items-end gap-1.5 sm:gap-2"
               onSubmit={(e) => {
@@ -773,7 +844,7 @@ export default function ChatBotApp() {
                 handleSend(inputTextRef.current);
               }}
             >
-              <div className={`relative flex-1 min-w-0 overflow-hidden bg-slate-50 border border-slate-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all flex flex-col ${isTyping ? 'animate-pulse opacity-80 border-blue-300' : ''} ${isListening ? 'border-red-400 ring-2 ring-red-200' : ''}`}>
+              <div className={`relative flex-1 min-w-0 overflow-hidden bg-slate-50 border border-slate-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all flex flex-col dark:bg-[#151d30] dark:border-slate-600 ${isTyping ? 'animate-pulse opacity-80 border-blue-300' : ''} ${isListening ? 'border-red-400 ring-2 ring-red-200' : ''}`}>
                 {isWaitingForMic && (
                   <div className="absolute -top-8 left-0 right-0 flex justify-center">
                     <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow-sm animate-pulse">
@@ -813,8 +884,8 @@ export default function ChatBotApp() {
                       handleSend(inputTextRef.current || (e.currentTarget as HTMLTextAreaElement).value);
                     }
                   }}
-                  placeholder={isListening ? (language === 'hi' ? 'बोलिए... आपकी आवाज़ टेक्स्ट में बदल रही है' : 'Listening... your words will appear here') : (language === 'hi' ? 'मानक-मित्र से बात करें...' : 'Talk with ManakMitra')}
-                  className={`w-full bg-transparent py-2.5 pl-3 pr-11 sm:p-4 sm:pr-14 focus:outline-none resize-none max-h-24 sm:max-h-32 min-h-[44px] sm:min-h-[56px] text-base leading-snug text-slate-800 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${language === 'hi' ? 'font-sans' : ''}`}
+                  placeholder={isListening ? UI_DICTIONARY[language].listeningPlaceholder : UI_DICTIONARY[language].composerPlaceholder}
+                  className={`w-full bg-transparent py-2.5 pl-3 pr-11 sm:p-4 sm:pr-14 focus:outline-none resize-none max-h-24 sm:max-h-32 min-h-[44px] sm:min-h-[56px] text-base leading-snug text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${language === 'hi' ? 'font-sans' : ''}`}
                   rows={1}
                   dir="auto"
                 />
@@ -826,8 +897,8 @@ export default function ChatBotApp() {
                   disabled={isWaitingForMic}
                   className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-11 sm:w-11 sm:right-2 sm:bottom-2 sm:top-auto sm:translate-y-0 p-0 rounded-lg sm:rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 overflow-hidden ${
                     isListening ? 'bg-red-600 text-white border-red-700 sm:ring-4 sm:ring-red-200 shadow-md' : 
-                    isWaitingForMic ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed' :
-                    'bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 border-slate-200 active:scale-95'
+                    isWaitingForMic ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700' :
+                    'bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 border-slate-200 active:scale-95 dark:bg-[#1c2640] dark:text-slate-300 dark:border-slate-600 dark:hover:text-blue-300 dark:hover:border-blue-400'
                   }`}
                   title={isListening ? "Listening... click to stop" : (language === 'hi' ? "बोलकर लिखें (Speak)" : "Speak to type")}
                 >
@@ -848,15 +919,11 @@ export default function ChatBotApp() {
                 type="submit"
                 aria-label="Send message"
                 disabled={!inputText.trim()}
-              className={`p-2 sm:p-3.5 rounded-xl shrink-0 transition-colors mb-0 ${inputText.trim() ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+              className={`p-2 sm:p-3.5 rounded-xl shrink-0 transition-colors mb-0 ${inputText.trim() ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'}`}
               >
                 <Send className={`w-5 h-5 ${inputText.trim() ? 'text-white' : 'text-slate-400'}`} />
               </button>
             </form>
-            
-            <p className="text-center text-[9px] sm:text-[10px] text-slate-400 mt-1.5 sm:mt-3 font-medium px-1 leading-snug mm-break">
-              {UI_DICTIONARY[language].disclaimer}
-            </p>
           </div>
         </div>
       </div>
@@ -868,18 +935,18 @@ export default function ChatBotApp() {
 
 const WelcomeState = ({ language }: { language: AppLang }) => (
   <div className="max-w-4xl mx-auto w-full min-w-0 flex flex-col items-center justify-center py-5 sm:py-8 animate-in fade-in zoom-in-95 duration-500 px-1">
-    <div className="w-12 h-12 sm:w-20 sm:h-20 bg-blue-900 rounded-2xl sm:rounded-3xl flex items-center justify-center mb-3 sm:mb-6 shadow-lg border-4 border-blue-100">
-      <ShieldCheck className="w-6 h-6 sm:w-10 sm:h-10 text-white" />
+    <div className="mb-3 flex h-16 w-16 items-center justify-center sm:mb-6 sm:h-20 sm:w-20">
+      <ManakMark className="h-16 w-16 rounded-full shadow-md sm:h-20 sm:w-20" />
     </div>
-    <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 mb-1.5 sm:mb-3 text-center tracking-tight">
+    <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 sm:mb-3 text-center tracking-tight">
       {UI_DICTIONARY[language].welcomeTitle}
     </h1>
-    <p className="text-xs sm:text-lg text-slate-600 mb-5 sm:mb-8 text-center max-w-2xl px-2">
+    <p className="text-xs sm:text-lg text-slate-600 dark:text-slate-300 mb-5 sm:mb-8 text-center max-w-2xl px-2">
       {UI_DICTIONARY[language].welcomeDesc}
     </p>
     
-    <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-12 text-[10px] sm:text-xs font-semibold text-slate-600">
-      <span className="flex items-center bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200">
+    <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-12 text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300">
+      <span className="flex items-center bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800">
         <FileText className="w-4 h-4 mr-1.5"/> Source-backed Answers
       </span>
     </div>
@@ -955,19 +1022,6 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
     }
   }, [msg.isStreaming, msg.text.length, displayedLength]);
 
-  // Auto-scroll follow during active typing if user is already near bottom
-  useEffect(() => {
-    if (isActivelyTyping && !isFinishedTyping) {
-      const container = document.getElementById('chat-scroll-container');
-      if (container) {
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 160;
-        if (isNearBottom) {
-          container.scrollTop = container.scrollHeight;
-        }
-      }
-    }
-  }, [displayedLength, isActivelyTyping, isFinishedTyping]);
-
   const displayedText = isActivelyTyping ? msg.text.slice(0, displayedLength) : msg.text;
 
   const handleCopy = () => {
@@ -983,9 +1037,13 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
   return (
     <div className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
       {isAI && (
-        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 border mt-0.5 sm:mt-1 ${msg.isError ? 'bg-red-100 border-red-200' : 'bg-blue-100 border-blue-200'}`}>
-          {msg.isError ? <X className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-red-700" /> : <ShieldCheck className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-blue-700" />}
-        </div>
+        msg.isError ? (
+          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-100 sm:mt-1 sm:h-8 sm:w-8 dark:border-red-800 dark:bg-red-950/50">
+            <X className="h-3.5 w-3.5 text-red-700 sm:h-5 sm:w-5 dark:text-red-300" />
+          </div>
+        ) : (
+          <ManakMark className="mt-0.5 h-6 w-6 shrink-0 rounded-full sm:mt-1 sm:h-8 sm:w-8" />
+        )
       )}
       
       <div className={`min-w-0 max-w-[92%] sm:max-w-[90%] md:max-w-[85%] flex flex-col ${!isAI ? 'items-end' : 'items-start'}`}>
@@ -993,13 +1051,13 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           !isAI 
             ? 'bg-blue-900 text-white rounded-tr-sm border border-blue-800' 
             : msg.isError
-            ? 'bg-red-50 text-red-800 rounded-tl-sm border border-red-200'
-            : 'bg-slate-50 text-slate-800 rounded-tl-sm border border-slate-200 pr-10'
+            ? 'bg-red-50 text-red-800 rounded-tl-sm border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-800'
+            : 'bg-slate-50 text-slate-800 rounded-tl-sm border border-slate-200 pr-10 dark:bg-[#151d30] dark:text-slate-100 dark:border-slate-700'
         }`}>
           {isAI && !msg.isError && (
             <button
               onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600 hover:bg-slate-200 rounded-md transition-all focus:opacity-100"
+              className="absolute top-3 right-3 p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600 hover:bg-slate-200 rounded-md transition-all focus:opacity-100 dark:hover:text-slate-200 dark:hover:bg-slate-700"
               aria-label="Copy to clipboard"
               title="Copy to clipboard"
             >
@@ -1008,8 +1066,8 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           )}
           {/* Main Text */}
           {!displayedText && isAI && !msg.isError ? (
-            <div className="flex items-center gap-2 py-1 text-slate-500">
-              <span className="text-xs font-medium text-slate-500">
+            <div className="flex items-center gap-2 py-1 text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {language === 'hi' ? 'मानक-मित्र उत्तर तैयार कर रहा है...' : 'ManakMitra is writing response...'}
               </span>
               <span className="flex gap-1 items-center">
@@ -1020,40 +1078,11 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
             </div>
           ) : (
             <div className="whitespace-pre-wrap leading-snug sm:leading-relaxed text-[13px] sm:text-[15px] mm-break">
-              {/* Parse markdown bold and IS Codes */}
-              {displayedText.split('**').map((part, i) => {
-                const isBold = i % 2 === 1;
-                const isCodeRegex = /(\bIS\s+\d+(?:[:\-]\s*\d{2,4})?(?:\s*\(?Part\s*\d+\)?)?\b)/gi;
-                const subParts = part.split(isCodeRegex);
-                
-                const renderedSubParts = subParts.map((subPart, j) => {
-                  if (j % 2 === 1) {
-                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(subPart.trim() + ' Indian Standard')}`;
-                    return (
-                      <a 
-                        key={j} 
-                        href={searchUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-orange-600 hover:text-orange-700 underline decoration-orange-300 font-semibold transition-colors mx-0.5"
-                        title="Search this Indian Standard"
-                      >
-                        {subPart}
-                      </a>
-                    );
-                  }
-                  return subPart;
-                });
-
-                if (isBold) {
-                  return <strong key={i} className={!isAI ? 'text-white' : 'text-slate-900 font-bold'}>{renderedSubParts}</strong>;
-                }
-                return <React.Fragment key={i}>{renderedSubParts}</React.Fragment>;
-              })}
+              {renderInline(displayedText, msg.sources, isAI)}
               {/* Natural glowing typing cursor while streaming */}
               {isActivelyTyping && (!isFinishedTyping || displayedLength < msg.text.length) && displayedText.length > 0 && (
                 <span 
-                  className="inline-block w-2 h-4 ml-1 -mb-0.5 align-middle bg-blue-600 rounded-[1px] animate-pulse" 
+                  className="inline-block w-2 h-4 ml-1 -mb-0.5 align-middle bg-blue-600 rounded-[1px] animate-pulse motion-reduce:animate-none" 
                   style={{ animationDuration: '650ms' }}
                   aria-hidden="true"
                 />
@@ -1065,9 +1094,9 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           {msg.confidence && (isFinishedTyping || !isAI) && (
             <div className="mt-4 flex items-center animate-in fade-in duration-300">
               <span className={`inline-flex items-center max-w-full px-2 py-1 sm:px-2.5 rounded-md text-[11px] sm:text-xs font-bold border cursor-help whitespace-normal ${
-                msg.confidence === 'high' ? 'bg-green-100 text-green-800 border-green-200' :
-                msg.confidence === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200' :
-                'bg-red-100 text-red-800 border-red-200'
+                msg.confidence === 'high' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-950/50 dark:text-green-200 dark:border-green-800' :
+                msg.confidence === 'medium' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:border-amber-800' :
+                'bg-red-100 text-red-800 border-red-200 dark:bg-red-950/50 dark:text-red-200 dark:border-red-800'
               }`} title="Based on official BIS metadata evaluation">
                 {msg.confidence === 'high' && <CheckCircle className="w-3.5 h-3.5 mr-1.5" />}
                 {msg.confidence === 'medium' && <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />}
@@ -1092,72 +1121,33 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
           )}
 
           {msg.processSteps && msg.processSteps.length > 0 && (
-            <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 w-full min-w-0">
-              <div className="flex flex-wrap gap-1.5 sm:hidden">
-                {msg.processSteps.map((step, idx) => (
-                  <div key={idx} className="inline-flex items-center gap-1 max-w-full rounded-full bg-blue-50 border border-blue-200 px-1.5 py-0.5">
-                    <span className="w-4 h-4 rounded-full bg-blue-100 border border-blue-600 flex items-center justify-center shrink-0 text-[9px] font-bold text-blue-700">{idx + 1}</span>
-                    <span className="text-[10px] font-medium text-slate-600 leading-tight mm-break">{step}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden sm:flex items-center min-w-0 overflow-x-auto pb-8">
-                {msg.processSteps.map((step, idx) => (
-                  <div key={idx} className="flex items-center shrink-0">
-                    <div className="flex flex-col items-center relative">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 border-2 border-blue-600 flex items-center justify-center z-10">
-                        <span className="text-xs font-bold text-blue-700">{idx + 1}</span>
-                      </div>
-                      <span className="absolute top-10 w-24 text-center text-[10px] font-medium text-slate-600 leading-tight">
-                        {step}
-                      </span>
-                    </div>
-                    {idx < msg.processSteps!.length - 1 && (
-                      <div className="h-0.5 w-16 bg-blue-200 relative -top-0">
-                        <div className="absolute top-0 left-0 h-full bg-blue-500 w-full"></div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Follow-up Questions */}
-          {msg.followUpQuestions && (
-            <div className="mt-4 sm:mt-5 bg-orange-50 border border-orange-200 rounded-xl p-3 sm:p-4 min-w-0">
-              <p className="font-bold text-orange-900 mb-3 flex items-center gap-2">
-                <HelpCircle className="w-4 h-4" /> 
-                {UI_DICTIONARY[language].followUp}
-              </p>
-              <ul className="space-y-2">
-                {msg.followUpQuestions.map((q, i) => (
-                  <li key={i} className="flex items-start gap-2 text-orange-800 text-sm font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 mt-1.5"></span>
-                    {q}
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <ol className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700 w-full min-w-0 space-y-2">
+              {msg.processSteps.map((step, idx) => (
+                <li key={idx} className="flex items-start gap-2 min-w-0">
+                  <span className="w-6 h-6 rounded-full bg-blue-100 border-2 border-blue-600 flex items-center justify-center shrink-0 text-[11px] font-bold text-blue-700 dark:bg-blue-950/70 dark:border-blue-400 dark:text-blue-200">{idx + 1}</span>
+                  <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 leading-snug mm-break">{step}</span>
+                </li>
+              ))}
+            </ol>
           )}
 
           {/* Source Citations */}
-          {msg.sources && msg.sources.length > 0 && (
-            <div className="mt-4 sm:mt-5 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-0">
-              <h4 className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">
-                <FileText className="w-4 h-4 text-blue-600" />
-                {UI_DICTIONARY[language].sources} ({msg.sources.length} {UI_DICTIONARY[language].documents})
+          {msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (
+            <div className="mt-4 sm:mt-5 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-0 dark:bg-[#10182a] dark:border-slate-700">
+              <h4 className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2">
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-300" />
+                {UI_DICTIONARY[language].sources} ({msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length} {UI_DICTIONARY[language].documents})
               </h4>
               <ul className="space-y-3">
-                {msg.sources.map(s => (
+                {msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).map(s => (
                   <li key={s.id} className="group">
-                    <a href={s.link} className="text-blue-700 font-semibold text-sm hover:underline flex items-start gap-1.5 min-w-0">
+                    <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-blue-700 dark:text-blue-300 font-semibold text-sm hover:underline flex items-start gap-1.5 min-w-0">
                       <span className="mt-0.5 mm-break">{s.title}</span>
                       <ExternalLink className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
                     <div className="flex items-center gap-3 mt-1.5">
-                      <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">{s.type}</span>
-                      <span className="text-xs text-slate-500 font-medium">{s.date}</span>
+                      <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider dark:bg-slate-800 dark:text-slate-300">{s.type}</span>
+                      <span className="text-xs text-slate-500 font-medium dark:text-slate-400">{s.date}</span>
                     </div>
                   </li>
                 ))}
@@ -1165,76 +1155,9 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
             </div>
           )}
         </div>
-        <span className="text-[10px] text-slate-400 mt-1.5 mx-1 font-medium">{msg.timestamp}</span>
+        <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 mx-1 font-medium">{msg.timestamp}</span>
       </div>
     </div>
   );
 };
 
-const SidebarContext = ({ contextMode, language }: { contextMode: string, language: AppLang }) => {
-  const [huid, setHuid] = useState('');
-  return (
-    <div className="h-full flex flex-col bg-slate-50 sidebar-container">
-      <div className="p-5 border-b border-slate-200 bg-white shrink-0">
-        <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <Info className="w-5 h-5 text-blue-600" />
-          {UI_DICTIONARY[language].contextHelper}
-        </h3>
-      </div>
-      
-      <div className="p-0 overflow-y-auto flex-1">
-        <div>
-            <SidebarSection title={UI_DICTIONARY[language].quickLinks} icon={<ExternalLink className="w-4 h-4 text-slate-500"/>} items={[
-              { label: 'All Certification Schemes (ISI, CRS)', url: 'https://www.bis.gov.in/index.php/product-certification/' },
-              { label: 'Search QCO Notifications', url: 'https://www.bis.gov.in/index.php/quality-control-orders/' },
-              { label: 'Accredited Testing Labs Directory', url: 'https://www.bis.gov.in/index.php/laboratory/' }
-            ]} />
-        </div>
-
-        {contextMode === 'hallmarking' && (
-          <div>
-             <SidebarSection title={UI_DICTIONARY[language].understandingPurity} icon={<Award className="w-4 h-4 text-amber-500"/>} items={[
-              '24K995 (99.5% Gold)', 
-              '22K916 (91.6% Gold)', 
-              '18K750 (75.0% Gold)',
-              '14K585 (58.5% Gold)'
-            ]} />
-             <div className="bg-amber-50 border-y border-amber-200 p-5 mt-4">
-               <h4 className="font-bold text-amber-900 mb-2 text-sm">{UI_DICTIONARY[language].huidLookup}</h4>
-               <input type="text" value={huid} onChange={(e) => setHuid(e.target.value)} maxLength={6} placeholder={UI_DICTIONARY[language].enterHuid} className="w-full text-sm p-2 rounded-lg border border-amber-300 mb-2 uppercase font-mono" />
-               <button type="button" onClick={() => window.open('https://www.bis.gov.in/bis-apps/?lang=en', '_blank', 'noopener,noreferrer')} className="w-full bg-amber-600 text-white text-sm font-bold py-2 rounded-lg">{UI_DICTIONARY[language].verifyJeweller}</button>
-             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const SidebarSection = ({ title, items, icon, numbered = false }: { title: string, items: (string | {label: string, url: string})[], icon?: React.ReactNode, numbered?: boolean }) => (
-  <div className="p-5 space-y-3 border-b border-slate-100 last:border-0 bg-white">
-    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-      {icon} {title}
-    </h4>
-    <ul className="space-y-2">
-      {items.map((item, i) => {
-        const isLink = typeof item === 'object' && item !== null && 'url' in item;
-        const label = isLink ? item.label : item as string;
-        const url = isLink ? item.url : undefined;
-        
-        return (
-          <li key={i} className="text-sm font-medium text-slate-700 flex items-start gap-2 leading-snug">
-            {!numbered && <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />}
-            {url ? (
-              <a href={url} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 hover:underline flex items-center gap-1 w-full">
-                {label}
-              </a>
-            ) : (
-              <span>{label}</span>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  </div>
-);

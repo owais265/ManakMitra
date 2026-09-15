@@ -1,5 +1,8 @@
 import type { AppLang } from "@/lib/language";
+import { FALLBACK_SHELL } from "@/lib/language";
 import { RAG_VERIFIED, vectorRetrieve } from "@/lib/rag";
+import { matchProductFamily, shouldClarify, isHallmarkSchemeMix } from "@/lib/product-playbook";
+import { isOfficialHost } from "@/lib/official-hosts";
 
 export type EvidenceHit = {
   kind: "standard" | "product" | "process" | "lab" | "hallmark" | "crs" | "faq" | "consumer" | "link";
@@ -15,15 +18,23 @@ export type Retrieval = {
   mode: "standards" | "hallmarking" | "general";
   confidence: "high" | "medium" | "low";
   hasEvidence: boolean;
+  grounding: "verified" | "refuse";
 };
 
 export function retrieve(query: string): Retrieval {
   return vectorRetrieve(query);
 }
 
+/** Policy pin first; local pack is rank lock. Dense extras only if needed and HYBRID_RAG≠0. */
+export async function retrieveHybrid(query: string): Promise<Retrieval> {
+  const { runHybridRetrieve } = await import("@/lib/hybrid");
+  return runHybridRetrieve(query);
+}
+
 export function formatEvidenceBlock(r: Retrieval): string {
   if (!r.hasEvidence) {
-    return `NO VERIFIED HITS in the local BIS catalogue for this query.
+    return `GROUNDING: refuse
+NO VERIFIED HITS in the local BIS catalogue for this query.
 You MUST refuse to invent IS numbers, fees, or mandatory status.
 Point the user to:
 - Know Your Standard: https://standards.bis.gov.in/website/know-your-standards
@@ -36,7 +47,18 @@ Point the user to:
         `${i + 1}. [${h.kind}] ${h.title}\n${h.body.slice(0, 700)}\nURL: ${h.url}`,
     )
     .join("\n\n");
-  return `CATALOGUE RULE: every row below is metadata (IS id + title / official note). Full clause text of paid Indian Standards is NOT stored. Never quote a clause number that is not written here.
+  return `GROUNDING: ${r.grounding}
+CATALOGUE RULE: every row below is metadata (IS id + title / official note). Full clause text of paid Indian Standards is NOT stored. Never quote a clause number that is not written here.
+${r.grounding === "refuse" ? "REFUSE PATH: do not invent an IS, fee, clause, or lab-scope. Use the official URL in the rows. If an IS is absent, say so and point to Know Your Standard.\n" : ""}
+ANSWER SHAPE (mandatory):
+- Short BIS helpdesk reply. First line answers the user's ask.
+- Then at most 6 short bullets or numbered steps. No markdown headings (no # / ## / ###). No BIS Act / "22,000 standards" / portal-tour lecture unless they asked "what is BIS".
+- Official URLs from the rows only — never a search engine.
+- If a NOTE says to disambiguate, ask that ONE question first. Do not pick 22K/916 or a single IS until they specify.
+- If process/scheme rows exist and they asked how to apply / ISI / CRS / FMCS, print numbered steps (4–6) plus the portal URL.
+- CONSUMER hallmark / HUID / CARE / verify gold: CARE Verify-HUID steps only. Never jeweller registration, “no docs/fee”, “instant registration”, or “sell only AHC-hallmarked pieces”.
+- JEWELLER / AHC / hallmark licence: hallmarking registration rows only.
+- Never truncate manakonline.in. Never use a search-engine URL.
 
 Ranked hits (best first):
 ${ranked}
@@ -44,16 +66,115 @@ ${ranked}
 If you name an IS, it MUST appear in the ranked hits. If you mention a fee, it MUST appear in a faq/process row. If a lab city is asked, only name labs in the hits. Never claim a lab is accredited for a named IS. If the user asked for a clause, do not invent clause text — use the Know Your Standard / e-Sale rows.`;
 }
 
+const JEWELLER_ASK =
+  /\b(jeweller|jeweler|assaying|ahc\b|hallmark(?:ing)?\s+licen[cs]e|register as|apply as jewell)\b/i;
+
+export const JEWELLER_STEP_FORBID =
+  /Apply online as jeweller|Sell only AHC-hallmarked|Submit with no docs\/fee|Get instant registration|Register online with BIS|Approach a BIS-recognised Assaying/i;
+
+const CONSUMER_VERIFY_STEPS = [
+  "Open the BIS CARE app",
+  "Tap Verify HUID",
+  "Enter the 6-digit HUID on the article",
+  "Match purity and jeweller name",
+];
+
+function cleanStepLabel(title: string): string {
+  let s = title.replace(/^[^:]+:\s*/, "").trim();
+  s = s.replace(/\bakonline\.in\b/gi, "manakonline.in");
+  s = s.replace(/\bno docs\/fee\b/gi, "");
+  s = s.replace(/\binstant registration\b/gi, "");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+function isHallmarkConsumerVerify(query: string): boolean {
+  if (isHallmarkSchemeMix(query, matchProductFamily(query))) return false;
+  if (/\b(huid|care app|bis\s*care)\b/i.test(query)) return true;
+  if (/\b(crs|r-?number|registration number|isi mark|scheme-?i|fmcs)\b/i.test(query)) return false;
+  if (/\bverify\b/i.test(query) && /gold|jewel|hallmark|huid/i.test(query)) return true;
+  return false;
+}
+
+function pickProcessSteps(query: string, r: Retrieval, clarify: string | null): string[] {
+  if (clarify) return [];
+  const family = matchProductFamily(query);
+  const jeweller = JEWELLER_ASK.test(query);
+  const careOrVerify = isHallmarkConsumerVerify(query);
+  const applyAsk =
+    /\b(apply|application|how to|process|steps?|scheme-?i\b|isi mark|crs|fmcs|licence|license)\b/i.test(query);
+  const crsAsk = /\bcrs\b|compulsory registration/i.test(query);
+  const fmcsAsk = /\bfmcs\b|foreign manufacturer/i.test(query);
+  const isiAsk =
+    /\bisi mark|scheme-?i\b|product certification/i.test(query) ||
+    (applyAsk && !jeweller && family?.scheme === "isi");
+
+  if (!jeweller && (careOrVerify || (applyAsk && family?.id === "gold"))) {
+    return CONSUMER_VERIFY_STEPS;
+  }
+
+  const processHits = r.hits.filter((h) => h.kind === "process");
+
+  const schemeHits = processHits.filter((h) => {
+    if (jeweller) return /hallmark/i.test(h.title);
+    if (crsAsk) return /crs|scheme-ii|scheme-2/i.test(h.title);
+    if (fmcsAsk) return /fmcs/i.test(h.title);
+    if (isiAsk || applyAsk) return /scheme-i|isi mark|product certification/i.test(h.title);
+    return false;
+  });
+
+  if (!schemeHits.length && !applyAsk && !jeweller) return [];
+
+  const STEP_RANK = [
+    /find the indian standard/i,
+    /apply|application|submit|register online/i,
+    /inspect/i,
+    /test/i,
+    /licence granted|grant of licence/i,
+    /fee|marking/i,
+  ];
+  const stepSource = (
+    schemeHits.length ? schemeHits : jeweller ? processHits.filter((h) => /hallmark/i.test(h.title)) : []
+  ).slice(0, 6);
+  stepSource.sort((a, b) => {
+    const ia = STEP_RANK.findIndex((re) => re.test(a.title));
+    const ib = STEP_RANK.findIndex((re) => re.test(b.title));
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  });
+
+  const filtered = stepSource
+    .map((h) => cleanStepLabel(h.title))
+    .filter((s) => Boolean(s) && !/no docs\/fee|instant registration|akonline/i.test(s))
+    .filter((s) => jeweller || !JEWELLER_STEP_FORBID.test(s));
+
+  if (crsAsk && filtered.length && !filtered.some((s) => /crsbis\.in/i.test(s))) {
+    filtered.push("Apply on https://www.crsbis.in");
+  } else if (
+    (isiAsk || (applyAsk && !jeweller && family?.scheme !== "hallmark")) &&
+    filtered.length &&
+    !filtered.some((s) => /manakonline\.in/i.test(s))
+  ) {
+    filtered.push("Apply on https://www.manakonline.in");
+  }
+  return filtered.slice(0, 6);
+}
+
 export function groundedFallback(query: string, language: AppLang): string {
   const r = retrieve(query);
-  const hi = language === "hi" || language === "mr";
-  const refuseEn =
-    "I do not have enough verified BIS evidence in the authorised catalogue for a complete product-to-standard mapping of this query.";
-  const refuseHi = "Mujhe verified BIS source mein is query ka poora mapping nahi mila.";
+  const shell = FALLBACK_SHELL[language] || FALLBACK_SHELL.en;
+  const stripHash = (s: string) => s.replace(/^#+\s*/, "");
+  const clarify = shouldClarify(query);
+  const jeweller = JEWELLER_ASK.test(query);
+  const careOrVerify = isHallmarkConsumerVerify(query);
+  const applyAsk =
+    /\b(apply|application|how to|process|steps?|scheme-?i\b|isi mark|crs|fmcs|licence|license)\b/i.test(query);
+  const crsAsk = /\bcrs\b|compulsory registration/i.test(query);
+  const steps = pickProcessSteps(query, r, clarify);
 
+  const hideJeweller = !jeweller;
   const sources = new Map<string, { title: string; type: string; date: string; link: string }>();
   for (const h of r.hits) {
-    if (!h.url) continue;
+    if (!h.url || !isOfficialHost(h.url) || /google\.com\/search/i.test(h.url)) continue;
+    if (hideJeweller && JEWELLER_STEP_FORBID.test(h.title)) continue;
     sources.set(h.url, {
       title: h.title.slice(0, 120),
       type: h.kind,
@@ -70,68 +191,41 @@ export function groundedFallback(query: string, language: AppLang): string {
     });
   }
 
-  const followEn = r.hasEvidence
-    ? "Would you like the official certification steps and fee figures from the BIS FAQ for this scheme?"
-    : "Can you name the product more specifically, or an IS number if you have one?";
-  const followHi = r.hasEvidence
-    ? "Kya aap is scheme ke official certification steps / fee FAQ dekhna chahenge?"
-    : "Kya aap product ka aur clearly naam, ya IS number de sakte hain?";
+  const portal = crsAsk
+    ? r.hits.find((h) => /crsbis\.in/i.test(h.url))?.url || "https://www.crsbis.in"
+    : r.hits.find((h) => /manakonline\.in/i.test(h.url))?.url || "https://www.manakonline.in";
 
-  const steps = r.hits
-    .filter((h) => h.kind === "process")
-    .slice(0, 5)
-    .map((h) => h.title.replace(/^[^:]+:\s*/, "").slice(0, 40));
-
-  const schemeHit = r.hits.find((h) => ["process", "crs", "hallmark", "product"].includes(h.kind));
-  const schemeLine = schemeHit
-    ? hi
-      ? `संबंधित योजना (पैक से): ${schemeHit.title}`
-      : `Related scheme (from pack): ${schemeHit.title}`
-    : "";
-
-  const why = (h: EvidenceHit) => {
-    const line = h.body.split(/[.\n]/)[0].replace(/\s+/g, " ").trim().slice(0, 140);
-    return line || h.kind;
-  };
+  const visibleHits = r.hits.filter((h) => !(hideJeweller && JEWELLER_STEP_FORBID.test(h.title)));
 
   const lines: string[] = [];
-  if (hi) {
-    lines.push("### मानक-मित्र — स्रोत-आधारित उत्तर");
-    if (!r.hasEvidence) {
-      lines.push(refuseHi);
-      lines.push("आधिकारिक खोज: Know Your Standard portal.");
-    } else {
-      lines.push("## लागू (कैटलॉग मेटाडेटा)");
-      r.hits.slice(0, 3).forEach((h, i) => {
-        lines.push(`${i + 1}. **${h.title}** — ${why(h)}`);
-        if (h.url) lines.push(`   ${h.url}`);
-      });
-      if (schemeLine) lines.push(schemeLine);
-      lines.push("## यह क्या नहीं है");
-      lines.push("यह कैटलॉग मेटाडेटा है, पूर्ण क्लॉज पाठ नहीं। यह लाइसेंस नहीं है और कानूनी सलाह नहीं है।");
+  if (!r.hasEvidence) {
+    lines.push(stripHash(shell.refuse));
+    lines.push(stripHash(shell.kysHint));
+  } else if (clarify) {
+    lines.push(clarify);
+    visibleHits.filter((h) => h.kind !== "process").slice(0, 3).forEach((h, i) => {
+      lines.push(`${i + 1}. **${h.title}**`);
+      if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
+    });
+  } else if (steps.length && (applyAsk || careOrVerify || jeweller)) {
+    steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    if (portal && !careOrVerify && !/akonline/i.test(portal) && isOfficialHost(portal)) {
+      if (!steps.some((s) => s.includes(portal))) lines.push(portal);
     }
+    lines.push(stripHash(shell.notBody));
   } else {
-    lines.push("### ManakMitra — source-backed answer");
-    if (!r.hasEvidence) {
-      lines.push(refuseEn);
-      lines.push("Use the official Know Your Standard tool to look up the product, then return with the IS number.");
-    } else {
-      lines.push("## Applicable (catalogue metadata)");
-      r.hits.slice(0, 3).forEach((h, i) => {
-        lines.push(`${i + 1}. **${h.title}** — ${why(h)}`);
-        if (h.url) lines.push(`   ${h.url}`);
-      });
-      if (schemeLine) lines.push(schemeLine);
-      lines.push("## What this is not");
-      lines.push("Catalogue metadata only — full clause text is not stored. This is not a licence and not legal advice.");
-    }
+    visibleHits.slice(0, 3).forEach((h, i) => {
+      lines.push(`${i + 1}. **${h.title}**`);
+      if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
+    });
+    lines.push(stripHash(shell.notBody));
   }
 
   for (const src of sources.values()) {
     lines.push(`[SOURCE] ${src.title} | ${src.type} | ${src.date} | ${src.link}`);
   }
-  lines.push(`[FOLLOW_UP] ${hi ? followHi : followEn}`);
+  lines.push(`[FOLLOW_UP] ${clarify ? clarify : r.hasEvidence ? shell.followYes : shell.followNo}`);
   lines.push(`[META] ${r.confidence} | ${r.mode}`);
-  if (steps.length) lines.push(`[PROCESS_STEPS] ${steps.join(" | ")}`);
+  if (steps.length && !clarify) lines.push(`[PROCESS_STEPS] ${steps.join(" | ")}`);
   return lines.join("\n");
 }

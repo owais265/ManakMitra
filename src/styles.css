@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
   --color-bis-navy: #1e3a8a;
@@ -28,6 +30,35 @@
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: #ffffff;
+    color: #0f172a;
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+
+  html.dark {
+    background-color: #0c1222;
+    color: #f1f5f9;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: inherit;
+    color: inherit;
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-bis-navy);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html,
+    body,
+    .mm-theme-fade,
+    .mm-glass {
+      transition: none !important;
+    }
   }
 }
 
@@ -39,6 +70,23 @@
   .mm-break {
     overflow-wrap: anywhere;
     word-break: break-word;
+  }
+
+  .mm-theme-fade {
+    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .mm-glass {
+    background-color: rgba(255, 255, 255, 0.86);
+    -webkit-backdrop-filter: saturate(1.35) blur(16px);
+    backdrop-filter: saturate(1.35) blur(16px);
+    transition: background-color 0.4s ease, border-color 0.4s ease, -webkit-backdrop-filter 0.4s ease, backdrop-filter 0.4s ease;
+  }
+
+  html.dark .mm-glass {
+    background-color: rgba(12, 18, 34, 0.78);
+    -webkit-backdrop-filter: saturate(1.2) blur(18px);
+    backdrop-filter: saturate(1.2) blur(18px);
   }
 }
 
@@ -56,6 +104,11 @@
     touch-action: pan-y;
   }
 
+  html.dark:not(.mm-chat),
+  html.dark:not(.mm-chat) body {
+    background: #0c1222;
+  }
+
   html.mm-chat,
   html.mm-chat body {
     overflow: hidden;
@@ -64,6 +117,11 @@
     height: 100dvh;
     background: #fff;
     overscroll-behavior: none;
+  }
+
+  html.dark.mm-chat,
+  html.dark.mm-chat body {
+    background: #0c1222;
   }
 }
 
@@ -100,4 +158,13 @@
     transform: none;
     filter: none;
   }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+#chat-scroll-container {
+  overflow-anchor: none;
+  scroll-behavior: auto;
 }

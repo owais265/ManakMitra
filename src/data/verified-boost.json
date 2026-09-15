@@ -1,0 +1,311 @@
+[
+  {
+    "id": "boost-faq-what-is-bis",
+    "kind": "faq",
+    "title": "What is BIS? / BIS kya hai?",
+    "body": "The Bureau of Indian Standards (BIS) is the National Standards Body of India under the BIS Act, 2016. It publishes Indian Standards, operates product certification (ISI / Scheme-I), Compulsory Registration (CRS / Scheme-II), hallmarking, laboratory recognition, and consumer complaint redressal. This assistant uses catalogue metadata (IS number + title + official URL), not paid clause text.",
+    "url": "https://www.bis.gov.in/the-bureau/?lang=en"
+  },
+  {
+    "id": "boost-faq-bis-vs-iso",
+    "kind": "faq",
+    "title": "BIS and ISO — what is the difference?",
+    "body": "BIS is India's national standards body. ISO and IEC are international bodies. Some Indian Standards are adopted as IS/ISO or IS/IEC (identical or modified). BIS certification (ISI mark / CRS) is a conformity scheme under Indian law/QCO; holding an ISO 9001 certificate is not the same as a BIS Standard Mark licence. Confirm the applicable IS and scheme on Know Your Standard and the live compulsory list.",
+    "url": "https://www.bis.gov.in/product-certification/product-certification-overview/?lang=en"
+  },
+  {
+    "id": "boost-faq-free-standards",
+    "kind": "faq",
+    "title": "Can I get Indian Standards for free?",
+    "body": "Full text of most Indian Standards is sold. Use Know Your Standard for title/status metadata, and buy or download authorised copies from the official e-Sale portal. This pack does not store paid clause PDFs. Do not use unofficial pdf.bis.gov.in-style links.",
+    "url": "https://standardsbis.bsbedge.com/"
+  },
+  {
+    "id": "boost-faq-care-app",
+    "kind": "faq",
+    "title": "How to use the BIS CARE app",
+    "body": "BIS CARE is the official mobile app. Consumers can verify HUID on hallmarked jewellery, look up Standard Mark related information, and register complaints. Download only from official app stores as linked from bis.gov.in. HUID verification is the 'Verify HUID' feature. Complaints are recorded at CMED.",
+    "url": "https://www.bis.gov.in/hallmarking-overview/hallmarking-faqs/hallmarking-faq/?lang=en"
+  },
+  {
+    "id": "boost-faq-consumer-role",
+    "kind": "faq",
+    "title": "Role of BIS in consumer protection",
+    "body": "BIS records consumer complaints centrally at the Complaints Management and Enforcement Department (CMED). File via the BIS CARE app, Standard Promotion Portal on manakonline.in, or the Online Complaint Registration page. Keep invoice, product photo, seller details, and Standard Mark/HUID if present. Official complaint desk: +91 11 23235069, complaints@bis.gov.in.",
+    "url": "https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en"
+  },
+  {
+    "id": "boost-consumer-fake-mark",
+    "kind": "consumer",
+    "title": "Fake BIS / ISI mark or logo — how to complain",
+    "body": "To report a fake Standard Mark, misuse of ISI/BIS logo, or a substandard marked product: lodge the complaint on the BIS CARE app or www.manakonline.in Standard Promotion Portal, or the Online Complaint Registration page. Preserve cash memo/invoice, batch/licence number if visible, and the product packing until an inspecting officer visits. Helpline from BIS enquiry pages: +91 11 23235069; email complaints@bis.gov.in. Do not use unofficial helpline numbers.",
+    "url": "https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en"
+  },
+  {
+    "id": "boost-hallmark-916",
+    "kind": "hallmark",
+    "title": "What 916 / 22K / 18K means on a BIS hallmark",
+    "body": "Since 1 July 2021 a hallmark has three marks: BIS logo (Standard Mark), purity in caratage and fineness, and a six-digit HUID. 22 carat gold is marked 916 (91.6% gold). 18 carat is 750. Verify the HUID in the official BIS CARE app. This is not a licence to manufacture; it is purity marking of the article.",
+    "url": "https://www.bis.gov.in/hallmarking-overview/hallmarking-faqs/hallmarking-faq/?lang=en"
+  },
+  {
+    "id": "boost-hallmark-verify",
+    "kind": "hallmark",
+    "title": "Gold hallmark / HUID verification kaise karein",
+    "body": "Check HUID with Verify HUID in the official BIS CARE app. For suspected purity shortfall, test at a BIS-recognised Assaying and Hallmarking Centre. Fake hallmark complaints go through CARE app / manakonline / Online Complaint Registration. Hallmarking enquiry: +91 11 23234223, hallmarking@bis.gov.in.",
+    "url": "https://www.bis.gov.in/hallmarking-overview/hallmarking-faqs/hallmarking-faq/?lang=en"
+  },
+  {
+    "id": "boost-link-kys",
+    "kind": "link",
+    "title": "Know Your Standard — look up IS number and title",
+    "body": "For any product whose IS is not pinned in this pack, search the official Know Your Standard catalogue (number, title, status). Then return with the IS number. Do not invent an IS or mandatory/QCO status.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-link-qco",
+    "kind": "link",
+    "title": "Products under compulsory certification (QCO / live list)",
+    "body": "Whether a product is compulsory (QCO) is decided by the Central Government and published on the official Products under Compulsory Certification page. This pack does not invent mandatory status. Re-check the live list before telling an MSME a licence is compulsory.",
+    "url": "https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en"
+  },
+  {
+    "id": "boost-link-training-club",
+    "kind": "link",
+    "title": "BIS training, workshops and Standards Club — enquiry directory",
+    "body": "BIS runs training programmes, workshops, and Standards Clubs (मानक क्लब) through its training / NITS desk. For workshop dates, club enrolment, and departmental contacts use the official Contact / Enquiry directory — do not treat a random IS row as a training page. Training is listed among BIS department helplines on that directory.",
+    "url": "https://www.bis.gov.in/directory/enquiry/?lang=en"
+  },
+  {
+    "id": "boost-process-crs-live-list",
+    "kind": "process",
+    "title": "CRS notified products — confirm live list on crsbis",
+    "body": "Compulsory Registration (Scheme-II) product coverage can change. Confirm the live notified list on the official CRS products page before telling an MSME a laptop, charger, or other electronics item is in or out of CRS. Do not invent extra QCO dates. Portal: https://www.crsbis.in/BIS/products-bis.do",
+    "url": "https://www.crsbis.in/BIS/products-bis.do"
+  },
+  {
+    "id": "boost-process-scheme-i-manak",
+    "kind": "process",
+    "title": "ISI Mark Scheme-I — apply on MANAK Online",
+    "body": "For Scheme-I (ISI mark) product certification, submit the licence application on the official MANAK Online portal https://www.manakonline.in. Typical path: find the IS, apply online, factory inspection, conformity testing, grant of licence and marking fee. Re-check live fees on the BIS product-certification FAQ. Never use a truncated host such as akonline.in.",
+    "url": "https://www.manakonline.in"
+  },
+  {
+    "id": "boost-process-simplified-option2",
+    "kind": "process",
+    "title": "Scheme-I Simplified Procedure (Option-2) — existing test report",
+    "body": "Under Scheme-I Option-2 (Simplified Procedure), BIS may use an existing acceptable test report from BIS or a BIS-recognised/empanelled laboratory, generally not more than 90 days old, instead of BIS-arranged testing (Option-1). Official FAQ snapshot: average grant time about one month for Option-2 versus about four months for Option-1 from a complete application. The list of products under Simplified Procedure is a published PDF — re-check that list; this pack does not copy the full product table. Apply on https://www.manakonline.in",
+    "url": "https://www.bis.gov.in/wp-content/uploads/2024/11/List-of-Products-Under-Simplified-Procedure.pdf"
+  },
+  {
+    "id": "boost-link-lims-recognised",
+    "kind": "link",
+    "title": "BIS-recognised laboratories — live LIMS list",
+    "body": "Search BIS-recognised (Group-1) laboratories on the official LIMS recognised-labs page. Pack Group-1 rows are a name/city snapshot only. Do not claim a lab is accredited to test a named IS — confirm live scope on LIMS search-by-IS https://lims.bis.gov.in/home/search_is_number/",
+    "url": "https://lims.bis.gov.in/home/labs/"
+  },
+  {
+    "id": "boost-link-lims-bis-own",
+    "kind": "link",
+    "title": "BIS own laboratories — live LIMS list",
+    "body": "BIS operates its own laboratories. The live list is on LIMS. For IS-wise test scope use search-by-IS. Do not invent a lab's test scope from the name/city snapshot.",
+    "url": "https://lims.bis.gov.in/home/bis_labs/"
+  },
+  {
+    "id": "boost-faq-crs-rnumber",
+    "kind": "faq",
+    "title": "How to verify a CRS R-Number",
+    "body": "CRS (Scheme-II) grants a Registration (R) Number per manufacturer, factory, brand and model — it is not an ISI licence and not a jewellery HUID. Verify the R-Number on the official CRS registered-manufacturers search or in the BIS CARE app under CRS / R-Number, not Verify HUID. Confirm the live notified list on crsbis.in. Helpline +91 11 23230856, registration@bis.gov.in.",
+    "url": "https://www.crsbis.in/BIS/Lims_registrationc.do?hmode=getLimsData"
+  },
+  {
+    "id": "boost-product-utensils-5522",
+    "kind": "product",
+    "title": "Stainless steel sheets and strips for utensils — IS 5522",
+    "body": "IS 5522 : 2014 is Stainless steel sheets and strips for utensils - Specification (Third Revision). Related catalogue row: IS 15997 : 2012 Low nickel austenitic stainless steel plate, sheet, and strip for utensils and kitchen applications. This is material specification metadata, not paid clause text. Confirm status on Know Your Standard. Non-stick coated cookware (often cited as IS 14756) is not in this catalogue snapshot — look it up on the official portal rather than inventing an edition.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-product-geyser-2082",
+    "kind": "product",
+    "title": "Stationary storage electric water heater (geyser) — IS 2082",
+    "body": "IS 2082 : 2018 is Stationary storage type electric water heaters - Specification (Fifth Revision). Typical household 'geyser' / storage water heater queries map here in this catalogue. Instantaneous electric water heaters and LPG storage heaters are different IS numbers — confirm the exact type on Know Your Standard. Do not invent clause text.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-product-packaged-water-honest",
+    "kind": "product",
+    "title": "Packaged drinking water — confirm IS 14543 / IS 13428 on Know Your Standard",
+    "body": "Packaged drinking water (other than packaged natural mineral water) and packaged natural mineral water are commonly cited as IS 14543 and IS 13428. Those two numbers are not in this catalogue snapshot, so this assistant will not invent an edition year (including a '2024' edition). What is in the snapshot: IS 15609 : 2005 Polyethylene flexible pouches for packing natural mineral water and packaged drinking water, and IS 10500 : 2012 Drinking water (piped/municipal). Confirm the live title, year and QCO on Know Your Standard before telling an MSME a licence is compulsory.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-process-crs-test-request",
+    "kind": "process",
+    "title": "CRS Scheme-II — Test Request, lab sample, then registration",
+    "body": "Official CRS (Scheme-II) path on crsbis.in: 1 Generate a Test Request and select a BIS-recognised lab. 2 Send the sample plus Test Request to that lab within 60 days of generating the Test Request. 3 Get the product tested against the notified Indian Standard. 4 Apply for registration with the test report on https://www.crsbis.in. 5 Goods carry the Scheme-II Standard Mark plus unique R-number (not an ISI CM/L number, not a jewellery HUID). Confirm the live notified product + IS + QCO date on the CRS products page before telling a factory it is in or out of CRS.",
+    "url": "https://www.crsbis.in/BIS/about-crs.do"
+  },
+  {
+    "id": "boost-consumer-hq",
+    "kind": "consumer",
+    "title": "BIS Headquarters — Manak Bhawan, New Delhi",
+    "body": "Bureau of Indian Standards, Manak Bhawan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002. Department helplines and emails are on the official Contact / Enquiry directory. Complaints: +91 11 23235069, complaints@bis.gov.in. Do not use unofficial helpline numbers.",
+    "url": "https://www.bis.gov.in/directory/enquiry/?lang=en"
+  },
+  {
+    "id": "boost-faq-agmark-not-bis",
+    "kind": "faq",
+    "title": "Agmark is not a BIS certification scheme",
+    "body": "Agmark is not a Bureau of Indian Standards (BIS) scheme. BIS product conformity schemes in this pack are Scheme-I (ISI Standard Mark), Scheme-II (CRS), and hallmarking of precious-metal articles. Agmark is a separate agricultural produce grading mark under the agricultural marketing system — do not treat an Agmark stamp as an ISI mark, CRS R-number, or BIS hallmark/HUID. For BIS schemes use MANAK Online, crsbis.in, or the BIS CARE app as applicable. Confirm live compulsory (QCO) coverage on the official Products under Compulsory Certification page.",
+    "url": "https://www.bis.gov.in/product-certification/product-certification-overview/?lang=en"
+  },
+  {
+    "id": "boost-faq-bee-star-not-isi",
+    "kind": "faq",
+    "title": "BEE star label is not the ISI mark and not CRS",
+    "body": "The BEE star (energy-efficiency) label on appliances is not the BIS ISI Standard Mark and not a CRS R-number. Star labelling is run by the Bureau of Energy Efficiency. A 5-star fridge or AC may still need a separate BIS Scheme-I licence or CRS registration if that product is on the live compulsory list — confirm on the Products under Compulsory Certification page and Know Your Standard. Do not tell a consumer that a star sticker is an ISI mark.",
+    "url": "https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en"
+  },
+  {
+    "id": "boost-faq-what-are-indian-standards",
+    "kind": "faq",
+    "title": "What are Indian Standards?",
+    "body": "Indian Standards are documents published by BIS (the National Standards Body of India under the BIS Act, 2016). They give technical requirements for products, processes, and services. Most are voluntary until a Quality Control Order / compulsory certification notification makes a specific IS mandatory. This pack stores catalogue metadata (IS number + title + official URL), not paid clause text. Look up a live title on Know Your Standard.",
+    "url": "https://www.bis.gov.in/the-bureau/?lang=en"
+  },
+  {
+    "id": "boost-faq-how-many-is",
+    "kind": "faq",
+    "title": "How many Indian Standards are in this catalogue snapshot?",
+    "body": "This local catalogue snapshot lists about 18,995 IS/SP title rows (metadata only). That is not a frozen official census — the live published count changes. Confirm the current catalogue on Know Your Standard / bis.gov.in. Do not treat 19,000 or 22,000 as a statutory headcount from this pack.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-faq-develop-is",
+    "kind": "faq",
+    "title": "How an Indian Standard is developed — pack limit",
+    "body": "BIS formulates Indian Standards through technical committees and may adopt ISO/IEC texts as IS/ISO or IS/IEC (identical or modified). This pack does not store the full drafting SOP (proposal → draft → public comment → publication) as a numbered checklist. For the live process and work programme use the official BIS / Know Your Standard pages. An ISO 9001 certificate is not an ISI / CRS licence.",
+    "url": "https://www.bis.gov.in/the-bureau/?lang=en"
+  },
+  {
+    "id": "boost-faq-nabl-vs-bis",
+    "kind": "faq",
+    "title": "NABL / ISO/IEC 17025 is not a BIS product licence",
+    "body": "NABL accreditation speaks to laboratory competence (commonly ISO/IEC 17025). BIS product certification (ISI / Scheme-I, CRS / Scheme-II) is a different scheme. A NABL certificate is not an ISI mark and not a CRS R-number. Search BIS-recognised labs and IS-wise scope on official LIMS; do not invent that a named lab is accredited to test a named IS.",
+    "url": "https://lims.bis.gov.in/home/labs/"
+  },
+  {
+    "id": "boost-faq-msme-apply",
+    "kind": "faq",
+    "title": "MSME / small industry — same Scheme-I / CRS portals",
+    "body": "A small industry or MSME applies for BIS product certification on the same official portals as any manufacturer: Scheme-I (ISI) on https://www.manakonline.in and Scheme-II (CRS) on https://www.crsbis.in. This pack does not publish a separate MSME subsidy table or a guaranteed fee waiver. Confirm any live facilitation on the BIS Contact / Enquiry directory. Do not treat a CRS 'Indian Language Support for mobile phones' row as MSME policy.",
+    "url": "https://www.bis.gov.in/directory/enquiry/?lang=en"
+  },
+  {
+    "id": "boost-faq-penalty-honest",
+    "kind": "faq",
+    "title": "Penalties for uncertified / misused Standard Mark — pack limit",
+    "body": "This pack does not publish jail terms or fine slabs. For misuse of the Standard Mark, fake ISI/CRS/hallmark, or a substandard marked product, file through the BIS CARE app, manakonline Standard Promotion Portal, or Online Complaint Registration (CMED). Helpline from BIS enquiry pages: +91 11 23235069, complaints@bis.gov.in. Do not invent penalty figures.",
+    "url": "https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en"
+  },
+  {
+    "id": "boost-faq-hallmark-fee-honest",
+    "kind": "faq",
+    "title": "Hallmarking per-article assay charges — re-check live FAQ",
+    "body": "This pack does not list a per-article hallmarking / assay fee table (do not quote ₹100–₹300 or Scheme-I application Rs 1,000 as a jewellery hallmarking charge). Consumers verify HUID in the BIS CARE app. Jewellers and Assaying & Hallmarking Centres use the official hallmarking process on BIS / manakonline. Re-check live hallmarking fees on the official Hallmarking FAQ.",
+    "url": "https://www.bis.gov.in/hallmarking-overview/hallmarking-faqs/hallmarking-faq/?lang=en"
+  },
+  {
+    "id": "boost-faq-paint-not-383",
+    "kind": "faq",
+    "title": "Paint / coatings — do not use IS 383",
+    "body": "There is no single 'the paint IS' in this snapshot. Ready-mixed paints, enamels, and related products have many separate IS rows. IS 383 in this catalogue is coarse and fine aggregate for concrete — not paint. Name the paint type or look up the title on Know Your Standard. Do not invent a paint IS number.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-product-food-examples",
+    "kind": "product",
+    "title": "Food product IS numbers — name the food",
+    "body": "There is no official shortlist of '3 most important food IS' in this pack. Catalogue metadata examples only: IS 1165 whole milk powder; IS 1166 sweetened condensed milk; IS 7224 iodized salt; IS 13688 packaged pasteurized milk. Name the food to pin the right row. Confirm live title and QCO on Know Your Standard. Do not invent clause limits.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-faq-bis-funded",
+    "kind": "faq",
+    "title": "How is BIS organised / funded — pack limit",
+    "body": "BIS is the National Standards Body of India under the BIS Act, 2016, under the Ministry of Consumer Affairs, Food & Public Distribution. Headquarters: Manak Bhawan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002. This pack does not publish a budget or funding-split table. Use The Bureau page and the Contact / Enquiry directory.",
+    "url": "https://www.bis.gov.in/the-bureau/?lang=en"
+  },
+  {
+    "id": "boost-faq-inspection-surveillance",
+    "kind": "faq",
+    "title": "Factory inspection and surveillance — use Scheme-I process rows",
+    "body": "Scheme-I (ISI) includes a BIS preliminary inspection visit, conformity testing, grant of licence, and ongoing surveillance after grant. This pack does not invent a sample-count table, a 2–4 month lab clock, or a 7-point inspection checklist. Follow the live application on https://www.manakonline.in and the product-certification FAQ. Rejected applications are handled on the same portal — this pack does not publish a separate appeal SOP.",
+    "url": "https://www.manakonline.in"
+  },
+  {
+    "id": "boost-faq-imported-fmcs",
+    "kind": "faq",
+    "title": "Imported products — FMCS, not a deemed shortcut",
+    "body": "Foreign manufacturers of products that require a BIS Standard Mark typically use FMCS (Foreign Manufacturers Certification Scheme): nominate an Authorised Indian Representative and apply for assessment. CRS (Scheme-II) has its own crsbis.in path for notified electronics. This pack does not describe a 'deemed certification' shortcut. Confirm the live compulsory list and the matching scheme before telling a factory to import unmarked goods.",
+    "url": "https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en"
+  },
+  {
+    "id": "boost-faq-unknown-is",
+    "kind": "faq",
+    "title": "IS number not in this catalogue snapshot — use Know Your Standard",
+    "body": "An IS number in the query is not a title row in this local catalogue snapshot (example: a placeholder such as IS 1234). Do not guess a nearby IS (do not substitute IS 406 or any other number). Look the live number, title and status up on Know Your Standard. This pack does not store revision-transition periods, clause text, or a 40% content-change SOP. For Scheme-I process use https://www.manakonline.in and re-check live QCO status on the compulsory-certification page.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-faq-hypothetical-sop",
+    "kind": "faq",
+    "title": "Hypothetical / policy scenario — pack has no SOP",
+    "body": "This pack does not store BIS committee policy for hypotheticals: multi-country harmonization conflicts, AI/blockchain/quantum replacing inspection or testing, dual standards, mass recall counts, licence auto-suspend, bribery/annulment protocols, merger of licences, child-labour vs product quality, Supreme Court suspensions, or transition-period lengths. Do not invent those rules. Point the user to Know Your Standard, MANAK Online (Scheme-I), crsbis.in (CRS), LIMS for labs, CARE/CMED for complaints, and the Contact / Enquiry directory. Licence validity in the FAQ snapshot is up to two years initially and renewal up to five years — re-check the live FAQ. Never treat a 3-year figure as pack truth.",
+    "url": "https://www.bis.gov.in/directory/enquiry/?lang=en"
+  },
+  {
+    "id": "boost-faq-hallmark-only-jewellery",
+    "kind": "faq",
+    "title": "Hallmark / HUID applies only to jewellery — not other products",
+    "body": "BIS Hallmark and the 6-digit HUID apply to gold and silver jewellery and artefacts under the Hallmarking scheme (catalogue metadata: IS 1417 / IS 1418). They are not a mark for cement, packaged or mineral water, electronics, helmets, toys, plugs, switches, ACs, refrigerators, cookers, LPG cylinders, auto parts, safety glass, footwear, or steel utensils. You cannot stamp old non-jewellery goods with Hallmark or HUID. Those products use ISI (Scheme-I / manakonline.in) or CRS (Scheme-II / crsbis.in) as notified — confirm live QCO on the Products under Compulsory Certification page. Jewellery HUID is checked in the BIS CARE app (Verify HUID). Fake-mark complaints: CARE app / manakonline Standard Promotion Portal / Online Complaint Registration (CMED).",
+    "url": "https://www.bis.gov.in/hallmarking-overview/"
+  },
+  {
+    "id": "boost-faq-eco-mark-pack-limit",
+    "kind": "faq",
+    "title": "Eco Mark is a separate BIS scheme — product list not in this pack",
+    "body": "Eco Mark is BIS's eco-labelling scheme. It is not an ISI Standard Mark, not a CRS R-number, and not a jewellery HUID/Hallmark. This pack does not store a product-wise Eco Mark mandate table, so do not say Eco Mark is compulsory for a named good. Confirm live Eco Mark coverage on bis.gov.in. For ISI use manakonline.in; for CRS use crsbis.in; for jewellery hallmarking use BIS CARE Verify HUID.",
+    "url": "https://www.bis.gov.in/product-certification/product-certification-overview/?lang=en"
+  },
+  {
+    "id": "boost-faq-officer-names-not-in-pack",
+    "kind": "faq",
+    "title": "Officer / branch-head names are not in this pack",
+    "body": "This pack does not publish the name of the Director General, a branch head, or the 'head of HUID / CRS / FMCS / QCO / LRS / NWS / AIR / CRO / MeitY / DPIIT' in any city. Do not invent officer names. Use the official Contact / Enquiry directory and Headquarters (Manak Bhawan, 9 Bahadur Shah Zafar Marg, New Delhi - 110002). Department helplines are listed there.",
+    "url": "https://www.bis.gov.in/directory/enquiry/?lang=en"
+  },
+  {
+    "id": "boost-faq-is-vs-product-mix",
+    "kind": "faq",
+    "title": "IS number vs product — do not mix catalogue rows",
+    "body": "An IS number in this catalogue is metadata for that title only. If a query pairs an IS with a different product (for example IS 455 with jewellery, or a mobile-handset IS with earbuds), do not treat that IS as the specification for the other product. Clause limits (lead, toxicity, sampling, transition time) are not stored. Look up the live title on Know Your Standard. Hallmark/HUID is jewellery (IS 1417/1418). Cement, water, and electronics use their own IS and scheme.",
+    "url": "https://standards.bis.gov.in/website/know-your-standards"
+  },
+  {
+    "id": "boost-faq-unknown-portal",
+    "kind": "faq",
+    "title": "NWS / LRS / unknown portal — use official BIS hosts only",
+    "body": "This pack does not describe an 'NWS portal' or an 'LRS' certification portal. Do not invent a download or an approval flow for those names. Official hosts in this assistant: bis.gov.in, manakonline.in (Scheme-I ISI), crsbis.in (CRS / Scheme-II), lims.bis.gov.in (recognised labs), standards.bis.gov.in Know Your Standard, and the BIS CARE app. Confirm live compulsory coverage on the Products under Compulsory Certification page.",
+    "url": "https://www.bis.gov.in/product-certification/product-certification-overview/?lang=en"
+  },
+  {
+    "id": "boost-faq-stop-marking-pack-limit",
+    "kind": "faq",
+    "title": "Stop marking / stop-sale / NCR — pack has no SOP table",
+    "body": "This pack does not store a numbered SOP for Stop Marking, a stop-sale order on the CARE app, a non-conformance report (NCR) template, or BIS Act section-wise jail/fine slabs. Do not invent jurisprudence or a compensation formula. For misuse of the Standard Mark or a substandard marked product, file through the BIS CARE app, manakonline Standard Promotion Portal, or Online Complaint Registration (CMED). Helpline from BIS enquiry pages: +91 11 23235069, complaints@bis.gov.in. Scheme-I surveillance is on https://www.manakonline.in — re-check the live product-certification FAQ.",
+    "url": "https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en"
+  }
+]
+

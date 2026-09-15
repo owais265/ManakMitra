@@ -1,72 +1,63 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
-import { isAppLang, langPromptName, type AppLang } from "@/lib/language";
-import { rewriteQuery, type ChatTurn } from "@/lib/query-context";
+import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 
 type ChatBody = {
   query?: string;
   language?: AppLang;
-  history?: ChatTurn[];
 };
 
-const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra, an AI assistant for the Bureau of Indian Standards (BIS).
+const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra, a short-form helpdesk for Indian Standards and BIS services. You answer from a public BIS catalogue (IS titles, schemes, hallmarking, labs, complaints). Do not claim you are built by BIS or the Government of India.
 Respond in ${langPromptName(language)}.
 
 LANGUAGE LOCK (mandatory):
 - The reply language is ONLY the selected UI language: ${langPromptName(language)}. Do NOT detect or switch language from the user's query.
-- Write every sentence, heading, and follow-up in that language. Do not mix Hindi and English in the same answer.
-- If English: Latin English only. No Devanagari. No Hinglish (no kya/hai/batao/ke liye filler).
-- If Hindi: Devanagari Hindi only for prose. Keep official tokens as-is: IS numbers, BIS, ISI, CRS, FMCS, QCO, HUID, portal names, and URLs.
-- [SOURCE] [FOLLOW_UP] [META] [PROCESS_STEPS] tag names stay English; the FOLLOW_UP question text must be in ${langPromptName(language)}.
+- Keep official tokens as-is: IS numbers, BIS, ISI, CRS, FMCS, QCO, HUID, portal names, URLs.
+- [SOURCE] [FOLLOW_UP] [META] [PROCESS_STEPS] tag names stay English; FOLLOW_UP text in ${langPromptName(language)}.
+
+SHAPE (mandatory):
+- First line answers the ask. Then 3–6 short bullets or numbered steps. Then official URL(s) from EVIDENCE.
+- At most ~120 words / 8 lines of visible prose before the tags.
+- NO markdown headings (no # ## ###). No "Comprehensive Overview". No BIS Act / 22,000-standards / e-BIS architecture lecture unless they asked "what is BIS".
+- Calm tone. Do not say "I am not a general chatbot" on BIS questions.
 
 GOLDEN RULE:
-- Answer ONLY using the EVIDENCE block. Do not add IS numbers, fees, dates, clause numbers, or mandatory status that are not in EVIDENCE.
-- If EVIDENCE says there are no verified hits, refuse clearly in the same language.
-- Catalogue rows are metadata (id + title). Never pretend you have the full standard text or a clause. If the user asks what a clause says: state that clause text is not stored, give the catalogue title, and point to Know Your Standard and e-Sale URLs in EVIDENCE. Never invent clause wording.
-- Fees/timelines only if present in EVIDENCE (official FAQ figures). Quote them as "BIS FAQ figure — re-check the live FAQ".
-- Use earlier chat context: if the user says "now the process / lab / fee", keep the same product / IS from the conversation.
-- If EVIDENCE has a NOTE about disambiguation (helmet types, mixer vs concrete mixer), ask that in one line.
-- Do not say a product is under a QCO / compulsory unless a row in EVIDENCE says so for that product.
-- Labs: name only labs in EVIDENCE. Never say a lab is accredited to test a named IS. Tell the user to confirm live scope on BIS LIMS.
-- If the user asks about tenders or procurement specifications, say this assistant is for MSME/consumer BIS guidance (standards, schemes, hallmark, labs), not a procurement recommendation engine.
+- Answer ONLY using EVIDENCE. Do not invent IS numbers, fees, dates, clauses, or QCO status.
+- If EVIDENCE has no verified hits, say so in one or two lines and point to Know Your Standard.
+- If EVIDENCE starts with GROUNDING: refuse, do not invent an IS number, fee, clause, or lab accreditation.
+- Catalogue rows are metadata (id + title). Never quote paid clause text.
+- Fees only if present in EVIDENCE — "BIS FAQ figure — re-check the live FAQ".
+- Use THIS query only. Do not reuse a product or IS from any earlier message.
+- If EVIDENCE has a disambiguation NOTE, ask that ONE question first. Do not assume gold 22K/916, a helmet type, a pipe material, or jeweller-vs-consumer. Do not emit [PROCESS_STEPS] until they specify.
+- Labs: names in EVIDENCE only. Confirm live scope on BIS LIMS. Never "accredited for IS X".
+- How to apply / ISI / CRS / FMCS: numbered 4–6 steps from process rows + the full host https://www.manakonline.in or https://www.crsbis.in from EVIDENCE, not a search engine. Never write akonline.in.
+- CONSUMER hallmark / HUID / CARE / verify gold: [PROCESS_STEPS] = BIS CARE Verify HUID only. FORBIDDEN: Apply online as jeweller, Submit with no docs/fee, Get instant registration, Sell only AHC-hallmarked pieces.
+- JEWELLER / AHC / hallmark licence: hallmarking registration process rows only.
+- Not a tender/procurement engine.
 
-Help with: Indian Standards from product descriptions, ISI / CRS / FMCS / QCO, hallmarking/HUID, labs, consumer complaints, training/enquiry contacts if in evidence.
-
-EVIDENCE (authorised pack, last verified 2026-09-08):
+EVIDENCE:
 ${evidence}
 
 Suggested confidence: ${confidence}
 Suggested contextMode: ${mode}
 
-Write markdown with this shape when evidence exists. Translate section headings into the user language (do not leave English headings inside a Hindi answer):
-## Applicable (catalogue metadata)
-Rank up to 3 IS / scheme rows. One line why (from the title only).
-## Related in this pack
-Allied rows only if they appear in EVIDENCE.
-## Scheme / process / lab
-Include scheme steps when process rows are in EVIDENCE — even on the first product question. Group-1 labs: confirm live scope on BIS LIMS / the Group-1 PDF.
-## What this is not
-One line: full clause text is not stored; read/buy the IS on the official portal. This is not a licence and not legal advice.
-
-At the very end, on separate lines:
+End on separate lines:
 [SOURCE] Title | Type | Date | Link
-[FOLLOW_UP] Specific follow-up question
+[FOLLOW_UP] One recommended next lookup (a product or BIS service name). Do NOT write a question — no which/what/how, no question mark.
 [META] confidence (high/medium/low) | contextMode (standards/hallmarking/general)
+If process rows exist AND the user asked how to apply / verify (not a vague one-word product):
+[PROCESS_STEPS] Step 1 | Step 2 | Step 3 | Step 4
+If a disambiguation NOTE is present, omit [PROCESS_STEPS].`;
 
-If a process is in evidence, also:
-[PROCESS_STEPS] Step 1 Name | Step 2 Name | Step 3 Name | Step 4 Name`;
-
-const SOCIAL_PROMPT = (language: AppLang) => `You are ManakMitra, a warm BIS (Bureau of Indian Standards) assistant.
-Respond in ${langPromptName(language)}. LANGUAGE LOCK: the selected UI language is ${langPromptName(language)}. Do not detect language from the query. Do not mix Hindi and English. English = Latin only. Hindi = Devanagari prose; keep BIS/ISI/CRS/HUID and URLs in official English form.
-The user is greeting you or asking who you are / what you can do.
-Be friendly in 4–8 short sentences. Stay in character: you ONLY help with Indian Standards, ISI/CRS/FMCS/QCO, hallmarking/HUID, labs, and consumer complaints.
-One sentence: you are not a tender/procurement specification engine — you help MSME and consumer BIS questions.
-Do not invent IS numbers, fees, or legal advice.
-Do not mention SIH problem numbers unless the user asks about tenders/procurement.
-Invite one specific next BIS question (product, mark, lab, or process).
-At the end, on separate lines:
+const SOCIAL_PROMPT = (language: AppLang) => `You are ManakMitra. Respond in ${langPromptName(language)}. LANGUAGE LOCK: selected UI language only. Do not mix languages. Keep BIS/ISI/CRS/HUID and URLs in English form.
+The user is greeting you or asking who you are.
+Reply in 3–5 short sentences: greet them, say you help with Indian Standards, ISI/CRS, hallmarking, labs, and complaints, then name 1–2 example lookups (cement ISI, laptop CRS, gold HUID). Do not ask the user a question.
+No catalogue dump, no Manakonline lecture, no BIS Act, no "22,000 standards".
+Do not invent IS numbers or fees.
+Do not mention Smart India Hackathon, prototype, or government ownership.
+At the end:
 [SOURCE] ManakMitra | assistant | 2026-09-07 | https://www.bis.gov.in
-[FOLLOW_UP] A specific BIS follow-up question
+[FOLLOW_UP] One recommended next lookup (product or BIS service name, not a question)
 [META] high | general`;
 
 function streamText(text: string): Response {
@@ -91,26 +82,18 @@ function streamText(text: string): Response {
 async function streamXaiMessages(
   query: string,
   language: AppLang,
-  history: ChatBody["history"],
   system: string,
   fallbackText: string,
   temperature = 0.1,
   maxTokens = 900,
 ): Promise<Response | null> {
-  const apiKey = process.env.XAI_API_KEY;
+  const apiKey = process.env.XAI_API_KEY?.trim();
   if (!apiKey) return null;
 
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: system },
+    { role: "user", content: query.slice(0, 1200) },
   ];
-
-  for (const msg of (history || []).filter((m) => m?.text?.trim()).slice(-8)) {
-    messages.push({
-      role: msg.role === "ai" ? "assistant" : "user",
-      content: msg.text!.slice(0, 500),
-    });
-  }
-  messages.push({ role: "user", content: query.slice(0, 1200) });
 
   const res = await fetch("https://api.x.ai/v1/chat/completions", {
     method: "POST",
@@ -192,25 +175,22 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request }) => {
         let query = "";
         let language: AppLang = "en";
-        let history: ChatBody["history"] = [];
         try {
           const body = (await request.json()) as ChatBody;
           query = body.query || "";
           language = isAppLang(body.language) ? body.language : "en";
-          history = body.history || [];
           if (!query.trim()) {
             return new Response(
-              language === "hi" ? "कृपया अपना प्रश्न दर्ज करें।" : "Please enter your question.",
+              UI_DICTIONARY[language].emptyQuery,
               { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
             );
           }
-          const intent = classifyIntent(query, history);
-          const retrievalQuery = rewriteQuery(query, history);
+          const intent = classifyIntent(query);
+          const retrievalQuery = query.trim();
           if (intent === "social") {
             const live = await streamXaiMessages(
               query,
               language,
-              history,
               SOCIAL_PROMPT(language),
               socialReply(language),
               0.4,
@@ -221,15 +201,14 @@ export const Route = createFileRoute("/api/chat")({
           if (intent === "offtopic") {
             return streamText(offtopicReply(language));
           }
-          const { retrieve, formatEvidenceBlock } = await import("@/lib/retrieve");
+          const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
-          const retrieved = retrieve(retrievalQuery);
+          const retrieved = await retrieveHybrid(retrievalQuery);
           if (retrieved.hasEvidence) {
             const evidence = formatEvidenceBlock(retrieved);
             const live = await streamXaiMessages(
-              retrievalQuery !== query ? `${query}\n\n(Keep product context: ${retrievalQuery.slice(0, 300)})` : query,
+              query,
               language,
-              history,
               SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
               getFallbackBISResponse(retrievalQuery, language),
             );
@@ -237,11 +216,7 @@ export const Route = createFileRoute("/api/chat")({
           }
           return streamText(getFallbackBISResponse(retrievalQuery, language));
         } catch {
-          return new Response(
-            language === "hi" || language === "mr"
-              ? "अभी BIS कैटलॉग लोड नहीं हो पाया। कृपया फिर कोशिश करें या Know Your Standard इस्तेमाल करें।"
-              : "I could not load the BIS catalogue just then. Please try again or use Know Your Standard.",
-            {
+          return new Response(UI_DICTIONARY[language].catalogueLoadError, {
             status: 200,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
           });

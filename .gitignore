@@ -10,6 +10,9 @@ dist/
 .env
 .env.local
 .env.*.local
+.env.txt
+*.env.txt
+*.pem
 
 # python
 __pycache__/
