@@ -87,7 +87,7 @@ async function streamXaiMessages(
   temperature = 0.1,
   maxTokens = 900,
 ): Promise<Response | null> {
-  const apiKey = process.env.XAI_API_KEY?.trim();
+  const apiKey = (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim();
   if (!apiKey) return null;
 
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
