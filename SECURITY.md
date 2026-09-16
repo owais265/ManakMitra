@@ -7,7 +7,7 @@ If you find a vulnerability, email the maintainers privately. Do **not** open a 
 ## Secrets
 
 - Never commit `.env`, `.env.local`, or API keys.
-- Chat LLM uses **server-only** `XAI_API_KEY`.
+- Chat LLM uses **server-only** `XAI_API_KEY` or `XAI_API_KEY_2` (preferred).
 - Hybrid RAG uses **server-only** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 - `GEMINI_API_KEY` is embeddings-only and must stay server-side.
 - Do not expose the Supabase service role in browser / `VITE_` / `NEXT_PUBLIC_` variables.

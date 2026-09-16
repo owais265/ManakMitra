@@ -55,14 +55,14 @@ Kill switch: `HYBRID_RAG=0` → pack-only.
 | --- | --- |
 | App | React 19, TanStack Start, Vite, Tailwind CSS |
 | Chat API | [`src/routes/api/chat.ts`](src/routes/api/chat.ts) |
-| LLM | xAI (`XAI_API_KEY`, optional) |
+| LLM | xAI (`XAI_API_KEY` / `XAI_API_KEY_2`, optional) |
 | RAG | Local pack + optional Supabase (`pg_trgm`, pgvector HNSW) |
 | Embeddings | Gemini 768-d (optional, ingest only) |
 
 ## Quick start
 
 ```bash
-cp .env.example .env.local   # add XAI_API_KEY
+cp .env.example .env.local   # add XAI_API_KEY (or XAI_API_KEY_2)
 npm install
 npm run dev
 ```
@@ -75,7 +75,8 @@ Set the **same names** locally and on Vercel (Production + Preview). Redeploy af
 
 | Variable | Required | Used for |
 | --- | --- | --- |
-| `XAI_API_KEY` | Chat phrasing | Grok completions. Pack fallback works without it. |
+| `XAI_API_KEY` or `XAI_API_KEY_2` | Chat phrasing | Runtime prefers `XAI_API_KEY_2`, then `XAI_API_KEY`. Pack fallback works without either. |
+| `XAI_MODEL` | Optional | Defaults to `grok-4.5` |
 | `SUPABASE_URL` | Hybrid extras | `pack_docs` search |
 | `SUPABASE_SERVICE_ROLE_KEY` | Hybrid extras | Server-only. Never `NEXT_PUBLIC_*`. |
 | `HYBRID_RAG` | Optional | `0` = pack-only |
@@ -129,7 +130,7 @@ supabase/*.sql            pack_docs + hybrid search
 ## Deploy
 
 1. Import this repo on [Vercel](https://vercel.com).
-2. Add `XAI_API_KEY` (and optional Supabase keys) for **Production** and **Preview**.
+2. Add `XAI_API_KEY` (or `XAI_API_KEY_2`) and optional Supabase keys for **Production** and **Preview**.
 3. Deploy. After any env change, **Redeploy**.
 
 No separate FastAPI host.
