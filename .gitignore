@@ -13,24 +13,26 @@ dist/
 .env.txt
 *.env.txt
 *.pem
+!.env.example
 
 # python
 __pycache__/
 *.pyc
 .venv/
 
-# local / research — not for GitHub
+# local / research
 artifacts/
 attachments/
 screenshots/
 *.log
 .DS_Store
 .python-version
+Thumbs.db
 
-# generated scrape dump (already baked into src/data/rag-pack.json)
+# generated scrape dump (baked into src/data/rag-pack.json)
 data/manakmitra_bis_knowledge.json
 
-# builder workspace (keep on disk, never publish)
+# builder workspace (local only)
 .grok/
 AGENTS.md
 AGENTS.project.md
@@ -38,3 +40,4 @@ AGENTS.project.md
 .github_repo
 .node_modules.lock
 public/__grok/
+startup.sh

@@ -1,6 +1,13 @@
 {
   "name": "manakmitra",
   "private": true,
+  "description": "Evidence-first BIS standards assistant (SIH 26107). Catalogue metadata only — refuses when the pack has no match.",
+  "license": "MIT",
+  "author": "Team Prograckers",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/owais265/forest-yonder-apex-plum.git"
+  },
   "sideEffects": false,
   "type": "module",
   "overrides": {
