@@ -95,6 +95,41 @@ function xaiFailure(language: AppLang, reason: XaiResult["error"]): Response {
   });
 }
 
+async function requestGeminiFallback(
+  query: string,
+  language: AppLang,
+  system: string,
+): Promise<Response | null> {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ role: "user", parts: [{ text: query.slice(0, 1200) }] }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
+        }),
+      },
+    );
+    if (!res.ok) {
+      console.error(`[chat] Gemini fallback failed (${res.status})`);
+      return null;
+    }
+    const json = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = json.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
+    return text ? streamText(text) : null;
+  } catch (error) {
+    console.error("[chat] Gemini fallback threw:", error instanceof Error ? error.message : error);
+    return null;
+  }
+}
+
 async function streamXaiMessages(
   query: string,
   language: AppLang,
@@ -103,13 +138,23 @@ async function streamXaiMessages(
   temperature = 0.1,
   maxTokens = 900,
 ): Promise<XaiResult> {
-  const apiKey = (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim();
+  // Prefer Vercel AI Gateway so a provider credit limit does not take the
+  // whole chat endpoint down. Direct xAI remains available for deployments
+  // that do not have the gateway configured.
+  const gatewayKey = process.env.AI_GATEWAY_API_KEY?.trim();
+  const xaiKey = (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim();
+  const useGateway = Boolean(gatewayKey);
+  const apiKey = useGateway ? gatewayKey : xaiKey;
   if (!apiKey) {
-    console.warn("[chat] xAI not called: no XAI_API_KEY_2 or XAI_API_KEY configured");
+    console.warn("[chat] AI not called: no AI gateway or xAI key configured");
     return { response: null, attempted: false, error: "missing_key" };
   }
-  const model = process.env.XAI_MODEL?.trim() || "grok-4.5";
-  console.info(`[chat] xAI request starting model=${model} keyAlias=${process.env.XAI_API_KEY_2?.trim() ? "XAI_API_KEY_2" : "XAI_API_KEY"}`);
+  const model = process.env.AI_GATEWAY_MODEL?.trim() || process.env.XAI_MODEL?.trim() ||
+    (useGateway ? "google/gemini-2.5-flash" : "grok-4.5");
+  const endpoint = useGateway
+    ? "https://ai-gateway.vercel.sh/v1/chat/completions"
+    : "https://api.x.ai/v1/chat/completions";
+  console.info(`[chat] AI request starting provider=${useGateway ? "gateway" : "xAI"} model=${model}`);
 
   const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
     { role: "system", content: system },
@@ -118,7 +163,7 @@ async function streamXaiMessages(
 
   let res: Response;
   try {
-    res = await fetch("https://api.x.ai/v1/chat/completions", {
+    res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -139,8 +184,13 @@ async function streamXaiMessages(
 
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
-    console.error(`[chat] xAI request failed (${res.status || "no-body"}):`, detail.slice(0, 500));
-    return { response: null, attempted: true, error: "request_failed" };
+    console.error(`[chat] AI request failed (${res.status || "no-body"}):`, detail.slice(0, 500));
+    const fallback = await requestGeminiFallback(query, language, system);
+    if (fallback) return { response: fallback, attempted: true, error: null };
+    // Keep the catalogue-backed answer available when an external provider is
+    // unavailable. The fallback is evidence-safe and avoids turning provider
+    // credit limits into a user-facing 502.
+    return { response: streamText(_fallbackText), attempted: true, error: null };
   }
 
   const encoder = new TextEncoder();
