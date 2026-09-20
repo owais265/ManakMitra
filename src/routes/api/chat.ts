@@ -79,91 +79,29 @@ function streamText(text: string): Response {
   });
 }
 
-type XaiResult =
-  | { response: Response; attempted: true; error: null }
-  | { response: null; attempted: false; error: "missing_key" }
-  | { response: null; attempted: true; error: "request_failed" | "empty_stream" };
-
-function xaiFailure(language: AppLang, reason: XaiResult["error"]): Response {
-  const message =
-    reason === "missing_key"
-      ? UI_DICTIONARY[language].catalogueLoadError
-      : "The live AI service could not complete this response. Please try again.";
-  return new Response(message, {
-    status: reason === "missing_key" ? 503 : 502,
-    headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
-  });
-}
-
-async function requestGeminiFallback(
-  query: string,
-  language: AppLang,
-  system: string,
-): Promise<Response | null> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return null;
-  try {
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: "user", parts: [{ text: query.slice(0, 1200) }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 900 },
-        }),
-      },
-    );
-    if (!res.ok) {
-      console.error(`[chat] Gemini fallback failed (${res.status})`);
-      return null;
-    }
-    const json = (await res.json()) as {
-      candidates?: { content?: { parts?: { text?: string }[] } }[];
-    };
-    const text = json.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("").trim();
-    return text ? streamText(text) : null;
-  } catch (error) {
-    console.error("[chat] Gemini fallback threw:", error instanceof Error ? error.message : error);
-    return null;
-  }
+function xaiKey(): string {
+  return (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim() || "";
 }
 
 async function streamXaiMessages(
   query: string,
   language: AppLang,
   system: string,
-  _fallbackText: string,
+  fallbackText: string,
   temperature = 0.1,
   maxTokens = 900,
-): Promise<XaiResult> {
-  // Prefer Vercel AI Gateway so a provider credit limit does not take the
-  // whole chat endpoint down. Direct xAI remains available for deployments
-  // that do not have the gateway configured.
-  const gatewayKey = process.env.AI_GATEWAY_API_KEY?.trim();
-  const xaiKey = (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim();
-  const useGateway = Boolean(gatewayKey);
-  const apiKey = useGateway ? gatewayKey : xaiKey;
+): Promise<Response> {
+  const apiKey = xaiKey();
   if (!apiKey) {
-    console.warn("[chat] AI not called: no AI gateway or xAI key configured");
-    return { response: null, attempted: false, error: "missing_key" };
+    console.warn("[chat] xAI skipped: no XAI_API_KEY_2 or XAI_API_KEY — pack fallback");
+    return streamText(fallbackText);
   }
-  const model = process.env.AI_GATEWAY_MODEL?.trim() || process.env.XAI_MODEL?.trim() ||
-    (useGateway ? "google/gemini-2.5-flash" : "grok-4.5");
-  const endpoint = useGateway
-    ? "https://ai-gateway.vercel.sh/v1/chat/completions"
-    : "https://api.x.ai/v1/chat/completions";
-  console.info(`[chat] AI request starting provider=${useGateway ? "gateway" : "xAI"} model=${model}`);
-
-  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-    { role: "system", content: system },
-    { role: "user", content: query.slice(0, 1200) },
-  ];
+  const model = process.env.XAI_MODEL?.trim() || "grok-4.5";
+  console.info(`[chat] xAI request model=${model}`);
 
   let res: Response;
   try {
-    res = await fetch(endpoint, {
+    res = await fetch("https://api.x.ai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -174,28 +112,27 @@ async function streamXaiMessages(
         stream: true,
         max_tokens: maxTokens,
         temperature,
-        messages,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: query.slice(0, 1200) },
+        ],
       }),
     });
   } catch (error) {
-    console.error("[chat] xAI request threw:", error instanceof Error ? error.message : error);
-    return { response: null, attempted: true, error: "request_failed" };
+    console.error("[chat] xAI threw:", error instanceof Error ? error.message : error);
+    return streamText(fallbackText);
   }
 
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
-    console.error(`[chat] AI request failed (${res.status || "no-body"}):`, detail.slice(0, 500));
-    const fallback = await requestGeminiFallback(query, language, system);
-    if (fallback) return { response: fallback, attempted: true, error: null };
-    // Keep the catalogue-backed answer available when an external provider is
-    // unavailable. The fallback is evidence-safe and avoids turning provider
-    // credit limits into a user-facing 502.
-    return { response: streamText(_fallbackText), attempted: true, error: null };
+    console.error(`[chat] xAI failed (${res.status || "no-body"}):`, detail.slice(0, 500));
+    return streamText(fallbackText);
   }
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   const reader = res.body.getReader();
+  const fallback = fallbackText;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -223,19 +160,19 @@ async function streamXaiMessages(
                 controller.enqueue(encoder.encode(text));
               }
             } catch {
-              // skip
+              // skip malformed SSE
             }
           }
         }
         if (total === 0) {
-          console.error("[chat] xAI stream completed without content");
-          controller.enqueue(encoder.encode("The live AI service returned no content. Please try again."));
+          console.error("[chat] xAI empty stream — pack fallback");
+          controller.enqueue(encoder.encode(fallback));
         }
         controller.close();
       } catch (error) {
         console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
         try {
-          controller.enqueue(encoder.encode("\n\nThe live AI service interrupted this response. Please try again."));
+          if (total === 0) controller.enqueue(encoder.encode(fallback));
         } catch {
           // ignore
         }
@@ -244,16 +181,12 @@ async function streamXaiMessages(
     },
   });
 
-  return {
-    response: new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-      },
-    }),
-    attempted: true,
-    error: null,
-  };
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -275,7 +208,7 @@ export const Route = createFileRoute("/api/chat")({
           const intent = classifyIntent(query);
           const retrievalQuery = query.trim();
           if (intent === "social") {
-            const live = await streamXaiMessages(
+            return streamXaiMessages(
               query,
               language,
               SOCIAL_PROMPT(language),
@@ -283,7 +216,6 @@ export const Route = createFileRoute("/api/chat")({
               0.4,
               500,
             );
-            return live.response ?? xaiFailure(language, live.error);
           }
           if (intent === "offtopic") {
             return streamText(offtopicReply(language));
@@ -291,18 +223,18 @@ export const Route = createFileRoute("/api/chat")({
           const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
           const retrieved = await retrieveHybrid(retrievalQuery);
+          const pack = getFallbackBISResponse(retrievalQuery, language);
           console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode}`);
           if (retrieved.hasEvidence) {
             const evidence = formatEvidenceBlock(retrieved);
-            const live = await streamXaiMessages(
+            return streamXaiMessages(
               query,
               language,
               SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
-              getFallbackBISResponse(retrievalQuery, language),
+              pack,
             );
-            return live.response ?? xaiFailure(language, live.error);
           }
-          return streamText(getFallbackBISResponse(retrievalQuery, language));
+          return streamText(pack);
         } catch {
           return new Response(UI_DICTIONARY[language].catalogueLoadError, {
             status: 200,

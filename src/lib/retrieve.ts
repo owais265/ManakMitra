@@ -197,6 +197,12 @@ export function groundedFallback(query: string, language: AppLang): string {
 
   const visibleHits = r.hits.filter((h) => !(hideJeweller && JEWELLER_STEP_FORBID.test(h.title)));
 
+  const headlineHit =
+    visibleHits.find((h) => h.kind === "standard" || h.kind === "product" || h.kind === "crs") ||
+    visibleHits.find((h) => h.kind === "lab" || h.kind === "faq" || h.kind === "hallmark") ||
+    visibleHits[0];
+  const headline = headlineHit?.title.replace(/\s+/g, " ").trim() ?? "";
+
   const lines: string[] = [];
   if (!r.hasEvidence) {
     lines.push(stripHash(shell.refuse));
@@ -204,20 +210,29 @@ export function groundedFallback(query: string, language: AppLang): string {
   } else if (clarify) {
     lines.push(clarify);
     visibleHits.filter((h) => h.kind !== "process").slice(0, 3).forEach((h, i) => {
-      lines.push(`${i + 1}. **${h.title}**`);
+      lines.push(`${i + 1}. ${h.title}`);
       if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
     });
-  } else if (steps.length && (applyAsk || careOrVerify || jeweller)) {
+  } else if (careOrVerify) {
+    lines.push("HUID is the unique ID stamped on a BIS-hallmarked jewellery article. Verify it in the BIS CARE app — this is not a licence.");
     steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
-    if (portal && !careOrVerify && !/akonline/i.test(portal) && isOfficialHost(portal)) {
+    lines.push(stripHash(shell.notBody));
+  } else if (steps.length && (applyAsk || jeweller)) {
+    if (headline) lines.push(`${headline}.`);
+    steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    if (portal && !/akonline/i.test(portal) && isOfficialHost(portal)) {
       if (!steps.some((s) => s.includes(portal))) lines.push(portal);
     }
     lines.push(stripHash(shell.notBody));
   } else {
-    visibleHits.slice(0, 3).forEach((h, i) => {
-      lines.push(`${i + 1}. **${h.title}**`);
-      if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
-    });
+    if (headline) lines.push(`${headline}.`);
+    visibleHits
+      .filter((h) => h.title !== headline)
+      .slice(0, 3)
+      .forEach((h, i) => {
+        lines.push(`${i + 1}. ${h.title}`);
+        if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
+      });
     lines.push(stripHash(shell.notBody));
   }
 
