@@ -74,14 +74,14 @@ Try: **ISI mark for cement** or **Verify HUID on gold jewellery**.
 Set the same names locally and on Vercel (Production + Preview). Redeploy after adding keys.
 
 | Variable | Required | Purpose |
-| --- | --- |
-| `XAI_API_KEY` | Optional | Chat phrasing. Pack fallback works without it. |
-| `XAI_API_KEY_2` | Optional | Alternate key; preferred if both are set |
-| `XAI_MODEL` | Optional | Chat model id |
+| --- | --- | --- |
+| `XAI_API_KEY` | Optional | Chat phrasing. Tried first. Pack fallback works without it. |
+| `XAI_API_KEY_2` | Optional | Alternate xAI key if the first key fails |
+| `XAI_MODEL` | Optional | Preferred xAI model (defaults try grok-4.5 then grok-3-mini) |
 | `SUPABASE_URL` | Optional | Hybrid extras on `pack_docs` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | Server-only. Never expose to the browser. |
 | `HYBRID_RAG` | Optional | `0` = pack-only |
-| `GEMINI_API_KEY` | Optional | Embeddings for ingest — not used for chat |
+| `GEMINI_API_KEY` | Optional | Chat phrasing fallback if xAI fails; also embeddings ingest |
 
 ## Evaluation
 

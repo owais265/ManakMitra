@@ -79,59 +79,224 @@ function streamText(text: string): Response {
   });
 }
 
-function xaiKey(): string {
-  return (process.env.XAI_API_KEY_2 ?? process.env.XAI_API_KEY)?.trim() || "";
+function xaiKeys(): string[] {
+  const primary = process.env.XAI_API_KEY?.trim() || "";
+  const secondary = process.env.XAI_API_KEY_2?.trim() || "";
+  const keys: string[] = [];
+  if (primary) keys.push(primary);
+  if (secondary && secondary !== primary) keys.push(secondary);
+  return keys;
+}
+
+function xaiModels(): string[] {
+  const preferred = process.env.XAI_MODEL?.trim();
+  const list = [
+    preferred,
+    "grok-4.5",
+    "grok-4",
+    "grok-3-mini",
+    "grok-3-mini-fast",
+    "grok-3",
+    "grok-2-1212",
+    "grok-2-latest",
+  ].filter((m): m is string => Boolean(m));
+  return [...new Set(list)];
+}
+
+function geminiKeys(): string[] {
+  const list = [
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    process.env.GOOGLE_API_KEY,
+  ]
+    .map((k) => k?.trim() || "")
+    .filter(Boolean);
+  return [...new Set(list)];
+}
+
+function geminiModels(): string[] {
+  const preferred = process.env.GEMINI_MODEL?.trim();
+  const list = [
+    preferred,
+    "gemini-2.0-flash",
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
+  ].filter((m): m is string => Boolean(m));
+  return [...new Set(list)];
 }
 
 async function streamXaiMessages(
   query: string,
-  language: AppLang,
+  _language: AppLang,
   system: string,
   fallbackText: string,
   temperature = 0.1,
   maxTokens = 900,
 ): Promise<Response> {
-  const apiKey = xaiKey();
-  if (!apiKey) {
-    console.warn("[chat] xAI skipped: no XAI_API_KEY_2 or XAI_API_KEY — pack fallback");
-    return streamText(fallbackText);
-  }
-  const model = process.env.XAI_MODEL?.trim() || "grok-4.5";
-  console.info(`[chat] xAI request model=${model}`);
+  const keys = xaiKeys();
+  const messages = [
+    { role: "system" as const, content: system },
+    { role: "user" as const, content: query.slice(0, 1200) },
+  ];
 
-  let res: Response;
-  try {
-    res = await fetch("https://api.x.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        stream: true,
-        max_tokens: maxTokens,
-        temperature,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: query.slice(0, 1200) },
-        ],
-      }),
-    });
-  } catch (error) {
-    console.error("[chat] xAI threw:", error instanceof Error ? error.message : error);
-    return streamText(fallbackText);
+  let lastDetail = "";
+  for (const apiKey of keys) {
+    for (const model of xaiModels()) {
+      let res: Response;
+      try {
+        res = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            stream: true,
+            max_tokens: maxTokens,
+            temperature,
+            messages,
+          }),
+          signal: AbortSignal.timeout(12_000),
+        });
+      } catch (error) {
+        lastDetail = error instanceof Error ? error.message : String(error);
+        console.error("[chat] xAI threw:", lastDetail);
+        continue;
+      }
+      if (!res.ok || !res.body) {
+        lastDetail = await res.text().catch(() => "");
+        console.error(`[chat] xAI ${res.status} model=${model}:`, lastDetail.slice(0, 400));
+        continue;
+      }
+      console.info(`[chat] xAI streaming model=${model}`);
+      return pipeXaiSse(res, fallbackText);
+    }
   }
 
-  if (!res.ok || !res.body) {
-    const detail = await res.text().catch(() => "");
-    console.error(`[chat] xAI failed (${res.status || "no-body"}):`, detail.slice(0, 500));
-    return streamText(fallbackText);
-  }
+  const gemini = await tryGeminiStream(query, system, fallbackText, temperature, maxTokens);
+  if (gemini) return gemini;
 
+  if (!keys.length) {
+    console.warn("[chat] no XAI_API_KEY / Gemini key — pack fallback");
+  } else {
+    console.error("[chat] all LLM attempts failed — pack fallback", lastDetail.slice(0, 200));
+  }
+  return streamText(fallbackText);
+}
+
+async function tryGeminiStream(
+  query: string,
+  system: string,
+  fallbackText: string,
+  temperature: number,
+  maxTokens: number,
+): Promise<Response | null> {
+  const keys = geminiKeys();
+  if (!keys.length) return null;
+
+  let lastDetail = "";
+  for (const apiKey of keys) {
+    for (const model of geminiModels()) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: system }] },
+            contents: [{ role: "user", parts: [{ text: query.slice(0, 1200) }] }],
+            generationConfig: { temperature, maxOutputTokens: maxTokens },
+          }),
+          signal: AbortSignal.timeout(12_000),
+        });
+      } catch (error) {
+        lastDetail = error instanceof Error ? error.message : String(error);
+        console.error("[chat] Gemini threw:", lastDetail);
+        continue;
+      }
+      if (!res.ok || !res.body) {
+        lastDetail = await res.text().catch(() => "");
+        console.error(`[chat] Gemini ${res.status} model=${model}:`, lastDetail.slice(0, 400));
+        continue;
+      }
+      console.info(`[chat] Gemini streaming model=${model}`);
+      return pipeGeminiSse(res, fallbackText);
+    }
+  }
+  console.error("[chat] Gemini attempts failed", lastDetail.slice(0, 200));
+  return null;
+}
+
+function pipeGeminiSse(res: Response, fallbackText: string): Response {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
-  const reader = res.body.getReader();
+  const reader = res.body!.getReader();
+  const fallback = fallbackText;
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let buffer = "";
+      let total = 0;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const data = trimmed.slice(5).trim();
+            if (!data || data === "[DONE]") continue;
+            try {
+              const json = JSON.parse(data) as {
+                candidates?: { content?: { parts?: { text?: string }[] } }[];
+              };
+              const text = json.candidates?.[0]?.content?.parts
+                ?.map((p) => p.text || "")
+                .join("");
+              if (text) {
+                total += text.length;
+                controller.enqueue(encoder.encode(text));
+              }
+            } catch {
+              // skip malformed SSE
+            }
+          }
+        }
+        if (total === 0) {
+          console.error("[chat] Gemini empty stream — pack fallback");
+          controller.enqueue(encoder.encode(fallback));
+        }
+        controller.close();
+      } catch (error) {
+        console.error("[chat] Gemini stream failed:", error instanceof Error ? error.message : error);
+        try {
+          if (total === 0) controller.enqueue(encoder.encode(fallback));
+        } catch {
+          // ignore
+        }
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
+
+function pipeXaiSse(res: Response, fallbackText: string): Response {
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const reader = res.body!.getReader();
   const fallback = fallbackText;
 
   const stream = new ReadableStream({
