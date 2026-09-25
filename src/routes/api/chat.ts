@@ -83,23 +83,24 @@ function xaiKeys(): string[] {
   const primary = process.env.XAI_API_KEY?.trim() || "";
   const secondary = process.env.XAI_API_KEY_2?.trim() || "";
   const keys: string[] = [];
-  if (primary) keys.push(primary);
-  if (secondary && secondary !== primary) keys.push(secondary);
+  if (isUsableKey(primary)) keys.push(primary);
+  if (isUsableKey(secondary) && secondary !== primary) keys.push(secondary);
   return keys;
+}
+
+function isUsableKey(key: string): boolean {
+  if (key.length < 20) return false;
+  const lower = key.toLowerCase();
+  return !["dummy", "placeholder", "changeme", "your-key", "xxx"].some((bad) =>
+    lower.includes(bad),
+  );
 }
 
 function xaiModels(): string[] {
   const preferred = process.env.XAI_MODEL?.trim();
-  const list = [
-    preferred,
-    "grok-4.5",
-    "grok-4",
-    "grok-3-mini",
-    "grok-3-mini-fast",
-    "grok-3",
-    "grok-2-1212",
-    "grok-2-latest",
-  ].filter((m): m is string => Boolean(m));
+  const list = [preferred, "grok-4.5", "grok-3-mini", "grok-3"].filter(
+    (m): m is string => Boolean(m),
+  );
   return [...new Set(list)];
 }
 
@@ -158,7 +159,7 @@ async function streamXaiMessages(
             temperature,
             messages,
           }),
-          signal: AbortSignal.timeout(12_000),
+          signal: AbortSignal.timeout(8_000),
         });
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
@@ -168,6 +169,13 @@ async function streamXaiMessages(
       if (!res.ok || !res.body) {
         lastDetail = await res.text().catch(() => "");
         console.error(`[chat] xAI ${res.status} model=${model}:`, lastDetail.slice(0, 400));
+        const authOrCredits =
+          res.status === 401 ||
+          res.status === 403 ||
+          /invalid api key|incorrect api key|permission-denied|spending limit|used all available credits/i.test(
+            lastDetail,
+          );
+        if (authOrCredits) break;
         continue;
       }
       console.info(`[chat] xAI streaming model=${model}`);
