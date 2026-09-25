@@ -159,7 +159,7 @@ async function streamXaiMessages(
             temperature,
             messages,
           }),
-          signal: AbortSignal.timeout(8_000),
+          signal: AbortSignal.timeout(28_000),
         });
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
