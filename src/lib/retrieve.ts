@@ -1,5 +1,6 @@
 import type { AppLang } from "@/lib/language";
 import { FALLBACK_SHELL } from "@/lib/language";
+import { moreCopy } from "@/lib/more-copy";
 import { RAG_VERIFIED, vectorRetrieve } from "@/lib/rag";
 import { matchProductFamily, shouldClarify, isHallmarkSchemeMix } from "@/lib/product-playbook";
 import { isOfficialHost } from "@/lib/official-hosts";
@@ -161,6 +162,7 @@ function pickProcessSteps(query: string, r: Retrieval, clarify: string | null): 
 export function groundedFallback(query: string, language: AppLang): string {
   const r = retrieve(query);
   const shell = FALLBACK_SHELL[language] || FALLBACK_SHELL.en;
+  const more = moreCopy(language);
   const stripHash = (s: string) => s.replace(/^#+\s*/, "");
   const clarify = shouldClarify(query);
   const jeweller = JEWELLER_ASK.test(query);
@@ -214,8 +216,8 @@ export function groundedFallback(query: string, language: AppLang): string {
       if (h.url && isOfficialHost(h.url)) lines.push(`   ${h.url}`);
     });
   } else if (careOrVerify) {
-    lines.push("HUID is the unique ID stamped on a BIS-hallmarked jewellery article. Verify it in the BIS CARE app — this is not a licence.");
-    steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    more.huidSteps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+    lines.push(more.notLive);
     lines.push(stripHash(shell.notBody));
   } else if (steps.length && (applyAsk || jeweller)) {
     if (headline) lines.push(`${headline}.`);
@@ -241,6 +243,6 @@ export function groundedFallback(query: string, language: AppLang): string {
   }
   lines.push(`[FOLLOW_UP] ${clarify ? clarify : r.hasEvidence ? shell.followYes : shell.followNo}`);
   lines.push(`[META] ${r.confidence} | ${r.mode}`);
-  if (steps.length && !clarify) lines.push(`[PROCESS_STEPS] ${steps.join(" | ")}`);
+  if (steps.length && !clarify) lines.push(`[PROCESS_STEPS] ${(careOrVerify ? more.huidSteps : steps).join(" | ")}`);
   return lines.join("\n");
 }

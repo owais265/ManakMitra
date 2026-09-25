@@ -51,7 +51,7 @@ function RootDocument() {
   }, []);
 
   const htmlClass = [
-    isChat ? "mm-chat overscroll-none" : "overflow-y-auto",
+    isChat ? "mm-chat overscroll-none" : "overflow-x-clip overflow-y-auto",
     dark ? "dark" : "",
   ]
     .filter(Boolean)
@@ -71,7 +71,7 @@ function RootDocument() {
         className={
           isChat
             ? "mm-chat antialiased overscroll-none overflow-hidden h-[100dvh] w-full min-w-full bg-white text-slate-900 dark:bg-[#0c1222] dark:text-slate-100"
-            : "antialiased min-h-[100dvh] w-full overflow-x-clip overflow-y-auto bg-white text-slate-900 dark:bg-[#0c1222] dark:text-slate-100"
+            : "antialiased min-h-[100dvh] w-full bg-white text-slate-900 dark:bg-[#0c1222] dark:text-slate-100"
         }
       >
         <PreviewHostBridge />

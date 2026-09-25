@@ -10,12 +10,30 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CertifyRouteImport } from './routes/certify'
 import { Route as ChatRouteImport } from './routes/chat'
+import { Route as ComplaintRouteImport } from './routes/complaint'
+import { Route as HallmarkRouteImport } from './routes/hallmark'
+import { Route as HuidRouteImport } from './routes/huid'
+import { Route as LabsRouteImport } from './routes/labs'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ProductFileRouteImport } from './routes/product-file'
+import { Route as ReadinessRouteImport } from './routes/readiness'
+import { Route as StandardsRouteImport } from './routes/standards'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiLabsRouteImport } from './routes/api/labs'
+import { Route as ApiVerifyRouteImport } from './routes/api/verify'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CertifyRoute = CertifyRouteImport.update({
+  id: '/certify',
+  path: '/certify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -23,40 +41,201 @@ const ChatRoute = ChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComplaintRoute = ComplaintRouteImport.update({
+  id: '/complaint',
+  path: '/complaint',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HallmarkRoute = HallmarkRouteImport.update({
+  id: '/hallmark',
+  path: '/hallmark',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HuidRoute = HuidRouteImport.update({
+  id: '/huid',
+  path: '/huid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabsRoute = LabsRouteImport.update({
+  id: '/labs',
+  path: '/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductFileRoute = ProductFileRouteImport.update({
+  id: '/product-file',
+  path: '/product-file',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReadinessRoute = ReadinessRouteImport.update({
+  id: '/readiness',
+  path: '/readiness',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StandardsRoute = StandardsRouteImport.update({
+  id: '/standards',
+  path: '/standards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifyRoute = VerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLabsRoute = ApiLabsRouteImport.update({
+  id: '/api/labs',
+  path: '/api/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVerifyRoute = ApiVerifyRouteImport.update({
+  id: '/api/verify',
+  path: '/api/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
+  '/complaint': typeof ComplaintRoute
+  '/hallmark': typeof HallmarkRoute
+  '/huid': typeof HuidRoute
+  '/labs': typeof LabsRoute
+  '/privacy': typeof PrivacyRoute
+  '/product-file': typeof ProductFileRoute
+  '/readiness': typeof ReadinessRoute
+  '/standards': typeof StandardsRoute
+  '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/labs': typeof ApiLabsRoute
+  '/api/verify': typeof ApiVerifyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
+  '/complaint': typeof ComplaintRoute
+  '/hallmark': typeof HallmarkRoute
+  '/huid': typeof HuidRoute
+  '/labs': typeof LabsRoute
+  '/privacy': typeof PrivacyRoute
+  '/product-file': typeof ProductFileRoute
+  '/readiness': typeof ReadinessRoute
+  '/standards': typeof StandardsRoute
+  '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/labs': typeof ApiLabsRoute
+  '/api/verify': typeof ApiVerifyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
+  '/complaint': typeof ComplaintRoute
+  '/hallmark': typeof HallmarkRoute
+  '/huid': typeof HuidRoute
+  '/labs': typeof LabsRoute
+  '/privacy': typeof PrivacyRoute
+  '/product-file': typeof ProductFileRoute
+  '/readiness': typeof ReadinessRoute
+  '/standards': typeof StandardsRoute
+  '/terms': typeof TermsRoute
+  '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/labs': typeof ApiLabsRoute
+  '/api/verify': typeof ApiVerifyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/api/chat'
+  fullPaths:
+    | '/'
+    | '/certify'
+    | '/chat'
+    | '/complaint'
+    | '/hallmark'
+    | '/huid'
+    | '/labs'
+    | '/privacy'
+    | '/product-file'
+    | '/readiness'
+    | '/standards'
+    | '/terms'
+    | '/verify'
+    | '/api/chat'
+    | '/api/labs'
+    | '/api/verify'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chat' | '/api/chat'
-  id: '__root__' | '/' | '/chat' | '/api/chat'
+  to:
+    | '/'
+    | '/certify'
+    | '/chat'
+    | '/complaint'
+    | '/hallmark'
+    | '/huid'
+    | '/labs'
+    | '/privacy'
+    | '/product-file'
+    | '/readiness'
+    | '/standards'
+    | '/terms'
+    | '/verify'
+    | '/api/chat'
+    | '/api/labs'
+    | '/api/verify'
+  id:
+    | '__root__'
+    | '/'
+    | '/certify'
+    | '/chat'
+    | '/complaint'
+    | '/hallmark'
+    | '/huid'
+    | '/labs'
+    | '/privacy'
+    | '/product-file'
+    | '/readiness'
+    | '/standards'
+    | '/terms'
+    | '/verify'
+    | '/api/chat'
+    | '/api/labs'
+    | '/api/verify'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CertifyRoute: typeof CertifyRoute
   ChatRoute: typeof ChatRoute
+  ComplaintRoute: typeof ComplaintRoute
+  HallmarkRoute: typeof HallmarkRoute
+  HuidRoute: typeof HuidRoute
+  LabsRoute: typeof LabsRoute
+  PrivacyRoute: typeof PrivacyRoute
+  ProductFileRoute: typeof ProductFileRoute
+  ReadinessRoute: typeof ReadinessRoute
+  StandardsRoute: typeof StandardsRoute
+  TermsRoute: typeof TermsRoute
+  VerifyRoute: typeof VerifyRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiLabsRoute: typeof ApiLabsRoute
+  ApiVerifyRoute: typeof ApiVerifyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,11 +247,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/certify': {
+      id: '/certify'
+      path: '/certify'
+      fullPath: '/certify'
+      preLoaderRoute: typeof CertifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
       fullPath: '/chat'
       preLoaderRoute: typeof ChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/complaint': {
+      id: '/complaint'
+      path: '/complaint'
+      fullPath: '/complaint'
+      preLoaderRoute: typeof ComplaintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hallmark': {
+      id: '/hallmark'
+      path: '/hallmark'
+      fullPath: '/hallmark'
+      preLoaderRoute: typeof HallmarkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/huid': {
+      id: '/huid'
+      path: '/huid'
+      fullPath: '/huid'
+      preLoaderRoute: typeof HuidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/labs': {
+      id: '/labs'
+      path: '/labs'
+      fullPath: '/labs'
+      preLoaderRoute: typeof LabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product-file': {
+      id: '/product-file'
+      path: '/product-file'
+      fullPath: '/product-file'
+      preLoaderRoute: typeof ProductFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/readiness': {
+      id: '/readiness'
+      path: '/readiness'
+      fullPath: '/readiness'
+      preLoaderRoute: typeof ReadinessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/standards': {
+      id: '/standards'
+      path: '/standards'
+      fullPath: '/standards'
+      preLoaderRoute: typeof StandardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verify': {
+      id: '/verify'
+      path: '/verify'
+      fullPath: '/verify'
+      preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -82,13 +338,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/labs': {
+      id: '/api/labs'
+      path: '/api/labs'
+      fullPath: '/api/labs'
+      preLoaderRoute: typeof ApiLabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/verify': {
+      id: '/api/verify'
+      path: '/api/verify'
+      fullPath: '/api/verify'
+      preLoaderRoute: typeof ApiVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CertifyRoute: CertifyRoute,
   ChatRoute: ChatRoute,
+  ComplaintRoute: ComplaintRoute,
+  HallmarkRoute: HallmarkRoute,
+  HuidRoute: HuidRoute,
+  LabsRoute: LabsRoute,
+  PrivacyRoute: PrivacyRoute,
+  ProductFileRoute: ProductFileRoute,
+  ReadinessRoute: ReadinessRoute,
+  StandardsRoute: StandardsRoute,
+  TermsRoute: TermsRoute,
+  VerifyRoute: VerifyRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiLabsRoute: ApiLabsRoute,
+  ApiVerifyRoute: ApiVerifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

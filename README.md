@@ -8,7 +8,7 @@ ManakMitra helps MSMEs, manufacturers, consumers, students, and lab users find t
 
 > Not an official BIS or Government of India website. Catalogue **metadata** only — not paid clause text, not a licence-issuing authority, not a live BIS API.
 
-**Live demo:** [forest-yonder-apex-plum.vercel.app](https://forest-yonder-apex-plum.vercel.app)
+**Live demo:** [manakmitra.com](https://manakmitra.com) · [forest-yonder-apex-plum.vercel.app](https://forest-yonder-apex-plum.vercel.app)
 
 ---
 
@@ -16,11 +16,12 @@ ManakMitra helps MSMEs, manufacturers, consumers, students, and lab users find t
 
 - Natural-language Q&A on Indian Standards and BIS schemes
 - Product → applicable IS / CRS recommendation from catalogue metadata
-- Scheme separation: ISI, CRS, hallmarking / HUID, laboratory paths
-- Lab name/city lookup with a live LIMS link for scope
+- Scheme separation: ISI (Scheme-I), CRS (Scheme-II), hallmarking / HUID, laboratory paths
+- Guided desks: Verify product, Testing labs (PIN), HUID check, Hallmark finder, Indian Standards finder, certification steps, file a complaint
+- Lab name/city lookup with a live LIMS link for scope — no invented ratings or bookings
 - Official-host URLs only (`bis.gov.in`, `manakonline.in`, `crsbis.in`, `lims.bis.gov.in`, …)
-- UI language lock (English / Hindi) independent of query language
-- Honest refuse when evidence is missing
+- UI language lock across pages (reply language follows the header, not the query language)
+- Honest refuse when evidence is missing, or when the scheme does not match (for example HUID on a fan) — retrieval is not called
 
 ## Architecture
 
@@ -28,14 +29,15 @@ Lock-first hybrid retrieval. The policy gate runs **before** any search.
 
 ```mermaid
 flowchart LR
-  Q[Question] --> P[Policy lock]
+  Q[Question] --> U[Understand]
+  U --> P[Policy lock]
+  P -->|fail| R[Refuse / one clarify / official handoff]
   P -->|pass| S[Sparse TF-IDF pack]
-  P -->|off-topic / mix-scheme| R[Refuse]
   S --> H{Pack weak?}
   H -->|no| G[Ground pack rows]
   H -->|yes| D[trgm + pgvector HNSW → RRF]
   D --> G
-  G --> A[Answer: IS + title + URL]
+  G --> A[Answer: IS + title + URL + next action]
 ```
 
 | Stage | Behaviour |

@@ -13,33 +13,85 @@ import {
   MessageSquare,
   Microscope,
   Scale,
-  ShieldCheck,
-  Smartphone,
-  ExternalLink,
-  FlaskConical,
 } from 'lucide-react';
 import SiteHeader from '@/components/site-header';
-import ManakMark from '@/components/manak-mark';
-import { landingCopy } from '@/lib/landing-copy';
+import SiteFooter from '@/components/site-footer';
+import ProductFilm from '@/components/product-film';
+import DeskStage from '@/components/desk-stage';
+import DeckReel from '@/components/deck-reel';
+import { landingCopy, type LandingCopy } from '@/lib/landing-copy';
 import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
 
 const CAP_ICONS = [FileSearch, Award, Scale, Gem, Microscope, Globe] as const;
+
 const WHY_ICONS = [FileSearch, MessageSquare, Building2] as const;
-const LINK_META = [
-  { icon: FileSearch, href: 'https://standards.bis.gov.in/website/know-your-standards' },
-  { icon: Award, href: 'https://www.manakonline.in' },
-  { icon: ShieldCheck, href: 'https://www.crsbis.in/BIS/about-crs.do' },
-  { icon: Scale, href: 'https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en' },
-  { icon: Smartphone, href: 'https://www.bis.gov.in/bis-apps/?lang=en' },
-  { icon: Gem, href: 'https://huid.manakonline.in/MANAK/HallmarkingHomePage' },
-  { icon: MessageSquare, href: 'https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en' },
-  { icon: FlaskConical, href: 'https://lims.bis.gov.in/home/search_is_number/' },
-] as const;
 
 function openAssistant(query?: string) {
   if (typeof window !== 'undefined' && query?.trim()) {
     sessionStorage.setItem('mm_seed_query', query.trim());
   }
+}
+
+function SideField({ t, onPick }: { t: LandingCopy; onPick: (query: string) => void }) {
+  const left = [
+    { label: t.starters[0].label, body: t.caps[0].body, query: t.starters[0].query, Icon: CAP_ICONS[0], tilt: '-7deg' },
+    { label: t.caps[4].title, body: t.caps[4].body, query: t.caps[4].title, Icon: CAP_ICONS[4], tilt: '5deg' },
+    { label: t.starters[2].label, body: t.caps[3].body, query: t.starters[2].query, Icon: CAP_ICONS[3], tilt: '-3deg' },
+  ];
+  const right = [
+    { label: t.starters[1].label, body: t.caps[1].body, query: t.starters[1].query, Icon: CAP_ICONS[1], tilt: '6deg' },
+    { label: t.starters[3].label, body: t.caps[2].body, query: t.starters[3].query, Icon: CAP_ICONS[2], tilt: '-5deg' },
+    { label: t.caps[5].title, body: t.caps[5].body, query: t.caps[5].title, Icon: CAP_ICONS[5], tilt: '4deg' },
+  ];
+
+  return (
+    <>
+      <Rail side="left" tiles={left} onPick={onPick} />
+      <Rail side="right" tiles={right} onPick={onPick} />
+    </>
+  );
+}
+
+function Rail({
+  side,
+  tiles,
+  onPick,
+}: {
+  side: 'left' | 'right';
+  tiles: { label: string; body: string; query: string; Icon: (typeof CAP_ICONS)[number]; tilt: string }[];
+  onPick: (query: string) => void;
+}) {
+  return (
+    <div className={`pointer-events-none absolute inset-y-0 z-0 hidden w-44 xl:block ${side === 'left' ? 'left-3' : 'right-3'}`}>
+      <div className={`pointer-events-auto h-[200%] ${side === 'left' ? 'mm-drift' : 'mm-drift-rev'}`}>
+        {[0, 1].map((copy) => (
+          <div key={copy} className="flex h-1/2 flex-col justify-evenly py-8">
+            {tiles.map((tile) => (
+              <div key={`${side}-${copy}-${tile.label}`} className="w-[148px]" style={{ transform: `rotate(${tile.tilt})` }}>
+                <button
+                  type="button"
+                  onClick={() => onPick(tile.query)}
+                  className="group relative w-full rounded-2xl border border-[#c5d0d8] bg-white p-3 text-left shadow-[0_10px_28px_-12px_rgba(11,31,58,0.45)] ring-1 ring-bis-saffron/70 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-navy dark:border-white/30 dark:bg-[#243656] dark:shadow-[0_14px_32px_-12px_rgba(0,0,0,0.75)] dark:ring-bis-saffron"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#fff4e8] text-bis-saffron dark:bg-bis-saffron dark:text-white">
+                    <tile.Icon className="h-4 w-4" strokeWidth={2.1} />
+                  </span>
+                  <span className="mt-2 block text-[13px] leading-snug font-semibold text-[#0B1F3A] dark:text-white">{tile.label}</span>
+                  <span
+                    className={`pointer-events-none absolute top-0 z-30 hidden w-52 rounded-xl border border-[#c5d0d8] bg-white p-3 text-xs leading-relaxed font-medium text-[#0B1F3A] shadow-lg group-hover:block group-focus-visible:block dark:border-white/25 dark:bg-[#122033] dark:text-white ${
+                      side === 'left' ? 'left-[calc(100%+12px)]' : 'right-[calc(100%+12px)]'
+                    }`}
+                  >
+                    {tile.body}
+                  </span>
+                </button>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function LandingPage() {
@@ -53,15 +105,17 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-x-clip overflow-y-visible mm-theme-fade bg-white text-ink dark:bg-[#0c1222] dark:text-slate-100">
+    <div className="min-h-[100dvh] overflow-x-clip overflow-y-visible mm-theme-fade bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader variant="landing" />
 
       <main>
-        <section className="mx-auto max-w-3xl px-4 pt-14 pb-8 text-center sm:px-6 sm:pt-20">
-          <p className="mm-rise mm-d1 text-xs font-semibold tracking-[0.18em] text-bis-navy uppercase dark:text-blue-300">
+        <section className="relative overflow-hidden">
+          <SideField t={t} onPick={(query) => go(query)} />
+          <div className="relative z-10 mx-auto max-w-3xl px-4 pt-16 pb-16 text-center sm:px-6 sm:pt-24 sm:pb-20">
+          <p className="mm-rise mm-d1 text-[11px] font-semibold tracking-[0.14em] text-balance text-bis-navy uppercase sm:text-xs sm:tracking-[0.18em] dark:text-blue-300">
             {t.eyebrow}
           </p>
-          <h1 className="mm-rise mm-d2 mt-4 text-4xl font-semibold tracking-tight text-balance text-slate-900 sm:text-5xl md:text-6xl md:leading-[1.12] dark:text-slate-50">
+          <h1 className="mm-rise mm-d2 mt-4 text-3xl font-semibold tracking-tight text-balance text-ink sm:text-4xl lg:text-6xl lg:leading-[1.12] dark:text-slate-50">
             {t.h1}
           </h1>
           <p className="mm-rise mm-d3 mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-slate-600 sm:text-lg dark:text-slate-300">
@@ -72,26 +126,18 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={() => go()}
-              className="inline-flex min-h-14 items-center gap-2 rounded-full bg-bis-navy px-8 text-base font-semibold text-white transition-transform duration-150 ease-out hover:bg-bis-navy-deep active:scale-[0.96] motion-reduce:transform-none motion-reduce:active:scale-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-navy sm:min-h-16 sm:px-10 sm:text-lg"
+              className="inline-flex min-h-16 items-center gap-2.5 rounded-full bg-bis-navy px-10 text-lg font-semibold text-white shadow-[0_12px_30px_-16px_rgba(11,31,58,0.7)] transition-transform duration-150 ease-out hover:bg-bis-navy-deep active:scale-[0.96] motion-reduce:transform-none motion-reduce:active:scale-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-navy sm:min-h-[4.5rem] sm:px-12 sm:text-xl dark:bg-[#1a3f73] dark:shadow-[0_16px_36px_-18px_rgba(0,0,0,0.65)] dark:hover:bg-[#214a86]"
             >
               {t.openAssistant}
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6" />
             </button>
           </div>
-
-          <div className="mm-rise mm-d4 mt-8 flex flex-wrap justify-center gap-2">
-            {t.starters.map((s) => (
-              <button
-                key={s.label}
-                type="button"
-                onClick={() => go(s.query)}
-                className="inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-paper px-3.5 text-sm font-medium text-slate-700 transition-[transform,background-color,border-color] duration-150 ease-out hover:border-bis-navy/30 hover:bg-white hover:text-bis-navy active:scale-[0.96] motion-reduce:transform-none motion-reduce:active:scale-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-navy dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-300 dark:hover:border-blue-400/40 dark:hover:bg-[#1c2640] dark:hover:text-blue-200"
-              >
-                {s.label}
-              </button>
-            ))}
           </div>
         </section>
+
+        <ProductFilm t={t} />
+
+        <DeskStage lang={lang} />
 
         <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-2xl text-center">
@@ -108,7 +154,7 @@ export default function LandingPage() {
               return (
                 <article
                   key={c.title}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 transition-[transform,border-color] duration-200 ease-out hover:-translate-y-0.5 hover:border-bis-navy/25 dark:border-slate-700 dark:bg-[#151d30] dark:hover:border-blue-400/30"
+                  className="rounded-[1.5rem] border border-line bg-white p-5 mm-lift hover:border-bis-navy/25 dark:border-slate-700 dark:bg-[#151d30] dark:hover:border-blue-400/30"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-bis-navy dark:bg-blue-950/60 dark:text-blue-300">
                     <Icon className="h-5 w-5" strokeWidth={1.9} />
@@ -131,7 +177,7 @@ export default function LandingPage() {
             </div>
             <ol className="grid gap-4 sm:grid-cols-3 lg:col-span-2">
               {t.steps.map((step, i) => (
-                <li key={step.t} className="rounded-2xl bg-white p-5 ring-1 ring-slate-200 dark:bg-[#151d30] dark:ring-slate-700">
+                <li key={step.t} className="rounded-[1.5rem] border border-line bg-white p-5 dark:border-slate-700 dark:bg-[#151d30]">
                   <span className="font-mono text-xs font-semibold text-bis-saffron tabular-nums">
                     {String(i + 1).padStart(2, '0')}
                   </span>
@@ -171,7 +217,7 @@ export default function LandingPage() {
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex flex-col justify-between rounded-3xl border border-slate-200 p-7 sm:p-9 dark:border-slate-700 dark:bg-[#151d30]">
+            <div className="flex flex-col justify-between rounded-[1.75rem] border border-line bg-white p-7 sm:p-9 dark:border-slate-700 dark:bg-[#151d30]">
               <div>
                 <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t.notHeading}</h2>
                 <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -195,70 +241,10 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-t border-slate-200 bg-paper dark:border-slate-800 dark:bg-[#10182a]">
-          <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-semibold tracking-tight text-balance text-slate-900 dark:text-slate-50">
-                {t.portalsHeading}
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed text-pretty text-slate-600 sm:text-base dark:text-slate-300">
-                {t.portalsLede}
-              </p>
-            </div>
-            <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {t.links.map((link, i) => {
-                const meta = LINK_META[i];
-                if (!meta) return null;
-                const Icon = meta.icon;
-                return (
-                  <a
-                    key={meta.href}
-                    href={meta.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group rounded-2xl border border-slate-200 bg-white p-5 transition-[transform,border-color,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:border-bis-navy/30 hover:shadow-sm active:scale-[0.98] motion-reduce:transform-none motion-reduce:active:scale-100 dark:border-slate-700 dark:bg-[#151d30] dark:hover:border-blue-400/30"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-bis-navy dark:bg-blue-950/60 dark:text-blue-300">
-                      <Icon className="h-5 w-5" strokeWidth={1.9} />
-                    </span>
-                    <h3 className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      <span>{link.title}</span>
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition-opacity group-hover:opacity-100" />
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{link.job}</p>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+        <DeckReel t={t} />
       </main>
 
-      <footer className="border-t border-slate-200 bg-[#0f172a] dark:border-slate-800">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <ManakMark className="h-8 w-8 shrink-0 rounded-full" />
-            <p className="min-w-0 text-sm leading-relaxed text-slate-300">
-              <span className="font-semibold text-white">ManakMitra</span>
-              <span className="text-slate-500"> · </span>
-              <span className="text-slate-300">{t.tagline}</span>
-              <span className="text-slate-500"> — </span>
-              <span className="text-slate-400">{t.footer.split(/\s+[—–-]\s+/).slice(-1)[0]}</span>
-            </p>
-          </div>
-          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-300">
-            <a href="https://www.bis.gov.in" target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
-              bis.gov.in
-            </a>
-            <a href="https://www.manakonline.in" target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
-              manakonline.in
-            </a>
-            <a href="https://www.crsbis.in/BIS/about-crs.do" target="_blank" rel="noopener noreferrer" className="hover:text-white hover:underline">
-              crsbis.in
-            </a>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

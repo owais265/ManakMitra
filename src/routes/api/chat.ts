@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
+import { deskKind, deskReply } from "@/lib/desk-route";
+import { moreReply } from "@/lib/more-desk";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
+import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 
 type ChatBody = {
   query?: string;
   language?: AppLang;
+  attachment?: unknown;
 };
 
 const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra, a short-form helpdesk for Indian Standards and BIS services. You answer from a public BIS catalogue (IS titles, schemes, hallmarking, labs, complaints). Do not claim you are built by BIS or the Government of India.
@@ -20,6 +24,7 @@ SHAPE (mandatory):
 - At most ~120 words / 8 lines of visible prose before the tags.
 - NO markdown headings (no # ## ###). No "Comprehensive Overview". No BIS Act / 22,000-standards / e-BIS architecture lecture unless they asked "what is BIS".
 - Calm tone. Do not say "I am not a general chatbot" on BIS questions.
+- HUID, hallmark fineness, finding an Indian Standard, ISI/CRS/FMCS steps, a complaint, or BIS contact: calm numbered steps and one official URL. Do not invent an IS number or a fee. Do not say a licence was granted, or that ManakMitra received a complaint.
 
 GOLDEN RULE:
 - Answer ONLY using EVIDENCE. Do not invent IS numbers, fees, dates, clauses, or QCO status.
@@ -134,11 +139,19 @@ async function streamXaiMessages(
   fallbackText: string,
   temperature = 0.1,
   maxTokens = 900,
+  imageDataUrl?: string,
 ): Promise<Response> {
   const keys = xaiKeys();
+  const text = query.slice(0, 8000);
+  const userContent = imageDataUrl
+    ? [
+        { type: "text", text },
+        { type: "image_url", image_url: { url: imageDataUrl } },
+      ]
+    : text;
   const messages = [
     { role: "system" as const, content: system },
-    { role: "user" as const, content: query.slice(0, 1200) },
+    { role: "user" as const, content: userContent },
   ];
 
   let lastDetail = "";
@@ -183,7 +196,7 @@ async function streamXaiMessages(
     }
   }
 
-  const gemini = await tryGeminiStream(query, system, fallbackText, temperature, maxTokens);
+  const gemini = await tryGeminiStream(query, system, fallbackText, temperature, maxTokens, imageDataUrl);
   if (gemini) return gemini;
 
   if (!keys.length) {
@@ -200,10 +213,16 @@ async function tryGeminiStream(
   fallbackText: string,
   temperature: number,
   maxTokens: number,
+  imageDataUrl?: string,
 ): Promise<Response | null> {
   const keys = geminiKeys();
   if (!keys.length) return null;
-
+  const text = query.slice(0, 8000);
+  const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text }];
+  if (imageDataUrl) {
+    const b64 = imageDataUrl.replace(/^data:image\/png;base64,/i, "");
+    parts.push({ inline_data: { mime_type: "image/png", data: b64 } });
+  }
   let lastDetail = "";
   for (const apiKey of keys) {
     for (const model of geminiModels()) {
@@ -215,7 +234,7 @@ async function tryGeminiStream(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: system }] },
-            contents: [{ role: "user", parts: [{ text: query.slice(0, 1200) }] }],
+            contents: [{ role: "user", parts }],
             generationConfig: { temperature, maxOutputTokens: maxTokens },
           }),
           signal: AbortSignal.timeout(12_000),
@@ -370,17 +389,33 @@ export const Route = createFileRoute("/api/chat")({
         let language: AppLang = "en";
         try {
           const body = (await request.json()) as ChatBody;
-          query = body.query || "";
+          query = typeof body.query === "string" ? body.query : "";
           language = isAppLang(body.language) ? body.language : "en";
-          if (!query.trim()) {
+          const parsed = parseAttachment(body.attachment);
+          if (!parsed.ok) {
+            return new Response(parsed.error, {
+              status: 400,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            });
+          }
+          const attachment: ReadyAttachment | null = parsed.attachment;
+          if (!query.trim() && !attachment) {
             return new Response(
               UI_DICTIONARY[language].emptyQuery,
               { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
             );
           }
+          const prompt = modelPrompt(query, attachment);
           const intent = classifyIntent(query);
-          const retrievalQuery = query.trim();
-          if (intent === "social") {
+          const retrievalQuery = retrievalText(query, attachment);
+          if (!attachment) {
+            const guided = moreReply(query, language);
+            if (guided) return streamText(guided);
+          }
+          if (!attachment && deskKind(query)) {
+            return streamText(deskReply(query, language) || "");
+          }
+          if (!attachment && intent === "social") {
             return streamXaiMessages(
               query,
               language,
@@ -390,21 +425,27 @@ export const Route = createFileRoute("/api/chat")({
               500,
             );
           }
-          if (intent === "offtopic") {
+          if (!attachment && intent === "offtopic") {
             return streamText(offtopicReply(language));
           }
           const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
           const retrieved = await retrieveHybrid(retrievalQuery);
           const pack = getFallbackBISResponse(retrievalQuery, language);
-          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode}`);
-          if (retrieved.hasEvidence) {
-            const evidence = formatEvidenceBlock(retrieved);
+          const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
+          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} file=${attachment?.kind ?? "none"}`);
+          if (retrieved.hasEvidence || attachment) {
+            const evidence = retrieved.hasEvidence
+              ? formatEvidenceBlock(retrieved)
+              : "GROUNDING: no catalogue row matched. Read the attachment. Do not invent an IS number, fee, or clause.";
             return streamXaiMessages(
-              query,
+              prompt,
               language,
               SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
               pack,
+              0.1,
+              900,
+              image,
             );
           }
           return streamText(pack);

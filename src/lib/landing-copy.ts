@@ -31,6 +31,18 @@ export type LandingCopy = {
   footerPrototype: string;
   footerNotOfficial: string;
   footerMinistry: string;
+  statsEyebrow: string;
+  statsHeading: string;
+  statsHighlight: string;
+  statsLede: string;
+  stats: {
+    standards: string;
+    labs: string;
+    crs: string;
+    faqs: string;
+    langs: string;
+    hosts: string;
+  };
 };
 
 const EN: LandingCopy = {
@@ -63,7 +75,7 @@ const EN: LandingCopy = {
     },
     {
       title: "Recognised labs",
-      body: "Point to BIS Group-1 laboratories by city and official list — scope stays on the live PDF.",
+      body: "Nearest laboratories from a PIN code. A BIS laboratory is marked high. Scope of a test stays on live LIMS.",
     },
     {
       title: "Your language",
@@ -121,6 +133,19 @@ const EN: LandingCopy = {
   footerPrototype: "Prototype for Smart India Hackathon 2026 · Problem statement 26107.",
   footerNotOfficial: "Not an official website of BIS or the Government of India.",
   footerMinistry: "Prepared for the Department of Consumer Affairs (DoCA) problem statement. Always re-check live BIS portals.",
+  statsEyebrow: "On this desk",
+  statsHeading: "What the pack actually",
+  statsHighlight: "holds",
+  statsLede:
+    "Counts from the authorised catalogue loaded on this prototype. Not live BIS traffic, and not a claim that every standard is stored in full.",
+  stats: {
+    standards: "Standard titles",
+    labs: "Laboratories",
+    crs: "CRS product rows",
+    faqs: "Public FAQ notes",
+    langs: "Reply languages",
+    hosts: "Official hosts",
+  },
 };
 
 function L(p: Partial<LandingCopy> & Pick<LandingCopy, "h1" | "lede" | "openAssistant">): LandingCopy {
@@ -207,6 +232,19 @@ export const LANDING: Record<AppLang, LandingCopy> = {
     footerPrototype: "स्मार्ट इंडिया हैकथॉन 2026 का प्रोटोटाइप · समस्या कथन 26107।",
     footerNotOfficial: "यह BIS या भारत सरकार की आधिकारिक वेबसाइट नहीं है।",
     footerMinistry: "उपभोक्ता मामले विभाग (DoCA) के समस्या कथन के लिए। लाइव BIS पोर्टल पर हमेशा पुनः जाँचें।",
+    statsEyebrow: "इस डेस्क पर",
+    statsHeading: "पैक में जो सच में",
+    statsHighlight: "है",
+    statsLede:
+      "इस प्रोटोटाइप पर लदी अधिकृत सूची की गिनती। यह लाइव BIS ट्रैफ़िक नहीं है, और यह दावा नहीं कि हर मानक का पूरा पाठ यहाँ है।",
+    stats: {
+      standards: "मानक शीर्षक",
+      labs: "प्रयोगशालाएँ",
+      crs: "CRS उत्पाद पंक्तियाँ",
+      faqs: "सार्वजनिक FAQ नोट",
+      langs: "उत्तर की भाषाएँ",
+      hosts: "आधिकारिक होस्ट",
+    },
   }),
   bn: L({
     tagline: "BIS এআই সহায়ক",
@@ -831,5 +869,135 @@ export const LANDING: Record<AppLang, LandingCopy> = {
 };
 
 export function landingCopy(lang: AppLang): LandingCopy {
-  return LANDING[lang] ?? EN;
+  const base = LANDING[lang] ?? EN;
+  const tail = LANDING_TAIL[lang];
+  if (!tail) return base;
+  return {
+    ...base,
+    ...tail,
+    stats: tail.stats ?? base.stats,
+  };
 }
+
+const LANDING_TAIL: Partial<Record<AppLang, Partial<LandingCopy> & { stats?: LandingCopy["stats"] }>> = {
+  bn: {
+    langLabel: "ভাষা",
+    assistantNav: "সহায়ক",
+    footerPrototype: "স্মার্ট ইন্ডিয়া হ্যাকাথন 2026-এর প্রোটোটাইপ · সমস্যা 26107।",
+    footerNotOfficial: "এটি BIS বা ভারত সরকারের অফিসিয়াল ওয়েবসাইট নয়।",
+    footerMinistry: "ভোক্তা বিষয়ক দপ্তর (DoCA) সমস্যার জন্য। লাইভ BIS পোর্টাল আবার দেখুন।",
+    statsEyebrow: "এই ডেস্কে",
+    statsHeading: "প্যাকে আসলে যা",
+    statsHighlight: "আছে",
+    statsLede: "এই প্রোটোটাইপে লোড করা অনুমোদিত তালিকার গণনা। লাইভ BIS ট্রাফিক নয়, এবং প্রতিটি মানের পূর্ণ পাঠ এখানে আছে এমন দাবি নয়।",
+    stats: { standards: "মানের শিরোনাম", labs: "গবেষণাগার", crs: "CRS পণ্য সারি", faqs: "পাবলিক FAQ নোট", langs: "উত্তরের ভাষা", hosts: "অফিসিয়াল হোস্ট" },
+  },
+  ta: {
+    langLabel: "மொழி",
+    assistantNav: "உதவியாளர்",
+    footerPrototype: "ஸ்மார்ட் இந்தியா ஹேக்கத்தான் 2026 முன்மாதிரி · சிக்கல் 26107.",
+    footerNotOfficial: "இது BIS அல்லது இந்திய அரசின் அதிகாரப்பூர்வ இணையதளம் அல்ல.",
+    footerMinistry: "நுகர்வோர் விவகாரத் துறை (DoCA) சிக்கலுக்காக. நேரடி BIS தளத்தை மீண்டும் பாருங்கள்.",
+    statsEyebrow: "இந்த மேசையில்",
+    statsHeading: "பேக்கில் உண்மையில்",
+    statsHighlight: "உள்ளது",
+    statsLede: "இந்த முன்மாதிரியில் ஏற்றப்பட்ட அங்கீகரிக்கப்பட்ட பட்டியலின் எண்ணிக்கை. நேரடி BIS போக்குவரத்து அல்ல. ஒவ்வொரு தரத்தின் முழு உரையும் இங்கே உள்ளது என்ற கூற்று அல்ல.",
+    stats: { standards: "தரத் தலைப்புகள்", labs: "ஆய்வகங்கள்", crs: "CRS பொருள் வரிசைகள்", faqs: "பொது FAQ குறிப்புகள்", langs: "பதில் மொழிகள்", hosts: "அதிகாரப்பூர்வ ஹோஸ்ட்கள்" },
+  },
+  te: {
+    langLabel: "భాష",
+    assistantNav: "సహాయకుడు",
+    footerPrototype: "స్మార్ట్ ఇండియా హ్యాకథాన్ 2026 నమూనా · సమస్య 26107.",
+    footerNotOfficial: "ఇది BIS లేదా భారత ప్రభుత్వ అధికార వెబ్‌సైట్ కాదు.",
+    footerMinistry: "వినియోగదారు వ్యవహారాల శాఖ (DoCA) సమస్య కోసం. లైవ్ BIS పోర్టల్ మళ్లీ చూడండి.",
+    statsEyebrow: "ఈ డెస్క్‌లో",
+    statsHeading: "ప్యాక్‌లో నిజంగా",
+    statsHighlight: "ఉన్నది",
+    statsLede: "ఈ నమూనాలో లోడ్ అయిన అధికార జాబితా లెక్క. లైవ్ BIS ట్రాఫిక్ కాదు. ప్రతి ప్రమాణపు పూర్తి పాఠం ఇక్కడ ఉందనే దావా కాదు.",
+    stats: { standards: "ప్రమాణ శీర్షికలు", labs: "ప్రయోగశాలలు", crs: "CRS ఉత్పత్తి వరుసలు", faqs: "పబ్లిక్ FAQ నోట్లు", langs: "సమాధాన భాషలు", hosts: "అధికార హోస్ట్‌లు" },
+  },
+  mr: {
+    langLabel: "भाषा",
+    assistantNav: "सहायक",
+    footerPrototype: "स्मार्ट इंडिया हॅकथॉन 2026 चा नमुना · समस्या 26107.",
+    footerNotOfficial: "ही BIS किंवा भारत सरकारची अधिकृत वेबसाइट नाही.",
+    footerMinistry: "ग्राहक व्यवहार विभाग (DoCA) च्या समस्येसाठी. लाइव्ह BIS पोर्टल पुन्हा तपासा.",
+    statsEyebrow: "या डेस्कवर",
+    statsHeading: "पॅकमध्ये खरोखर",
+    statsHighlight: "आहे",
+    statsLede: "या नमुन्यावर लादलेल्या अधिकृत यादीची गणना. लाइव्ह BIS वाहतूक नाही, आणि प्रत्येक मानकाचा पूर्ण मजकूर येथे आहे असा दावा नाही.",
+    stats: { standards: "मानक शीर्षके", labs: "प्रयोगशाळा", crs: "CRS उत्पादन ओळी", faqs: "सार्वजनिक FAQ नोंदी", langs: "उत्तराच्या भाषा", hosts: "अधिकृत होस्ट" },
+  },
+  gu: {
+    langLabel: "ભાષા",
+    assistantNav: "સહાયક",
+    footerPrototype: "સ્માર્ટ ઇન્ડિયા હેકાથોન 2026 નો નમૂનો · સમસ્યા 26107.",
+    footerNotOfficial: "આ BIS કે ભારત સરકારની અધિકૃત વેબસાઇટ નથી.",
+    footerMinistry: "ગ્રાહક બાબતો વિભાગ (DoCA) ની સમસ્યા માટે. લાઇવ BIS પોર્ટલ ફરી જુઓ.",
+    statsEyebrow: "આ ડેસ્ક પર",
+    statsHeading: "પેકમાં ખરેખર",
+    statsHighlight: "છે",
+    statsLede: "આ નમૂના પર લાદેલી અધિકૃત યાદીની ગણતરી. લાઇવ BIS ટ્રાફિક નથી, અને દરેક ધોરણનું પૂરું લખાણ અહીં છે એવો દાવો નથી.",
+    stats: { standards: "ધોરણ શીર્ષક", labs: "પ્રયોગશાળાઓ", crs: "CRS ઉત્પાદન પંક્તિઓ", faqs: "જાહેર FAQ નોંધ", langs: "જવાબની ભાષાઓ", hosts: "અધિકૃત હોસ્ટ" },
+  },
+  kn: {
+    langLabel: "ಭಾಷೆ",
+    assistantNav: "ಸಹಾಯಕ",
+    footerPrototype: "ಸ್ಮಾರ್ಟ್ ಇಂಡಿಯಾ ಹ್ಯಾಕಥಾನ್ 2026 ಮಾದರಿ · ಸಮಸ್ಯೆ 26107.",
+    footerNotOfficial: "ಇದು BIS ಅಥವಾ ಭಾರತ ಸರ್ಕಾರದ ಅಧಿಕೃತ ಜಾಲತಾಣವಲ್ಲ.",
+    footerMinistry: "ಗ್ರಾಹಕ ವ್ಯವಹಾರಗಳ ಇಲಾಖೆ (DoCA) ಸಮಸ್ಯೆಗಾಗಿ. ಲೈವ್ BIS ಪೋರ್ಟಲ್ ಮತ್ತೆ ನೋಡಿ.",
+    statsEyebrow: "ಈ ಮೇಜಿನಲ್ಲಿ",
+    statsHeading: "ಪ್ಯಾಕ್‌ನಲ್ಲಿ ನಿಜವಾಗಿ",
+    statsHighlight: "ಇದೆ",
+    statsLede: "ಈ ಮಾದರಿಯಲ್ಲಿ ಲೋಡ್ ಆದ ಅಧಿಕೃತ ಪಟ್ಟಿಯ ಎಣಿಕೆ. ಲೈವ್ BIS ಸಂಚಾರವಲ್ಲ. ಪ್ರತಿ ಮಾನದಂಡದ ಪೂರ್ಣ ಪಠ್ಯ ಇಲ್ಲಿದೆ ಎಂಬ ಹೇಳಿಕೆಯಲ್ಲ.",
+    stats: { standards: "ಮಾನದಂಡ ಶೀರ್ಷಿಕೆಗಳು", labs: "ಪ್ರಯೋಗಾಲಯಗಳು", crs: "CRS ಉತ್ಪನ್ನ ಸಾಲುಗಳು", faqs: "ಸಾರ್ವಜನಿಕ FAQ ಟಿಪ್ಪಣಿಗಳು", langs: "ಉತ್ತರ ಭಾಷೆಗಳು", hosts: "ಅಧಿಕೃತ ಹೋಸ್ಟ್‌ಗಳು" },
+  },
+  ml: {
+    langLabel: "ഭാഷ",
+    assistantNav: "സഹായി",
+    footerPrototype: "സ്മാർട്ട് ഇന്ത്യ ഹാക്കത്തോൺ 2026 മാതൃക · പ്രശ്നം 26107.",
+    footerNotOfficial: "ഇത് BIS അല്ലെങ്കിൽ ഇന്ത്യാ ഗവൺമെന്റിന്റെ ഔദ്യോഗിക വെബ്സൈറ്റ് അല്ല.",
+    footerMinistry: "ഉപഭോക്തൃകാര്യ വകുപ്പ് (DoCA) പ്രശ്നത്തിന്. ലൈവ് BIS പോർട്ടൽ വീണ്ടും നോക്കുക.",
+    statsEyebrow: "ഈ ഡെസ്കിൽ",
+    statsHeading: "പായ്ക്കിൽ യഥാർത്ഥത്തിൽ",
+    statsHighlight: "ഉള്ളത്",
+    statsLede: "ഈ മാതൃകയിൽ ലോഡ് ചെയ്ത അംഗീകൃത പട്ടികയുടെ എണ്ണം. ലൈവ് BIS ട്രാഫിക് അല്ല. ഓരോ മാനദണ്ഡത്തിന്റെയും പൂർണ പാഠം ഇവിടെയുണ്ടെന്ന അവകാശവാദമല്ല.",
+    stats: { standards: "മാനദണ്ഡ ശീർഷകങ്ങൾ", labs: "ലാബുകൾ", crs: "CRS ഉൽപ്പന്ന വരികൾ", faqs: "പൊതു FAQ കുറിപ്പുകൾ", langs: "മറുപടി ഭാഷകൾ", hosts: "ഔദ്യോഗിക ഹോസ്റ്റുകൾ" },
+  },
+  pa: {
+    langLabel: "ਭਾਸ਼ਾ",
+    assistantNav: "ਸਹਾਇਕ",
+    footerPrototype: "ਸਮਾਰਟ ਇੰਡੀਆ ਹੈਕਾਥੋਨ 2026 ਦਾ ਨਮੂਨਾ · ਸਮੱਸਿਆ 26107।",
+    footerNotOfficial: "ਇਹ BIS ਜਾਂ ਭਾਰਤ ਸਰਕਾਰ ਦੀ ਅਧਿਕਾਰਤ ਵੈੱਬਸਾਈਟ ਨਹੀਂ।",
+    footerMinistry: "ਖਪਤਕਾਰ ਮਾਮਲਿਆਂ ਵਿਭਾਗ (DoCA) ਦੀ ਸਮੱਸਿਆ ਲਈ। ਲਾਈਵ BIS ਪੋਰਟਲ ਫਿਰ ਵੇਖੋ।",
+    statsEyebrow: "ਇਸ ਡੈਸਕ ਉੱਤੇ",
+    statsHeading: "ਪੈਕ ਵਿੱਚ ਅਸਲ ਵਿੱਚ",
+    statsHighlight: "ਹੈ",
+    statsLede: "ਇਸ ਨਮੂਨੇ ਉੱਤੇ ਲੱਦੀ ਅਧਿਕਾਰਤ ਸੂਚੀ ਦੀ ਗਿਣਤੀ। ਲਾਈਵ BIS ਟ੍ਰੈਫਿਕ ਨਹੀਂ, ਅਤੇ ਹਰ ਮਿਆਰ ਦਾ ਪੂਰਾ ਪਾਠ ਇੱਥੇ ਹੈ ਇਹ ਦਾਅਵਾ ਨਹੀਂ।",
+    stats: { standards: "ਮਿਆਰ ਸਿਰਲੇਖ", labs: "ਪ੍ਰਯੋਗਸ਼ਾਲਾਵਾਂ", crs: "CRS ਉਤਪਾਦ ਕਤਾਰਾਂ", faqs: "ਜਨਤਕ FAQ ਨੋਟ", langs: "ਜਵਾਬ ਦੀਆਂ ਭਾਸ਼ਾਵਾਂ", hosts: "ਅਧਿਕਾਰਤ ਹੋਸਟ" },
+  },
+  ur: {
+    langLabel: "زبان",
+    assistantNav: "معاون",
+    footerPrototype: "سمارٹ انڈیا ہیکاتھون 2026 کا نمونہ · مسئلہ 26107۔",
+    footerNotOfficial: "یہ BIS یا حکومتِ ہند کی سرکاری ویب سائٹ نہیں۔",
+    footerMinistry: "محکمہ امورِ صارفین (DoCA) کے مسئلے کے لیے۔ لائیو BIS پورٹل دوبارہ دیکھیں۔",
+    statsEyebrow: "اس ڈیسک پر",
+    statsHeading: "پیک میں حقیقتاً",
+    statsHighlight: "ہے",
+    statsLede: "اس نمونے پر لدی مجاز فہرست کی گنتی۔ لائیو BIS ٹریفک نہیں، اور یہ دعویٰ نہیں کہ ہر معیار کا پورا متن یہاں ہے۔",
+    stats: { standards: "معیار کے عنوان", labs: "تجربہ گاہیں", crs: "CRS مصنوع قطاریں", faqs: "عوامی FAQ نوٹ", langs: "جواب کی زبانیں", hosts: "سرکاری ہوسٹ" },
+  },
+  or: {
+    langLabel: "ଭାଷା",
+    assistantNav: "ସହାୟକ",
+    footerPrototype: "ସ୍ମାର୍ଟ ଇଣ୍ଡିଆ ହ୍ୟାକାଥନ୍ 2026 ନମୁନା · ସମସ୍ୟା 26107।",
+    footerNotOfficial: "ଏହା BIS କିମ୍ବା ଭାରତ ସରକାରଙ୍କ ଅଧିକୃତ ୱେବସାଇଟ୍ ନୁହେଁ।",
+    footerMinistry: "ଉପଭୋକ୍ତା ବ୍ୟାପାର ବିଭାଗ (DoCA) ସମସ୍ୟା ପାଇଁ। ଲାଇଭ୍ BIS ପୋର୍ଟାଲ ପୁଣି ଦେଖନ୍ତୁ।",
+    statsEyebrow: "ଏହି ଡେସ୍କରେ",
+    statsHeading: "ପ୍ୟାକରେ ପ୍ରକୃତରେ",
+    statsHighlight: "ଅଛି",
+    statsLede: "ଏହି ନମୁନାରେ ଲୋଡ ହୋଇଥିବା ଅଧିକୃତ ତାଲିକାର ଗଣନା। ଲାଇଭ୍ BIS ଟ୍ରାଫିକ ନୁହେଁ, ଏବଂ ପ୍ରତି ମାନକର ପୂରା ପାଠ ଏଠାରେ ଅଛି ବୋଲି ଦାବି ନୁହେଁ।",
+    stats: { standards: "ମାନକ ଶୀର୍ଷକ", labs: "ପରୀକ୍ଷାଗାର", crs: "CRS ଉତ୍ପାଦ ଧାଡ଼ି", faqs: "ସାର୍ବଜନୀନ FAQ ନୋଟ", langs: "ଉତ୍ତର ଭାଷା", hosts: "ଅଧିକୃତ ହୋଷ୍ଟ" },
+  },
+};
