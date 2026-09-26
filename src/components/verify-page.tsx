@@ -216,7 +216,7 @@ export default function VerifyPage() {
               {verdict.marks.length ? (
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {verdict.marks.map((mark) => (
-                    <li key={mark} className="rounded-full border border-line bg-paper px-3 py-1 text-sm dark:border-slate-600">{mark}</li>
+                    <li key={mark} className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100">{mark}</li>
                   ))}
                 </ul>
               ) : null}
