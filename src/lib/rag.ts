@@ -1281,8 +1281,8 @@ export function vectorRetrieve(query: string): Retrieval {
     if (/register|apply|licence|license|renew/i.test(q)) {
       pins.push(...pinTitle(/hallmarking: register online/i, 0.97));
     }
-    if (/22\s*k|\b916\b|22\s*carat|22\s*kt/i.test(q)) pins.push(...pinTitle(/gold 22 carat 22k 916/i, 0.98));
-    if (/18\s*k|\b750\b|18\s*carat|18\s*kt/i.test(q)) pins.push(...pinTitle(/gold 18 carat 18k 750/i, 0.98));
+    if (/(?<!\d)22\s*k\b|\b916\b|(?<!\d)22\s*carat\b|(?<!\d)22\s*kt\b/i.test(q)) pins.push(...pinTitle(/gold 22 carat 22k 916/i, 0.98));
+    if (/(?<!\d)18\s*k\b|\b750\b|(?<!\d)18\s*carat\b|(?<!\d)18\s*kt\b/i.test(q)) pins.push(...pinTitle(/gold 18 carat 18k 750/i, 0.98));
     if (/consist|symbol|punch|logo/i.test(q)) {
       pins.push(...pinTitle(/what does a bis hallmark consist/i, 0.97));
     }

@@ -1,4 +1,4 @@
-import { glossIndic, matchProductFamily, shouldClarify, NON_JEWELLERY_PRODUCT } from "./product-playbook.ts";
+import { glossIndic, matchProductFamily, shouldClarify, NON_JEWELLERY_PRODUCT, isHallmarkSchemeMix } from "./product-playbook.ts";
 import { moreCopy, type MoreCopy } from "./more-copy.ts";
 import type { AppLang } from "./language.ts";
 import { checkBrand, normalizeLicence } from "./verify-cert.ts";
@@ -128,8 +128,14 @@ export function checkHuid(raw: string): HuidCheck {
   }
   const loose = looseShapeCode(raw);
   if (loose) return { status: "bad", code: loose };
-  const compact = text.replace(/[^A-Z0-9]/g, "");
-  return { status: "bad", code: compact.slice(0, 16) };
+  const parts = digitsToAscii(text)
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter((part) => part && part !== "HUID");
+  if (parts.length === 1 && parts[0].length >= 4 && parts[0].length <= 12) {
+    return { status: "bad", code: parts[0] };
+  }
+  return { status: "empty", code: "" };
 }
 
 export function metalWord(copy: MoreCopy, metal: Fineness["metal"]): string {
@@ -201,6 +207,10 @@ export function moreKind(raw: string): MoreKind | null {
 
   const licence = normalizeLicence(digitsToAscii(original));
   if (/^CM\/L-\d/.test(licence) || /^R-\d/.test(licence)) return null;
+
+  // HUID on a fan, helmet, cement, or other non-jewellery good is a scheme mismatch.
+  // Leave it for the catalogue pin and the model. Do not invent a code from the sentence.
+  if (isHallmarkSchemeMix(original, matchProductFamily(original))) return null;
 
   const token = huidToken(original);
   if (token) return "huid";

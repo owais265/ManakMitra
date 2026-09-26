@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { deskKind, deskReply } from "@/lib/desk-route";
 import { moreKind, moreReply } from "@/lib/more-desk";
+import { isHallmarkSchemeMix } from "@/lib/product-playbook";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 
@@ -20,7 +21,8 @@ LANGUAGE LOCK (mandatory):
 - [SOURCE] [FOLLOW_UP] [META] [PROCESS_STEPS] tag names stay English; FOLLOW_UP text in ${langPromptName(language)}.
 
 SHAPE (mandatory):
-- First line answers the ask. Then 3–6 short bullets or numbered steps. Then official URL(s) from EVIDENCE.
+- First line answers the ask. If the user named an IS number and that number is in EVIDENCE, answer that IS, not a fineness grade.
+- Then 3–6 short bullets or numbered steps copied from EVIDENCE titles. Then official URL(s) from EVIDENCE.
 - At most ~120 words / 8 lines of visible prose before the tags.
 - NO markdown headings (no # ## ###). No "Comprehensive Overview". No BIS Act / 22,000-standards / e-BIS architecture lecture unless they asked "what is BIS".
 - Calm tone. Do not say "I am not a general chatbot" on BIS questions.
@@ -418,7 +420,8 @@ export const Route = createFileRoute("/api/chat")({
             guidedKind === "complaint" ||
             guidedKind === "contact";
           if (guided && guidedStays) return streamText(guided);
-          if (!attachment && deskKind(query)) {
+          const schemeMix = !attachment && isHallmarkSchemeMix(query);
+          if (!attachment && !schemeMix && deskKind(query)) {
             return streamText(deskReply(query, language) || "");
           }
           if (!attachment && intent === "social") {
@@ -440,21 +443,18 @@ export const Route = createFileRoute("/api/chat")({
           const pack = (guided && !guidedStays ? guided : null) || getFallbackBISResponse(retrievalQuery, language);
           const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
           console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} file=${attachment?.kind ?? "none"}`);
-          if (retrieved.hasEvidence || attachment) {
-            const evidence = retrieved.hasEvidence
-              ? formatEvidenceBlock(retrieved)
-              : "GROUNDING: no catalogue row matched. Read the attachment. Do not invent an IS number, fee, or clause.";
-            return streamXaiMessages(
-              prompt,
-              language,
-              SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
-              pack,
-              0.1,
-              1600,
-              image,
-            );
-          }
-          return streamText(pack);
+          const evidence = retrieved.hasEvidence
+            ? formatEvidenceBlock(retrieved)
+            : "GROUNDING: refuse\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST refuse to invent IS numbers, fees, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
+          return streamXaiMessages(
+            prompt,
+            language,
+            SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
+            pack,
+            0.1,
+            1600,
+            image,
+          );
         } catch {
           return new Response(UI_DICTIONARY[language].catalogueLoadError, {
             status: 200,
