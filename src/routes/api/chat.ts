@@ -29,13 +29,12 @@ HOW TO ANSWER (mandatory):
 - Sound human: "For a ceiling fan, the catalogue row is…" not "Relevant BIS catalogue hits include…". No "Comprehensive Overview". No headings. No BIS Act or "22,000 standards" lecture unless they asked what BIS is.
 - At most ~130 words before the tags. Friendly and brief. Do not say "I am not a general chatbot".
 - If a disambiguation NOTE is in EVIDENCE, ask that one question in a normal sentence before naming a single IS. No [PROCESS_STEPS] until they answer.
-- If EVIDENCE is a refusal or has no matching row, say so in one friendly line and give the official link. Do not invent a nearer answer.
-- Steps (how to apply, ISI, CRS, FMCS, HUID check) stay numbered and short, still in a human voice.
+- If MATCH is no, say in one line that this catalogue has no row, then give the official link. Do not invent a nearer answer.
+- If MATCH is yes, you MUST answer from the ranked hits. Never say there is no evidence, no verified hit, or insufficient evidence when hits are listed.
 
 GOLDEN RULE:
 - Answer ONLY using EVIDENCE. Do not invent IS numbers, fees, dates, clauses, or QCO status.
-- If EVIDENCE has no verified hits, say so in one or two lines and point to Know Your Standard.
-- If EVIDENCE starts with GROUNDING: refuse, do not invent an IS number, fee, clause, or lab accreditation.
+- Refuse an IS number, fee, clause, or lab accreditation ONLY when MATCH is no.
 - Catalogue rows are metadata (id + title). Never quote paid clause text.
 - Fees only if present in EVIDENCE — "BIS FAQ figure — re-check the live FAQ".
 - Use the current question. Carry a product forward only when a FOLLOW-UP SUBJECT line names one. Never invent a second product.
@@ -51,6 +50,7 @@ ${evidence}
 
 Suggested confidence: ${confidence}
 Suggested contextMode: ${mode}
+Copy that confidence into [META]. Do not write low when the suggested confidence is high or medium.
 
 End on separate lines:
 [SOURCE] Title | Type | Date | Link
@@ -70,6 +70,20 @@ At the end:
 [SOURCE] ManakMitra | assistant | 2026-09-07 | https://www.bis.gov.in
 [FOLLOW_UP] One recommended next lookup (product or BIS service name, not a question)
 [META] high | general`;
+
+function pickSpoken(modelText: string, fallback: string): string {
+  const spoken = modelText.trim();
+  const head = fallback.split("\n")[0] || "";
+  const fallbackReal =
+    head.length > 12 &&
+    !/not enough verified|NO VERIFIED|could not load the BIS/i.test(fallback.slice(0, 240));
+  const falseRefuse =
+    /no verified hits|not enough verified|insufficient evidence|catalogue has no row|no matching row|do not have enough/i.test(
+      spoken.slice(0, 500),
+    );
+  if (fallbackReal && (!spoken || falseRefuse)) return fallback;
+  return spoken || fallback;
+}
 
 function streamText(text: string): Response {
   const encoder = new TextEncoder();
@@ -272,7 +286,7 @@ function pipeGeminiSse(res: Response, fallbackText: string): Response {
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = "";
-      let total = 0;
+      let spoken = "";
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -292,24 +306,20 @@ function pipeGeminiSse(res: Response, fallbackText: string): Response {
               const text = json.candidates?.[0]?.content?.parts
                 ?.map((p) => p.text || "")
                 .join("");
-              if (text) {
-                total += text.length;
-                controller.enqueue(encoder.encode(text));
-              }
+              if (text) spoken += text;
             } catch {
               // skip malformed SSE
             }
           }
         }
-        if (total === 0) {
-          console.error("[chat] Gemini empty stream — pack fallback");
-          controller.enqueue(encoder.encode(fallback));
-        }
+        const chosen = pickSpoken(spoken, fallback);
+        if (!spoken.trim()) console.error("[chat] Gemini empty stream — pack fallback");
+        controller.enqueue(encoder.encode(chosen));
         controller.close();
       } catch (error) {
         console.error("[chat] Gemini stream failed:", error instanceof Error ? error.message : error);
         try {
-          if (total === 0) controller.enqueue(encoder.encode(fallback));
+          if (!spoken) controller.enqueue(encoder.encode(fallback));
         } catch {
           // ignore
         }
@@ -335,7 +345,7 @@ function pipeXaiSse(res: Response, fallbackText: string): Response {
   const stream = new ReadableStream({
     async start(controller) {
       let buffer = "";
-      let total = 0;
+      let spoken = "";
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -353,24 +363,20 @@ function pipeXaiSse(res: Response, fallbackText: string): Response {
                 choices?: { delta?: { content?: string } }[];
               };
               const text = json.choices?.[0]?.delta?.content;
-              if (text) {
-                total += text.length;
-                controller.enqueue(encoder.encode(text));
-              }
+              if (text) spoken += text;
             } catch {
               // skip malformed SSE
             }
           }
         }
-        if (total === 0) {
-          console.error("[chat] xAI empty stream — pack fallback");
-          controller.enqueue(encoder.encode(fallback));
-        }
+        const chosen = pickSpoken(spoken, fallback);
+        if (!spoken.trim()) console.error("[chat] xAI empty stream — pack fallback");
+        controller.enqueue(encoder.encode(chosen));
         controller.close();
       } catch (error) {
         console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
         try {
-          if (total === 0) controller.enqueue(encoder.encode(fallback));
+          if (!spoken) controller.enqueue(encoder.encode(fallback));
         } catch {
           // ignore
         }
@@ -454,7 +460,7 @@ export const Route = createFileRoute("/api/chat")({
           console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
           let evidence = retrieved.hasEvidence
             ? formatEvidenceBlock(retrieved)
-            : "GROUNDING: refuse\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST refuse to invent IS numbers, fees, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
+            : "MATCH: no\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST say the catalogue has no row. Do not invent an IS number, fee, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
           if (followSubject) {
             evidence = `FOLLOW-UP SUBJECT: ${followSubject}\nThe user already named this. Answer the new question about it. Do not switch products.\n\n${evidence}`;
           }

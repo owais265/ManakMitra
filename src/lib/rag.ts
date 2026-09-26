@@ -839,6 +839,17 @@ export function vectorRetrieve(query: string): Retrieval {
   const early = policyEarlyHits(q, family, knownTyped, unknownTyped, typedMismatch, noTableAsk, actSectionAsk);
   if (early && early.length) {
     const mix = isHallmarkSchemeMix(q, family);
+    const extra: EvidenceHit[] = [];
+    for (const id of knownTyped.slice(0, 2)) {
+      const ch = exactIsChunk(id);
+      if (ch) extra.push(toHit(ch, 0.96));
+    }
+    if (mix && family && family.scheme !== "hallmark") {
+      for (const id of family.is.slice(0, 2)) {
+        const ch = exactIsChunk(id);
+        if (ch && !extra.some((h) => h.title === ch.title)) extra.push(toHit(ch, 0.92));
+      }
+    }
     const refusePin =
       mix ||
       typedMismatch ||
@@ -848,7 +859,7 @@ export function vectorRetrieve(query: string): Retrieval {
       packHasNoTableAsk(q);
     return {
       query: q,
-      hits: early,
+      hits: uniqueHits([...extra, ...early]).slice(0, 8),
       mode: mix ? "hallmarking" : family ? "standards" : "general",
       confidence: "high",
       hasEvidence: true,
@@ -1504,9 +1515,8 @@ export function vectorRetrieve(query: string): Retrieval {
       ...pinTitle(/hypothetical \/ policy scenario/i, 0.9),
     ]);
     finalHits = uniqueHits([...pin, ...finalHits.filter((h) => h.kind !== "standard" && h.kind !== "crs")]);
-  } else if (typedMismatch || (knownTyped.length && noTableAsk) || (knownTyped.length && family && !knownTyped.some((id) => family.is.includes(id)))) {
+  } else if (knownTyped.length && noTableAsk) {
     const pin = uniqueHits([
-      ...(typedMismatch ? pinTitle(/is number vs product — do not mix catalogue rows/i, 0.99) : []),
       ...pinTitle(/hypothetical \/ policy scenario — pack has no sop/i, 0.98),
       ...pinTitle(/know your standard — look up/i, 0.94),
     ]);
@@ -1514,10 +1524,28 @@ export function vectorRetrieve(query: string): Retrieval {
     for (const id of knownTyped) {
       const ch = exactIsChunk(id);
       if (!ch) continue;
-      const note = typedMismatch
-        ? "NOTE: Catalogue title is metadata only. This IS is not the specification for the other product in the query. Clause / sampling / transition tables are not stored."
-        : "NOTE: Full clause text, sampling plans, and amendment transition days are not stored. Use Know Your Standard / e-Sale.";
-      noted.push({ ...toHit(ch, 0.35), body: `${ch.body}\n${note}` });
+      noted.push({
+        ...toHit(ch, 0.35),
+        body: `${ch.body}\nNOTE: Full clause text, sampling plans, and amendment transition days are not stored. Use Know Your Standard / e-Sale.`,
+      });
+    }
+    const rest = finalHits.filter(
+      (h) => h.kind !== "standard" && !pin.some((x) => x.title === h.title),
+    );
+    finalHits = uniqueHits([...pin, ...noted, ...rest]);
+  } else if (
+    typedMismatch ||
+    (knownTyped.length && family && !knownTyped.some((id) => family.is.includes(id)))
+  ) {
+    const pin = uniqueHits([...pinTitle(/is number vs product — do not mix catalogue rows/i, 0.97)]);
+    const noted: EvidenceHit[] = [];
+    for (const id of knownTyped) {
+      const ch = exactIsChunk(id);
+      if (!ch) continue;
+      noted.push({
+        ...toHit(ch, 0.99),
+        body: `${ch.body}\nNOTE: The user named this IS. Say this title first. It is not the specification for the other product in the question. Do not say the catalogue is empty.`,
+      });
     }
     const famHits = family
       ? finalHits.filter((h) => {
@@ -1525,13 +1553,7 @@ export function vectorRetrieve(query: string): Retrieval {
           return Boolean(n && family.is.includes(n));
         })
       : [];
-    const rest = finalHits.filter(
-      (h) =>
-        h.kind !== "standard" &&
-        !pin.some((x) => x.title === h.title) &&
-        !famHits.includes(h),
-    );
-    finalHits = uniqueHits([...pin, ...famHits, ...noted, ...rest]);
+    finalHits = uniqueHits([...noted, ...pin, ...famHits.slice(0, 1)]);
   } else if (
     speculative &&
     family?.scheme !== "crs" &&

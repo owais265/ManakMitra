@@ -34,9 +34,9 @@ export async function retrieveHybrid(query: string): Promise<Retrieval> {
 
 export function formatEvidenceBlock(r: Retrieval): string {
   if (!r.hasEvidence) {
-    return `GROUNDING: refuse
+    return `MATCH: no
 NO VERIFIED HITS in the local BIS catalogue for this query.
-You MUST refuse to invent IS numbers, fees, or mandatory status.
+You MUST say the catalogue has no row for this, and you MUST NOT invent an IS number, fee, or mandatory status.
 Point the user to:
 - Know Your Standard: https://standards.bis.gov.in/website/know-your-standards
 - Compulsory certification list: https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en
@@ -48,10 +48,13 @@ Point the user to:
         `${i + 1}. [${h.kind}] ${h.title}\n${h.body.slice(0, 700)}\nURL: ${h.url}`,
     )
     .join("\n\n");
-  return `GROUNDING: ${r.grounding}
+  const limit =
+    r.grounding === "refuse"
+      ? "LIMIT: a row below is a scheme or policy limit. Explain that limit in plain words, then any product or IS row that is also listed. Do not say the catalogue is empty.\n"
+      : "";
+  return `MATCH: yes
 CATALOGUE RULE: every row below is metadata (IS id + title / official note). Full clause text of paid Indian Standards is NOT stored. Never quote a clause number that is not written here.
-${r.grounding === "refuse" ? "REFUSE PATH: do not invent an IS, fee, clause, or lab-scope. Use the official URL in the rows. If an IS is absent, say so and point to Know Your Standard.\n" : ""}
-ANSWER SHAPE (mandatory):
+${limit}ANSWER SHAPE (mandatory):
 - Talk to the user. First sentence answers their exact product or IS in plain words, using the matching row.
 - Then at most 5 short sentences or bullets. No markdown headings. No catalogue dump. No BIS Act lecture.
 - Official URLs from the rows only — never a search engine.
