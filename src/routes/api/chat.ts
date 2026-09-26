@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { deskKind, deskReply } from "@/lib/desk-route";
-import { moreReply } from "@/lib/more-desk";
+import { moreKind, moreReply } from "@/lib/more-desk";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 
@@ -408,10 +408,16 @@ export const Route = createFileRoute("/api/chat")({
           const prompt = modelPrompt(query, attachment);
           const intent = classifyIntent(query);
           const retrievalQuery = retrievalText(query, attachment);
-          if (!attachment) {
-            const guided = moreReply(query, language);
-            if (guided) return streamText(guided);
-          }
+          const guided = !attachment ? moreReply(query, language) : null;
+          const guidedKind = !attachment ? moreKind(query) : null;
+          // HUID, hallmark, complaint and contact stay exact cards.
+          // Standards and certification are phrased by the model from the same pack.
+          const guidedStays =
+            guidedKind === "huid" ||
+            guidedKind === "hallmark" ||
+            guidedKind === "complaint" ||
+            guidedKind === "contact";
+          if (guided && guidedStays) return streamText(guided);
           if (!attachment && deskKind(query)) {
             return streamText(deskReply(query, language) || "");
           }
@@ -431,7 +437,7 @@ export const Route = createFileRoute("/api/chat")({
           const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
           const retrieved = await retrieveHybrid(retrievalQuery);
-          const pack = getFallbackBISResponse(retrievalQuery, language);
+          const pack = (guided && !guidedStays ? guided : null) || getFallbackBISResponse(retrievalQuery, language);
           const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
           console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} file=${attachment?.kind ?? "none"}`);
           if (retrieved.hasEvidence || attachment) {
@@ -444,7 +450,7 @@ export const Route = createFileRoute("/api/chat")({
               SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
               pack,
               0.1,
-              900,
+              1600,
               image,
             );
           }

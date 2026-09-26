@@ -184,6 +184,15 @@ async function denseExtras(
   return hits;
 }
 
+function sparseQuery(query: string, family: ReturnType<typeof matchProductFamily> | null): string {
+  const is = query.match(/\bIS[\s/.:-]*(\d{3,5})\b/i);
+  if (is) return `IS ${is[1]}`;
+  const alias = family?.aliases.find((name) => /[A-Za-z]{4,}/.test(name));
+  if (alias) return alias.slice(0, 80);
+  const toks = distinctiveTokens(query).slice(0, 4);
+  return (toks.join(" ") || query).slice(0, 80);
+}
+
 async function trgmExtras(
   query: string,
   family: ReturnType<typeof matchProductFamily> | null,
@@ -192,7 +201,7 @@ async function trgmExtras(
   const sb = getServiceSupabase();
   if (!sb) return [];
   const { data, error } = await sb.rpc("search_pack_docs_trgm", {
-    q: query.slice(0, 200),
+    q: sparseQuery(query, family),
     match_count: 6,
     filter_kind: kind,
     filter_family: family?.id ?? null,
@@ -238,7 +247,7 @@ async function hybridRpcExtras(
   let embedding: number[] | null = null;
   if (await canDense(kind)) embedding = await embedQuery(query);
   const { data, error } = await sb.rpc("search_pack_docs_hybrid", {
-    q: query.slice(0, 200),
+    q: sparseQuery(query, family),
     query_embedding: embedding,
     match_count: 8,
     filter_kind: kind,

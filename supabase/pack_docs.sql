@@ -148,7 +148,8 @@ as $$
     and (
       p.title % q
       or p.title ilike '%' || q || '%'
-      or (p.is_number is not null and p.is_number = q)
+      or p.text ilike '%' || q || '%'
+      or (p.is_number is not null and (p.is_number = q or q ilike '%' || p.is_number || '%'))
     )
   order by similarity(coalesce(p.title, ''), coalesce(q, '')) desc
   limit greatest(1, least(coalesce(match_count, 8), 32));
