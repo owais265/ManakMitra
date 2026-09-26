@@ -5,7 +5,7 @@ import {
   FileText, 
   Send, Mic, CheckCircle, 
   AlertTriangle, XCircle, ExternalLink, X,
-  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download
+  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
 import { parseAttachment } from '@/lib/attachments';
@@ -19,6 +19,8 @@ import {
   initLang,
 } from '@/lib/lang-store';
 import SiteHeader from '@/components/site-header';
+import { needsDeviceLocation } from '@/lib/desk-route';
+import { deskUi } from '@/lib/desk-ui';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -45,6 +47,9 @@ interface Message {
   isError?: boolean;
   retryQuery?: string;
   processSteps?: string[];
+  askLocation?: boolean;
+  locationBusy?: boolean;
+  locationError?: string;
 }
 
 function createUniqueId(): string {
@@ -714,6 +719,8 @@ export default function ChatBotApp() {
             msg.confidence = 'low';
             msg.isError = true;
             msg.retryQuery = text;
+          } else if (!file && needsDeviceLocation(text)) {
+            msg.askLocation = true;
           }
         }
         return newMsgs;
@@ -892,6 +899,61 @@ export default function ChatBotApp() {
                              // Remove the error message and the previous user message
                              setMessages(prev => prev.filter((_, i) => i !== index && i !== index - 1));
                              handleSend(msg.retryQuery!);
+                           }
+                         : undefined
+                     }
+                     onUseLocation={
+                       msg.askLocation
+                         ? () => {
+                             const ui = deskUi(language);
+                             if (!navigator.geolocation) {
+                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, locationError: ui.errNoGeo } : m));
+                               return;
+                             }
+                             setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, locationBusy: true, locationError: undefined } : m));
+                             navigator.geolocation.getCurrentPosition(
+                               (pos) => {
+                                 void (async () => {
+                                   try {
+                                     const response = await fetch('/api/labs', {
+                                       method: 'POST',
+                                       headers: { 'Content-Type': 'application/json' },
+                                       body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+                                     });
+                                     const json = await response.json() as {
+                                       error?: string;
+                                       nearby?: { name: string; km: number; confidence: string }[];
+                                       farther?: { name: string; km: number; confidence: string }[];
+                                       mapUrl?: string;
+                                     };
+                                     if (!response.ok) throw new Error(json.error || 'labs');
+                                     const rows = (json.nearby?.length ? json.nearby : json.farther || []).slice(0, 3);
+                                     const lines = [
+                                       json.nearby?.length ? ui.nearYes : ui.nearNo,
+                                       '',
+                                       ...rows.map((lab) => `- ${lab.name} — ${lab.km} km. ${lab.confidence === 'high' ? ui.bisLab : ui.cityList}.`),
+                                       json.mapUrl ? `- ${json.mapUrl}` : '',
+                                     ].filter(Boolean).join('\n');
+                                     setMessages(prev => [
+                                       ...prev.map(m => m.id === msg.id ? { ...m, locationBusy: false, askLocation: false } : m),
+                                       {
+                                         id: createUniqueId(),
+                                         role: 'ai' as const,
+                                         text: lines,
+                                         timestamp: getFormattedTime(),
+                                         confidence: rows.some((lab) => lab.confidence === 'high') ? 'high' as const : 'low' as const,
+                                       },
+                                     ]);
+                                   } catch {
+                                     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, locationBusy: false, locationError: ui.errLabs } : m));
+                                   }
+                                 })();
+                               },
+                               () => {
+                                 setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, locationBusy: false, locationError: ui.errGeoDenied } : m));
+                               },
+                               { enableHighAccuracy: true, timeout: 8000 },
+                             );
                            }
                          : undefined
                      }
@@ -1122,7 +1184,7 @@ const WelcomeState = ({ language }: { language: AppLang }) => (
   </div>
 );
 
-const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: AppLang, onRetry?: () => void }) => {
+const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message, language: AppLang, onRetry?: () => void, onUseLocation?: () => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
 
@@ -1218,6 +1280,21 @@ const MessageBubble = ({ msg, language, onRetry }: { msg: Message, language: App
             </div>
           )}
           
+          {msg.askLocation && onUseLocation && isFinishedTyping && !msg.isError && (
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={onUseLocation}
+                disabled={msg.locationBusy}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold mm-press hover:border-bis-navy disabled:opacity-60 dark:border-slate-600"
+              >
+                <MapPin className="h-4 w-4" />
+                {msg.locationBusy ? deskUi(language).finding : deskUi(language).useDevice}
+              </button>
+              {msg.locationError ? <p className="mt-2 text-sm text-red-700 dark:text-red-300">{msg.locationError}</p> : null}
+            </div>
+          )}
+
           {msg.isError && onRetry && (
             <div className="mt-4 flex">
               <button 

@@ -10,7 +10,7 @@ export type DeskKind = "verify" | "labs" | "file";
 
 const FILE_CUE = /\b(product file|still open|open points|before (i|we) apply)\b/i;
 const LAB_CUE =
-  /\b(nearest|nearby|near me|closest)\b.{0,40}\b(labs?|laborator(?:y|ies))\b|\b(labs?|laborator(?:y|ies))\b.{0,24}\b(near|nearby|closest|pin|pincode|pin code)\b|\bfind (me )?a (testing )?(lab|labs|laboratory)\b(?!\s+clause)|\bpin(?:\s*code)?\b.{0,30}\b(labs?|laborator(?:y|ies))\b/i;
+  /\b(nearest|nearby|near me|closest|around me|near this|my location|current location)\b.{0,48}\b(labs?|laborator(?:y|ies))\b|\b(labs?|laborator(?:y|ies))\b.{0,32}\b(near|nearby|closest|around|pin|pincode|pin code|my location|this location)\b|\bfind (me )?(a )?(testing )?(lab|labs|laboratory)\b(?!\s+clause)|\bpin(?:\s*code)?\b.{0,30}\b(labs?|laborator(?:y|ies))\b/i;
 const VERIFY_CUE = /\b(verify|check)(?:\s+(?:this|my|the))?(?:\s+(?:mark|number|licence|license|product|huid))?\s+\S+/i;
 const LICENCE = /\bCM\/?L[-\s]?\d{6,8}\b|\bR-\d{6,12}\b/i;
 const PIN = /(?<!IS[\s/.-]*)\b([1-9][0-9]{5})\b/i;
@@ -49,6 +49,14 @@ export function deskKind(query: string): DeskKind | null {
   if (isLabAsk(text)) return "labs";
   if (isVerifyAsk(text)) return "verify";
   return null;
+}
+
+/** Browser location is asked only for a lab search that has no PIN and no known city. */
+export function needsDeviceLocation(query: string): boolean {
+  if (deskKind(query) !== "labs") return false;
+  const q = glossIndic(query);
+  if (PIN.test(q) || cityToPin(q)) return false;
+  return true;
 }
 
 function isLabAsk(text: string): boolean {
