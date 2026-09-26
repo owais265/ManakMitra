@@ -224,8 +224,38 @@ const PIN_CENTROID: Record<string, { lat: number; lng: number; label: string }> 
 
 export function pinCentroid(pin: string): { lat: number; lng: number; label: string } | null {
   if (!/^[1-9][0-9]{5}$/.test(pin)) return null;
-  return PIN_CENTROID[pin.slice(0, 2)] ?? { lat: 22.5, lng: 79, label: "India" };
+  return (
+    PIN_EXACT[pin] ??
+    PIN_CENTROID[pin.slice(0, 2)] ?? { lat: 22.5, lng: 79, label: "India" }
+  );
 }
+
+const PIN_EXACT: Record<string, { lat: number; lng: number; label: string }> = {
+  "400601": { lat: 19.2183, lng: 72.9781, label: "Thane" },
+  "324001": { lat: 25.2138, lng: 75.8648, label: "Kota" },
+  "625001": { lat: 9.9252, lng: 78.1198, label: "Madurai" },
+  "390001": { lat: 22.3072, lng: 73.1812, label: "Vadodara" },
+  "440001": { lat: 21.1458, lng: 79.0882, label: "Nagpur" },
+  "141001": { lat: 30.901, lng: 75.8573, label: "Ludhiana" },
+  "143001": { lat: 31.634, lng: 74.8723, label: "Amritsar" },
+  "422001": { lat: 19.9975, lng: 73.7898, label: "Nashik" },
+  "282001": { lat: 27.1767, lng: 78.0081, label: "Agra" },
+  "395001": { lat: 21.1702, lng: 72.8311, label: "Surat" },
+  "452001": { lat: 22.7196, lng: 75.8577, label: "Indore" },
+  "641001": { lat: 11.0168, lng: 76.9558, label: "Coimbatore" },
+  "190001": { lat: 34.0837, lng: 74.7973, label: "Srinagar" },
+  "490001": { lat: 21.1938, lng: 81.3509, label: "Bhilai" },
+  "520001": { lat: 16.5062, lng: 80.648, label: "Vijayawada" },
+  "208001": { lat: 26.4499, lng: 80.3319, label: "Kanpur" },
+  "342001": { lat: 26.2389, lng: 73.0243, label: "Jodhpur" },
+  "474001": { lat: 26.2183, lng: 78.1828, label: "Gwalior" },
+  "482001": { lat: 23.1815, lng: 79.9864, label: "Jabalpur" },
+  "834001": { lat: 23.3441, lng: 85.3096, label: "Ranchi" },
+  "360001": { lat: 22.3039, lng: 70.8022, label: "Rajkot" },
+  "221001": { lat: 25.3176, lng: 82.9739, label: "Varanasi" },
+  "121001": { lat: 28.4089, lng: 77.3178, label: "Faridabad" },
+  "250001": { lat: 28.9845, lng: 77.7064, label: "Meerut" },
+};
 
 /** A published city, mapped to a real PIN prefix so "labs in Raipur" can rank distance. */
 const CITY_PIN: { re: RegExp; pin: string }[] = [
@@ -247,6 +277,30 @@ const CITY_PIN: { re: RegExp; pin: string }[] = [
   { re: /bhubaneswar|भुवनेश्वर/i, pin: "751001" },
   { re: /guwahati|गुवाहाटी/i, pin: "781001" },
   { re: /patna|पटना/i, pin: "800001" },
+  { re: /\bthane\b|ठाणे/i, pin: "400601" },
+  { re: /\bkota\b|कोटा/i, pin: "324001" },
+  { re: /\bmadurai\b|मदुरै/i, pin: "625001" },
+  { re: /\bvadodara\b|\bbaroda\b|वडोदरा/i, pin: "390001" },
+  { re: /\bnagpur\b|नागपुर/i, pin: "440001" },
+  { re: /\bludhiana\b|लुधियाना/i, pin: "141001" },
+  { re: /\bamritsar\b|अमृतसर/i, pin: "143001" },
+  { re: /\bnashik\b|\bnasik\b|नासिक/i, pin: "422001" },
+  { re: /\bagra\b|आगरा/i, pin: "282001" },
+  { re: /\bsurat\b|सूरत/i, pin: "395001" },
+  { re: /\bindore\b|इंदौर/i, pin: "452001" },
+  { re: /\bcoimbatore\b|कोयंबटूर/i, pin: "641001" },
+  { re: /\bsrinagar\b|श्रीनगर/i, pin: "190001" },
+  { re: /\bbhilai\b|भिलाई/i, pin: "490001" },
+  { re: /\bvijayawada\b|विजयवाड़ा/i, pin: "520001" },
+  { re: /\bkanpur\b|कानपुर/i, pin: "208001" },
+  { re: /\bjodhpur\b|जोधपुर/i, pin: "342001" },
+  { re: /\bgwalior\b|ग्वालियर/i, pin: "474001" },
+  { re: /\bjabalpur\b|जबलपुर/i, pin: "482001" },
+  { re: /\branchi\b|रांची/i, pin: "834001" },
+  { re: /\brajkot\b|राजकोट/i, pin: "360001" },
+  { re: /\bvaranasi\b|\bbanaras\b|वाराणसी/i, pin: "221001" },
+  { re: /\bfaridabad\b|फरीदाबाद/i, pin: "121001" },
+  { re: /\bmeerut\b|मेरठ/i, pin: "250001" },
   { re: /mohali|मोहाली/i, pin: "160055" },
 ];
 

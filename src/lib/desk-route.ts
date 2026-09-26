@@ -8,7 +8,7 @@ import { glossIndic } from "./product-playbook.ts";
 
 export type DeskKind = "verify" | "labs" | "file";
 
-const FILE_CUE = /\b(product file|still open|open points|before (i|we) apply)\b/i;
+const FILE_CUE = /\b(product file|still open|open points|before (i|we) apply|to my catalogue)\b/i;
 const LAB_CUE =
   /\b(nearest|nearby|near me|closest|around me|near this|my location|current location)\b.{0,48}\b(labs?|laborator(?:y|ies))\b|\b(labs?|laborator(?:y|ies))\b.{0,32}\b(near|nearby|closest|around|pin|pincode|pin code|my location|this location)\b|\bfind (me )?(a )?(testing )?(lab|labs|laboratory)\b(?!\s+clause)|\bpin(?:\s*code)?\b.{0,30}\b(labs?|laborator(?:y|ies))\b/i;
 const VERIFY_CUE = /\b(verify|check)(?:\s+(?:this|my|the))?(?:\s+(?:mark|number|licence|license|product|huid))?\s+\S+/i;

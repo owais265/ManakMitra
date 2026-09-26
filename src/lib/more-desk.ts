@@ -105,6 +105,18 @@ export function huidToken(raw: string): string {
   return "";
 }
 
+const SHAPE_STOP = new Set(["NUMBER", "VERIFY", "CREATE", "SHOULD", "MARKED", "ONLINE", "INDIAN", "SEARCH"]);
+
+/** All-letter 6-character mark on a shape question. Digit codes stay in huidToken. */
+export function looseShapeCode(raw: string): string {
+  if (!/\b(6-character code|gold ring has|check the shape)\b/i.test(raw)) return "";
+  const text = digitsToAscii(raw).toUpperCase();
+  for (const token of text.split(/[^A-Z0-9]+/)) {
+    if (token.length === 6 && /^[A-Z0-9]{6}$/.test(token) && !SHAPE_STOP.has(token)) return token;
+  }
+  return "";
+}
+
 export function checkHuid(raw: string): HuidCheck {
   const text = normalizeLicence(digitsToAscii(raw));
   if (!text) return { status: "empty", code: "" };
@@ -114,6 +126,8 @@ export function checkHuid(raw: string): HuidCheck {
     if (HUID_BLOCK.test(token)) return { status: "bad", code: token };
     return { status: "ok", code: token };
   }
+  const loose = looseShapeCode(raw);
+  if (loose) return { status: "bad", code: loose };
   const compact = text.replace(/[^A-Z0-9]/g, "");
   return { status: "bad", code: compact.slice(0, 16) };
 }
@@ -190,6 +204,7 @@ export function moreKind(raw: string): MoreKind | null {
 
   const token = huidToken(original);
   if (token) return "huid";
+  if (looseShapeCode(original)) return "huid";
   if (/\bhuid\b/i.test(q) && (/\b(verify|check|what|how|status|code)\b/i.test(q) || q.length < 80)) return "huid";
 
   if (/\b(jeweller|ahc)\b/i.test(q) && /\b(regist\w*|licen[cs]e|apply|application)\b/i.test(q) && !/\bisi\b/i.test(q)) {
@@ -198,10 +213,10 @@ export function moreKind(raw: string): MoreKind | null {
 
   const hallmarkish =
     !NON_JEWELLERY_PRODUCT.test(q) &&
-    (/\b(22|18|14|9|23|21)\s*(?:k|kt|carat|karat)\b/i.test(q) ||
+    (/\b(22|18|14|9|23|21|24)\s*(?:k|kt|carat|karat)\b/i.test(q) ||
       (/\b(995|958|916|875|750|585|375|999|970|925|835|800|950|850)\b/.test(q) &&
         (/\b(hallmark|gold|silver|platinum|purity|fineness|carat|karat|jewell)/i.test(q) || q.length < 32)) ||
-      (/\b900\b/.test(q) && /\b(hallmark|silver|platinum|purity|fineness)\b/i.test(q)) ||
+      (/\b900\b/.test(q) && /\b(hallmark|silver|platinum|purity|fineness|jewell|gold|pure)\b/i.test(q)) ||
       (/\bhallmark\b/i.test(q) && q.length < 140 && !/\b(cement|laptop|helmet)\b/i.test(q)));
   if (hallmarkish && !/\b(how (do|to)|process|steps|apply)\b/i.test(q)) return "hallmark";
   if (/\b(how (do|to|can)|process|steps|apply|application)\b/i.test(q) && /\b(hallmark|jeweller|ahc)\b/i.test(q) && !/\bisi\b/i.test(q)) {
@@ -220,7 +235,7 @@ export function moreKind(raw: string): MoreKind | null {
   }
 
   if (
-    /\b(how (do|to|can) (i |we )?(find|look up|search)|where (do|can) i find|standards? finder|find (the |an )?(indian )?standards?|which indian standard|what indian standard|applicable indian standard|indian standard for|which standard (for|applies)|what standard applies)\b/i.test(
+    /\b(how (do|to|can) (i |we )?(find|look up|search)|where (do|can) i find|standards? finder|find (the |an )?(indian )?standards?|find the is number|is number for|authorised catalogue standard|authorized catalogue standard|which indian standard|what indian standard|applicable indian standard|indian standard for|which standard (for|applies)|what standard applies)\b/i.test(
       q,
     )
   ) {
@@ -254,7 +269,7 @@ export function moreReply(raw: string, language: AppLang = "en"): string | null 
   if (!kind) return null;
   const copy = moreCopy(language);
   if (kind === "huid") return huidReply(raw, copy);
-  if (kind === "hallmark") return hallmarkReply(raw, copy);
+  if (kind === "hallmark") return hallmarkReply(raw, copy, language);
   if (kind === "standards") return standardsReply(raw, language, copy);
   if (kind === "certify") return certifyReply(raw, copy);
   if (kind === "complaint") return complaintReply(copy);
@@ -277,7 +292,22 @@ function huidReply(raw: string, copy: MoreCopy): string {
   return lines.join("\n");
 }
 
-function hallmarkReply(raw: string, copy: MoreCopy): string {
+const NOT_24: Partial<Record<AppLang, string>> = {
+  en: "24K is not a BIS hallmark fineness. Listed gold grades are 22K/916, 23K/958, 18K/750, 14K/585 and 9K/375.",
+  hi: "24K BIS हॉलमार्क शुद्धता नहीं है। सोने के दर्ज ग्रेड 22K/916, 23K/958, 18K/750, 14K/585 और 9K/375 हैं।",
+  bn: "24K কোনো BIS হলমার্ক বিশুদ্ধতা নয়। তালিকাভুক্ত সোনার গ্রেড 22K/916, 23K/958, 18K/750।",
+  ta: "24K ஒரு BIS ஹால்மார்க் தரம் அல்ல. பட்டியலிலுள்ள தங்கம் 22K/916, 18K/750.",
+  te: "24K BIS హాల్‌మార్క్ స్వచ్ఛత కాదు. నమోదైన బంగారం 22K/916, 18K/750.",
+  mr: "24K ही BIS हॉलमार्क शुद्धता नाही. नोंदलेले सोने 22K/916, 18K/750.",
+  gu: "24K BIS હોલમાર્ક શુદ્ધતા નથી. નોંધાયેલું સોનું 22K/916, 18K/750.",
+  kn: "24K ಬಿಐಎಸ್ ಹಾಲ್‌ಮಾರ್ಕ್ ಶುದ್ಧತೆ ಅಲ್ಲ. ನೋಂದಾಯಿತ ಚಿನ್ನ 22K/916, 18K/750.",
+  ml: "24K ഒരു BIS ഹാൾമാർക്ക് ശുദ്ധതയല്ല. പട്ടികയിലുള്ള സ്വർണം 22K/916, 18K/750.",
+  pa: "24K ਬੀਆਈਐਸ ਹਾਲਮਾਰਕ ਸ਼ੁੱਧਤਾ ਨਹੀਂ। ਦਰਜ ਸੋਨਾ 22K/916, 18K/750।",
+  ur: "24K بی آئی ایس ہال مارک خالصیت نہیں۔ درج شدہ سونا 22K/916، 18K/750۔",
+  or: "24K ଏକ BIS ହଲମାର୍କ ବିଶୁଦ୍ଧତା ନୁହେଁ। ତାଲିକାରେ ସୁନା 22K/916, 18K/750।",
+};
+
+function hallmarkReply(raw: string, copy: MoreCopy, language: AppLang): string {
   const found = findHallmark(raw);
   const q = prepQuery(raw);
   const applying = /\b(how (do|to|can)|process|steps|apply|application|regist)/i.test(q);
@@ -286,6 +316,8 @@ function hallmarkReply(raw: string, copy: MoreCopy): string {
   if (found.grade) {
     lines.push(gradeLine(copy, found.grade));
     if (found.ambiguous900) lines.push(copy.both900);
+  } else if (/\b24\s*k\b/i.test(q)) {
+    lines.push(NOT_24[language] || NOT_24.en || copy.hmMiss);
   } else if (applying || jeweller) {
     lines.push(copy.hmJeweller);
   } else {
