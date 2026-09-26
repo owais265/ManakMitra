@@ -56,7 +56,7 @@ const catalogue = rag.catalogue || [];
 
 const TOKEN_RE = /[a-z0-9]+|[\u0900-\u097f]+/gi;
 const STOP = new Set(
-  "a an the of for to in on and or is are with from by as at be this that your my i we you kya hai ke ki ka ko se mein aur ek please tell me about what how can do get apply bis indian standard standards".split(
+  "a an the of for to in on and or is are with from by as at be this that your my i we you kya hai ke ki ka ko se mein aur ek please tell me about what how can do get apply bis indian standard standards batao bata bataye yaar bhai bro sir madam mujhe hume hame chahiye kaunsa konsa kaunsi kis liye wala wali wale hota hote karun karo karna pls pe par kaise kese kyu kyon matlab nahi nahin abhi thoda dekho dekh samjhao samjha product products kisliye".split(
     " ",
   ),
 );
