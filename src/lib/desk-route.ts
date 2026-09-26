@@ -1,5 +1,5 @@
 import type { AppLang } from "./language.ts";
-import { NEAR_KM, cityToPin, pinCentroid, rankLabs, type Lab } from "./labs.ts";
+import { NEAR_KM, areaMapUrl, cityToPin, pinCentroid, rankLabs, type RankedLab } from "./labs.ts";
 import { readinessSheet } from "./readiness.ts";
 import { checkBrand, checkLicence, type VerifyVerdict } from "./verify-cert.ts";
 import { chromeCopy } from "./chrome-copy.ts";
@@ -17,14 +17,6 @@ const PIN = /(?<!IS[\s/.-]*)\b([1-9][0-9]{5})\b/i;
 
 function tags(title: string, type: string, url: string, follow: string, confidence: string, mode: string): string {
   return `[SOURCE] ${title} | ${type} | 2026-09-25 | ${url}\n[FOLLOW_UP] ${follow}\n[META] ${confidence} | ${mode}`;
-}
-
-function mapSearch(label: string, lat: number, lng: number): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${label} ${lat},${lng}`)}`;
-}
-
-function mapDir(origin: { lat: number; lng: number }, lab: Lab): string {
-  return `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${lab.lat},${lab.lng}`;
 }
 
 function link(label: string, url: string): string {
@@ -73,6 +65,30 @@ function isVerifyAsk(text: string): boolean {
   if (/^\s*how\b/i.test(text)) return false;
   if (/\b(process|procedure|steps)\b/i.test(text)) return false;
   return VERIFY_CUE.test(text);
+}
+
+/** Same board the labs page draws: embed map, nearby list, then farther. Null until a PIN or known city is in the query. */
+export type LabBoard = {
+  origin: { lat: number; lng: number; label: string };
+  nearby: RankedLab[];
+  farther: RankedLab[];
+  mapUrl: string;
+};
+
+export function labsFinderResult(query: string): LabBoard | null {
+  if (deskKind(query) !== "labs") return null;
+  const q = glossIndic(query);
+  const pin = query.match(PIN)?.[1] ?? q.match(PIN)?.[1] ?? cityToPin(q) ?? "";
+  const origin = pin ? pinCentroid(pin) : null;
+  if (!origin) return null;
+  const product = payload(query).replace(pin, "").trim();
+  const ranked = rankLabs(origin.lat, origin.lng, product);
+  return {
+    origin,
+    nearby: ranked.filter((lab) => lab.km <= NEAR_KM),
+    farther: ranked.filter((lab) => lab.km > NEAR_KM).slice(0, 4),
+    mapUrl: areaMapUrl(origin.lat, origin.lng, `${origin.label} ${pin}`, product),
+  };
 }
 
 export function deskReply(query: string, language: AppLang = "en"): string | null {
@@ -149,10 +165,9 @@ function brandPoints(verdict: VerifyVerdict, language: AppLang): string {
 
 function labsText(query: string, language: AppLang): string {
   const ui = deskUi(language);
-  const pin = query.match(PIN)?.[1] ?? cityToPin(glossIndic(query)) ?? "";
-  const origin = pin ? pinCentroid(pin) : null;
+  const board = labsFinderResult(query);
   const lims = "https://lims.bis.gov.in/home/search_is_number/";
-  if (!origin) {
+  if (!board) {
     return [
       ui.pinNeed,
       "",
@@ -163,28 +178,33 @@ function labsText(query: string, language: AppLang): string {
       tags("BIS LIMS", "portal", lims, chromeCopy(language).labs, "low", "general"),
     ].join("\n");
   }
-  const product = payload(query).replace(pin, "").trim();
-  const ranked = rankLabs(origin.lat, origin.lng, product);
-  const nearby = ranked.filter((lab) => lab.km <= NEAR_KM).slice(0, 3);
-  const shown = nearby.length ? nearby : ranked.slice(0, 3);
-  const area = mapSearch(`${origin.label} ${pin}`, origin.lat, origin.lng);
-  const place = link(`${origin.label} (${pin})`, area);
+  const pin = query.match(PIN)?.[1] ?? cityToPin(glossIndic(query)) ?? "";
+  const closest = board.nearby[0] || board.farther[0];
+  if (!closest) {
+    return [
+      ui.pinNeed,
+      "",
+      tags("BIS LIMS", "portal", lims, chromeCopy(language).labs, "low", "general"),
+    ].join("\n");
+  }
+  const place = `${board.origin.label} (${pin})`;
   const head =
     language === "en"
-      ? nearby.length
-        ? `Laboratories within ${NEAR_KM} km of ${place}.`
-        : `No listed laboratory is within ${NEAR_KM} km of ${place}. Nearest:`
-      : nearby.length
-        ? `${ui.nearYes} ${NEAR_KM} km · ${place}.`
-        : `${ui.nearNo} ${NEAR_KM} km · ${place}.`;
+      ? board.nearby.length
+        ? `Closest laboratory to ${place}: ${closest.name}, ${closest.km} km.`
+        : `No listed laboratory is within ${NEAR_KM} km of ${place}. Closest: ${closest.name}, ${closest.km} km.`
+      : board.nearby.length
+        ? `${ui.nearYes} ${NEAR_KM} km · ${place}. ${closest.name}, ${closest.km} km.`
+        : `${ui.nearNo} ${NEAR_KM} km · ${place}. ${closest.name}, ${closest.km} km.`;
   const lines = [head, ""];
+  const shown = board.nearby.length ? board.nearby.slice(0, 3) : [closest];
   for (const lab of shown) {
     const kind = lab.confidence === "high" ? ui.bisLab : ui.cityList;
-    lines.push(`- ${link(`${lab.name} — ${lab.km} km`, mapDir(origin, lab))}. ${kind}.`);
+    lines.push(`- ${lab.name} — ${lab.km} km. ${kind}.`);
   }
   lines.push(`- ${ui.scopeLine} ${link(ui.openLims, lims)}.`);
   lines.push("");
-  lines.push(tags("BIS LIMS", "portal", lims, chromeCopy(language).labs, nearby.some((lab) => lab.confidence === "high") ? "high" : "low", "general"));
+  lines.push(tags("BIS LIMS", "portal", lims, chromeCopy(language).labs, board.nearby.some((lab) => lab.confidence === "high") ? "high" : "low", "general"));
   return lines.join("\n");
 }
 

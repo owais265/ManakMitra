@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { deskKind, deskReply, needsDeviceLocation } from "../src/lib/desk-route.ts";
+import { deskKind, deskReply, labsFinderResult, needsDeviceLocation } from "../src/lib/desk-route.ts";
 
 const products = [
   "cement", "LED bulb", "helmet", "pressure cooker", "ceiling fan", "toy",
@@ -81,9 +81,13 @@ for (const [name, rows] of groups) {
     const kind = deskKind(row.q);
     const loc = needsDeviceLocation(row.q);
     const reply = deskReply(row.q) || "";
+    const board = labsFinderResult(row.q);
     const problems = [];
     if (kind !== row.kind) problems.push(`kind ${kind} != ${row.kind}`);
     if (loc !== row.loc) problems.push(`location ${loc} != ${row.loc}`);
+    if (row.kind === "labs" && !row.loc && !board) problems.push("map missing");
+    if ((row.kind !== "labs" || row.loc) && board) problems.push("map leaked");
+    if (reply.includes("google.com/maps")) problems.push("maps link in chat text");
     if (row.loc && !/PIN|pin/i.test(reply) && kind === "labs") problems.push("location ask missing PIN line");
     for (const bit of row.must || []) if (!reply.includes(bit)) problems.push(`missing ${bit}`);
     for (const bit of row.ban || []) if (reply.includes(bit)) problems.push(`banned ${bit}`);

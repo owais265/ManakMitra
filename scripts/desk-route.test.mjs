@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { deskKind, deskReply } from "../src/lib/desk-route.ts";
+import { deskKind, deskReply, labsFinderResult } from "../src/lib/desk-route.ts";
 import { listProductFamilies } from "../src/lib/product-playbook.ts";
 
 const families = listProductFamilies();
@@ -51,7 +51,11 @@ for (let i = 0; i < TOTAL; i += 1) {
     assert.match(reply, new RegExp(pin));
     assert.match(reply, /km/);
     assert.match(reply, /\[SOURCE\]/);
-    assert.match(reply, /google\.com\/maps/);
+    assert.equal(reply.includes("google.com/maps"), false);
+    const board = labsFinderResult(query);
+    assert.ok(board);
+    assert.match(board.mapUrl, /output=embed/);
+    assert.ok(board.nearby.length + board.farther.length > 0);
     assert.equal(/57%|compliant|not a pass/i.test(reply), false);
   } else if (slot === 5) {
     const query = `verify ${product}`;

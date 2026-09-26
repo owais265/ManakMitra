@@ -19,8 +19,9 @@ import {
   initLang,
 } from '@/lib/lang-store';
 import SiteHeader from '@/components/site-header';
-import { needsDeviceLocation } from '@/lib/desk-route';
+import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk-route';
 import { deskUi } from '@/lib/desk-ui';
+import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -50,6 +51,7 @@ interface Message {
   askLocation?: boolean;
   locationBusy?: boolean;
   locationError?: string;
+  labBoard?: LabBoard;
 }
 
 function createUniqueId(): string {
@@ -719,8 +721,10 @@ export default function ChatBotApp() {
             msg.confidence = 'low';
             msg.isError = true;
             msg.retryQuery = text;
-          } else if (!file && needsDeviceLocation(text)) {
-            msg.askLocation = true;
+          } else if (!file) {
+            const board = labsFinderResult(text);
+            if (board) msg.labBoard = board;
+            else if (needsDeviceLocation(text)) msg.askLocation = true;
           }
         }
         return newMsgs;
@@ -922,18 +926,18 @@ export default function ChatBotApp() {
                                      });
                                      const json = await response.json() as {
                                        error?: string;
-                                       nearby?: { name: string; km: number; confidence: string }[];
-                                       farther?: { name: string; km: number; confidence: string }[];
+                                       origin?: { lat: number; lng: number; label: string };
+                                       nearby?: RankedLab[];
+                                       farther?: RankedLab[];
                                        mapUrl?: string;
                                      };
-                                     if (!response.ok) throw new Error(json.error || 'labs');
-                                     const rows = (json.nearby?.length ? json.nearby : json.farther || []).slice(0, 3);
-                                     const lines = [
-                                       json.nearby?.length ? ui.nearYes : ui.nearNo,
-                                       '',
-                                       ...rows.map((lab) => `- ${lab.name} — ${lab.km} km. ${lab.confidence === 'high' ? ui.bisLab : ui.cityList}.`),
-                                       json.mapUrl ? `- ${json.mapUrl}` : '',
-                                     ].filter(Boolean).join('\n');
+                                     if (!response.ok || !json.origin || !json.mapUrl) throw new Error(json.error || 'labs');
+                                     const nearby = json.nearby || [];
+                                     const farther = json.farther || [];
+                                     const closest = nearby[0] || farther[0];
+                                     const lines = closest
+                                       ? `${nearby.length ? ui.nearYes : ui.nearNo}. ${closest.name}, ${closest.km} km.`
+                                       : ui.errLabs;
                                      setMessages(prev => [
                                        ...prev.map(m => m.id === msg.id ? { ...m, locationBusy: false, askLocation: false } : m),
                                        {
@@ -941,7 +945,13 @@ export default function ChatBotApp() {
                                          role: 'ai' as const,
                                          text: lines,
                                          timestamp: getFormattedTime(),
-                                         confidence: rows.some((lab) => lab.confidence === 'high') ? 'high' as const : 'low' as const,
+                                         confidence: nearby.some((lab) => lab.confidence === 'high') ? 'high' as const : 'low' as const,
+                                         labBoard: {
+                                           origin: json.origin,
+                                           nearby,
+                                           farther,
+                                           mapUrl: json.mapUrl,
+                                         },
                                        },
                                      ]);
                                    } catch {
@@ -1184,6 +1194,52 @@ const WelcomeState = ({ language }: { language: AppLang }) => (
   </div>
 );
 
+function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang }) {
+  const t = deskUi(language);
+  const pool = board.nearby.length ? board.nearby.slice(0, 3) : board.farther.slice(0, 1);
+  const [picked, setPicked] = useState(pool[0]?.id ?? '');
+  const selected = pool.find((lab) => lab.id === picked) || pool[0];
+  if (!selected) return null;
+  return (
+    <div className="mt-4 w-full min-w-0">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+        {t.fromPlace} {board.origin.label}
+      </p>
+      <iframe
+        key={selected.id}
+        title={selected.name}
+        src={mapsEmbedUrl(selected, board.origin)}
+        className="h-56 w-full rounded-2xl border border-slate-200 bg-white sm:h-72 dark:border-slate-700"
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+      />
+      <ul className="mt-3 grid gap-2">
+        {pool.map((lab) => (
+          <li key={lab.id}>
+            <button
+              type="button"
+              onClick={() => setPicked(lab.id)}
+              className={`w-full rounded-2xl border px-3 py-2.5 text-left ${picked === lab.id ? 'border-bis-navy' : 'border-slate-200 dark:border-slate-600'}`}
+            >
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="font-semibold text-slate-900 dark:text-slate-50">{lab.name}</span>
+                <span className="shrink-0 text-sm text-bis-navy dark:text-blue-300">{lab.km} km</span>
+              </span>
+              <span className="mt-1 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{lab.address}</span>
+              <span className={`mt-1 inline-flex text-xs font-semibold ${lab.confidence === 'high' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {lab.confidence === 'high' ? t.bisLab : t.cityList}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <a href={mapsSearchUrl(selected)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-blue-700 dark:text-blue-300">
+        {t.openMaps}
+      </a>
+    </div>
+  );
+}
+
 const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message, language: AppLang, onRetry?: () => void, onUseLocation?: () => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
@@ -1280,6 +1336,10 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
             </div>
           )}
           
+          {msg.labBoard && isFinishedTyping && !msg.isError ? (
+            <ChatLabMap board={msg.labBoard} language={language} />
+          ) : null}
+
           {msg.askLocation && onUseLocation && isFinishedTyping && !msg.isError && (
             <div className="mt-4">
               <button
