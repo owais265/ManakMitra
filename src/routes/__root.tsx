@@ -51,7 +51,7 @@ function RootDocument() {
   }, []);
 
   const htmlClass = [
-    isChat ? "mm-chat overscroll-none" : "overflow-x-clip overflow-y-auto",
+    isChat ? "mm-chat overscroll-none" : "",
     dark ? "dark" : "",
   ]
     .filter(Boolean)

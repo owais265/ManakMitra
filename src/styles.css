@@ -140,6 +140,13 @@
     transform: none;
   }
 
+  .mm-stage-glide {
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
   @keyframes mm-drop {
     from {
       opacity: 0;

@@ -105,7 +105,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] overflow-x-clip overflow-y-visible mm-theme-fade bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
+    <div className="min-h-[100dvh] overflow-x-visible mm-theme-fade bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader variant="landing" />
 
       <main>
