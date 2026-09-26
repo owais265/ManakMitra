@@ -107,7 +107,7 @@ export default function ReadinessPage() {
                     <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t.family}</h3>
                     <ul className="mt-2 flex flex-wrap gap-2">
                       {sheet.related.map((mark) => (
-                        <li key={mark} className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100">{mark}</li>
+                        <li key={mark} className="rounded-full border border-current/40 bg-current/[0.08] px-3 py-1 text-sm font-medium text-current">{mark}</li>
                       ))}
                     </ul>
                   </section>
