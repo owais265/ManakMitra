@@ -67,6 +67,15 @@ function isVerifyAsk(text: string): boolean {
   return VERIFY_CUE.test(text);
 }
 
+/** Chat keeps a fixed card only for a licence number or an explicit product file. Other questions go to retrieval. */
+export function chatHardCard(query: string): "file" | "licence" | null {
+  const text = query.trim();
+  if (!text) return null;
+  if (FILE_CUE.test(text)) return "file";
+  if (LICENCE.test(text)) return "licence";
+  return null;
+}
+
 /** Same board the labs page draws: embed map, nearby list, then farther. Null until a PIN or known city is in the query. */
 export type LabBoard = {
   origin: { lat: number; lng: number; label: string };

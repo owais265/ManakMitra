@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
-import { deskKind, deskReply } from "@/lib/desk-route";
-import { moreKind, moreReply } from "@/lib/more-desk";
-import { isHallmarkSchemeMix } from "@/lib/product-playbook";
+import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
+import { checkHuid, huidToken, moreReply } from "@/lib/more-desk";
+import { isHallmarkSchemeMix, matchProductFamily } from "@/lib/product-playbook";
+import { isFollowCue, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 
@@ -10,6 +11,7 @@ type ChatBody = {
   query?: string;
   language?: AppLang;
   attachment?: unknown;
+  history?: ChatTurn[];
 };
 
 const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra. You sound like a careful colleague who just checked the public BIS catalogue, not like a database printout and not like a general chatbot. You do not claim you are built by BIS or the Government of India.
@@ -36,7 +38,8 @@ GOLDEN RULE:
 - If EVIDENCE starts with GROUNDING: refuse, do not invent an IS number, fee, clause, or lab accreditation.
 - Catalogue rows are metadata (id + title). Never quote paid clause text.
 - Fees only if present in EVIDENCE — "BIS FAQ figure — re-check the live FAQ".
-- Use THIS query only. Do not reuse a product or IS from any earlier message.
+- Use the current question. Carry a product forward only when a FOLLOW-UP SUBJECT line names one. Never invent a second product.
+- If EVIDENCE has a disambiguation NOTE, ask that ONE question in a normal sentence. Do not assume gold 22K/916, a helmet type, a pipe material, or jeweller-vs-consumer. Do not emit [PROCESS_STEPS] until they specify.
 - Labs: names in EVIDENCE only. Confirm live scope on BIS LIMS. Never "accredited for IS X".
 - How to apply / ISI / CRS / FMCS: numbered 4–6 steps from process rows + the full host https://www.manakonline.in or https://www.crsbis.in from EVIDENCE, not a search engine. Never write akonline.in.
 - CONSUMER hallmark / HUID / CARE / verify gold: [PROCESS_STEPS] = BIS CARE Verify HUID only. FORBIDDEN: Apply online as jeweller, Submit with no docs/fee, Get instant registration, Sell only AHC-hallmarked pieces.
@@ -409,23 +412,27 @@ export const Route = createFileRoute("/api/chat")({
             );
           }
           const prompt = modelPrompt(query, attachment);
-          const intent = classifyIntent(query);
-          const retrievalQuery = retrievalText(query, attachment);
-          const guided = !attachment ? moreReply(query, language) : null;
-          const guidedKind = !attachment ? moreKind(query) : null;
-          // HUID, hallmark, complaint and contact stay exact cards.
-          // Standards and certification are phrased by the model from the same pack.
-          const guidedStays =
-            guidedKind === "huid" ||
-            guidedKind === "hallmark" ||
-            guidedKind === "complaint" ||
-            guidedKind === "contact";
-          if (guided && guidedStays) return streamText(guided);
-          const schemeMix = !attachment && isHallmarkSchemeMix(query);
-          if (!attachment && !schemeMix && deskKind(query)) {
-            return streamText(deskReply(query, language) || "");
+          const history = Array.isArray(body.history) ? body.history : [];
+          let followSubject = "";
+          if (!attachment && isFollowCue(query)) {
+            for (let i = history.length - 1; i >= 0; i -= 1) {
+              const earlier = typeof history[i]?.text === "string" ? history[i].text : "";
+              const family = matchProductFamily(earlier);
+              const isNo = earlier.match(/\bIS[\s/.:-]*\d{3,5}\b/i)?.[0];
+              const subject = [family?.aliases[0], isNo].filter(Boolean).join(" ");
+              if (subject) {
+                followSubject = subject;
+                break;
+              }
+            }
           }
-          if (!attachment && intent === "social") {
+          const intent = classifyIntent(query);
+          const retrievalQuery = followSubject
+            ? `${followSubject} ${retrievalText(query, attachment)}`.slice(0, 500)
+            : retrievalText(query, attachment);
+          const hard = !attachment ? chatHardCard(query) : null;
+          if (hard) return streamText(deskReply(query, language) || "");
+          if (!attachment && !followSubject && intent === "social") {
             return streamXaiMessages(
               query,
               language,
@@ -435,18 +442,35 @@ export const Route = createFileRoute("/api/chat")({
               500,
             );
           }
-          if (!attachment && intent === "offtopic") {
+          if (!attachment && !followSubject && intent === "offtopic") {
             return streamText(offtopicReply(language));
           }
           const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
           const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
           const retrieved = await retrieveHybrid(retrievalQuery);
-          const pack = (guided && !guidedStays ? guided : null) || getFallbackBISResponse(retrievalQuery, language);
+          const guided = !attachment ? moreReply(query, language) : null;
+          const pack = guided || getFallbackBISResponse(retrievalQuery, language);
           const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
-          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} file=${attachment?.kind ?? "none"}`);
-          const evidence = retrieved.hasEvidence
+          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
+          let evidence = retrieved.hasEvidence
             ? formatEvidenceBlock(retrieved)
             : "GROUNDING: refuse\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST refuse to invent IS numbers, fees, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
+          if (followSubject) {
+            evidence = `FOLLOW-UP SUBJECT: ${followSubject}\nThe user already named this. Answer the new question about it. Do not switch products.\n\n${evidence}`;
+          }
+          if (!attachment && deskKind(query) === "labs") {
+            const board = labsFinderResult(query);
+            const facts = deskReply(query, language) || "";
+            evidence += `\n\nLAB BOARD (names and kilometres only from here; do not invent a closer lab): ${board ? "map will show beside this reply." : "no pin yet."}\n${facts}`;
+          }
+          const code = huidToken(query);
+          if (code) {
+            const shape = checkHuid(query);
+            evidence += `\n\nHUID SHAPE: ${shape.code} is ${shape.status === "ok" ? "a 6-character shape" : "not a valid 6-character HUID"}. This is not the BIS CARE register. Do not say pass, fail, or genuine.`;
+          }
+          if (!attachment && isHallmarkSchemeMix(query)) {
+            evidence += "\n\nSCHEME: Hallmark and HUID do not apply to this product. Say that first. Point to ISI or CRS, not jewellery verification.";
+          }
           return streamXaiMessages(
             prompt,
             language,

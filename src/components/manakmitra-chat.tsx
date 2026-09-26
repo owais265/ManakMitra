@@ -631,6 +631,10 @@ export default function ChatBotApp() {
         body: JSON.stringify({ 
           query: text, 
           language: replyLang,
+          history: messages
+            .filter((m) => m.role === 'user' && m.text)
+            .slice(-3)
+            .map((m) => ({ role: 'user', text: m.text.slice(0, 400) })),
           attachment: file
             ? { name: file.name, kind: file.kind, text: file.text, dataUrl: file.dataUrl }
             : undefined,

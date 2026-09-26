@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { deskKind, deskReply, labsFinderResult } from "../src/lib/desk-route.ts";
+import { deskKind, deskReply, labsFinderResult, chatHardCard } from "../src/lib/desk-route.ts";
 import { listProductFamilies } from "../src/lib/product-playbook.ts";
 
 const families = listProductFamilies();
@@ -85,5 +85,9 @@ assert.match(deskReply("CM/L-1234567", "hi") || "", /CM\/L-1234567/);
 assert.match(deskReply("CM/L-1234567", "hi") || "", /MANAK|आकार|ISI/);
 assert.match(deskReply("find a laboratory", "ta") || "", /PIN|ஆய்வக/);
 assert.equal(deskKind("hello"), null);
+assert.equal(chatHardCard("verify cement"), null);
+assert.equal(chatHardCard("verify CM/L-1234567"), "licence");
+assert.equal(chatHardCard("product file for cement"), "file");
+assert.equal(chatHardCard("find a laboratory near 110001"), null);
 console.log(`desk checks ${passed}`);
 if (passed !== TOTAL) process.exit(1);
