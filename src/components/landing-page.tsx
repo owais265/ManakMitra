@@ -95,16 +95,16 @@ function ArcCard({
   count: number;
   onPick: (query: string) => void;
 }) {
-  const loop = side === 'left' ? 42 : 48;
+  const loop = 44;
   return (
     <div
       className={`mm-arc pointer-events-auto ${side === 'left' ? 'mm-arc-l' : 'mm-arc-r'}`}
-      style={{ animationDelay: `${-((index + 0.5) * loop) / count}s` }}
+      style={{ animationDelay: `${-(index * loop) / count}s` }}
     >
       <button
         type="button"
         onClick={() => onPick(tile.query)}
-        className="group relative w-full rounded-2xl border-2 border-[#0B1F3A] bg-white px-3 py-2.5 text-left shadow-[0_14px_28px_-12px_rgba(11,31,58,0.38)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-12px_rgba(11,31,58,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-saffron dark:border-bis-saffron dark:bg-[#1b335c] dark:shadow-[0_16px_32px_-14px_rgba(0,0,0,0.75)]"
+        className="group relative flex h-[5.25rem] w-full flex-col rounded-2xl border-2 border-[#0B1F3A] bg-white px-3 py-2 text-left shadow-[0_14px_28px_-12px_rgba(11,31,58,0.38)] transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-12px_rgba(11,31,58,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-saffron dark:border-bis-saffron dark:bg-[#1b335c] dark:shadow-[0_16px_32px_-14px_rgba(0,0,0,0.75)]"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0B1F3A] text-bis-saffron dark:bg-bis-saffron dark:text-[#0B1F3A]">
           <tile.Icon className="h-3.5 w-3.5" strokeWidth={2.1} />

@@ -208,8 +208,8 @@
     will-change: transform, opacity;
   }
 
-  .mm-arc-l { left: 0.75rem; animation: mm-arc-l 42s linear infinite; }
-  .mm-arc-r { right: 0.75rem; left: auto; animation: mm-arc-r 48s linear infinite; }
+  .mm-arc-l { left: 0.75rem; animation: mm-arc-l 44s linear infinite; }
+  .mm-arc-r { right: 0.75rem; left: auto; animation: mm-arc-r 44s linear infinite; }
 
   .mm-arc:hover,
   .mm-arc:focus-within {
@@ -233,7 +233,7 @@
 
   @keyframes mm-arc-r {
     0% {
-      transform: translate3d(min(0px, calc(40rem - 50vw)), 98vh, 0);
+      transform: translate3d(min(0px, calc(40rem - 50vw)), 96vh, 0);
       opacity: 0;
     }
     12% { opacity: 1; }
