@@ -91,7 +91,20 @@ const INDIC_GLOSS: Record<string, string> = {
 };
 
 export function glossIndic(q: string): string {
-  let g = q;
+  let g = q
+    .replace(/\bhalll+marks?\b|\bhallmrks?\b|\bhallmak\b|\bhall\s*marks?\b/gi, "hallmark")
+    .replace(/\bhuidd+\b|\bhuid code\b/gi, "huid")
+    .replace(/\bcertif+cations?\b|\bcertifcate\b|\bcertfication\b|\bcertificationn\b/gi, "certification")
+    .replace(/\blicnces?\b|\bliscences?\b|\blisences?\b|\blicences?\b/gi, "licence")
+    .replace(/\bstandrds?\b|\bstanders?\b|\bstandars?\b|\bstanderd\b/gi, "standard")
+    .replace(/\bisii+\b/gi, "isi")
+    .replace(/\bcrss+\b/gi, "crs")
+    .replace(/\blaboratr(?:y|ies)\b|\blabrator(?:y|ies)\b/gi, "laboratory")
+    .replace(/\bhelmat(?:e|es)?\b|\bhelmett\b/gi, "helmet")
+    .replace(/\bsements?\b|\bcemen\b/gi, "cement")
+    .replace(/\bpresure cookers?\b/gi, "pressure cooker")
+    .replace(/\bjevell?er(?:y|ies)\b|\bjewelery\b/gi, "jewellery")
+    .replace(/\bmanak ?on ?line\b/gi, "manakonline");
   for (const [hi, en] of Object.entries(INDIC_GLOSS)) {
     if (g.includes(hi)) g += ` ${en}`;
   }
@@ -205,10 +218,16 @@ const FAMILIES: ProductFamily[] = [
   },
   {
     id: "ceiling-fan",
-    aliases: ["ceiling type fan", "ceiling fan", "ceiling fans"],
+    aliases: ["ceiling type fan", "ceiling fan", "ceiling fans", "fan", "fans"],
     is: ["374"],
     scheme: "isi",
     preferTitle: { "374": "Ceiling Type Fans" },
+  },
+  {
+    id: "room-cooler",
+    aliases: ["desert cooler", "air cooler", "room cooler", "cooler"],
+    is: [],
+    scheme: "isi",
   },
   {
     id: "mobile-phone",

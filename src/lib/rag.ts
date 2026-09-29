@@ -859,7 +859,7 @@ export function vectorRetrieve(query: string): Retrieval {
       packHasNoTableAsk(q);
     return {
       query: q,
-      hits: uniqueHits([...extra, ...early]).slice(0, 8),
+      hits: uniqueHits([...early, ...extra]).slice(0, 8),
       mode: mix ? "hallmarking" : family ? "standards" : "general",
       confidence: "high",
       hasEvidence: true,

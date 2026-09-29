@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
-import { checkHuid, huidToken, moreReply } from "@/lib/more-desk";
+import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily } from "@/lib/product-playbook";
 import { isFollowCue, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
@@ -438,7 +438,9 @@ export const Route = createFileRoute("/api/chat")({
             : retrievalText(query, attachment);
           const hard = !attachment ? chatHardCard(query) : null;
           if (hard) return streamText(deskReply(query, language) || "");
-          if (!attachment && !followSubject && intent === "social") {
+          const desk = !attachment ? deskKind(query) : null;
+          const guidedKind = !attachment ? moreKind(query) : null;
+          if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
             return streamXaiMessages(
               query,
               language,
