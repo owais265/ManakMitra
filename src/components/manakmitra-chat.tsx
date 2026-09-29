@@ -881,6 +881,7 @@ export default function ChatBotApp() {
           <div 
             id="chat-scroll-container"
             ref={scrollContainerRef}
+            data-mm-chat-scroll=""
             onScroll={onChatScroll}
             onWheel={onChatWheel}
             onTouchStart={onChatTouchStart}
@@ -1247,14 +1248,49 @@ function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang })
 const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message, language: AppLang, onRetry?: () => void, onUseLocation?: () => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const shouldType = isAI && !msg.isError && (msg.animate || msg.isStreaming);
+  const [shown, setShown] = useState(() => (shouldType ? '' : msg.text));
 
-  const isActivelyTyping = isAI && (msg.isStreaming || msg.animate) && !msg.isError;
-  const isFinishedTyping = !msg.isStreaming;
+  useEffect(() => {
+    if (!shouldType) {
+      setShown(msg.text);
+      return;
+    }
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShown(msg.text);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      setShown((cur) => {
+        const text = msg.text;
+        const base = text.startsWith(cur) ? cur.length : 0;
+        if (base >= text.length) {
+          if (!msg.isStreaming) window.clearInterval(timer);
+          return text;
+        }
+        const gap = text.length - base;
+        const step = gap > 280 ? 8 : gap > 90 ? 4 : 2;
+        return text.slice(0, base + step);
+      });
+    }, 18);
+    return () => window.clearInterval(timer);
+  }, [msg.text, msg.isStreaming, shouldType]);
 
-  // Render streamed text directly. No per-bubble typewriter loop — the parent
-  // chat container is the single place that follows the stream, which keeps
-  // scrolling fluid and jitter-free.
-  const displayedText = msg.text;
+  useLayoutEffect(() => {
+    const node = rootRef.current;
+    if (!node || !shouldType) return;
+    const scroller = node.closest('[data-mm-chat-scroll]') as HTMLElement | null;
+    if (!scroller) return;
+    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160;
+    if (!nearBottom) return;
+    scroller.scrollTop = scroller.scrollHeight;
+  }, [shown, shouldType]);
+
+  const caughtUp = shown.length >= msg.text.length;
+  const isActivelyTyping = shouldType && (!caughtUp || msg.isStreaming);
+  const isFinishedTyping = !msg.isStreaming && caughtUp;
+  const displayedText = shouldType ? shown : msg.text;
 
   const handleCopy = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1267,7 +1303,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
   };
   
   return (
-    <div className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
+    <div ref={rootRef} className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
       {isAI && (
         msg.isError ? (
           <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-100 sm:mt-1 sm:h-8 sm:w-8 dark:border-red-800 dark:bg-red-950/50">
