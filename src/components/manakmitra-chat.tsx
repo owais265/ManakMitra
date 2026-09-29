@@ -879,7 +879,7 @@ export default function ChatBotApp() {
 
           {/* Scrollable messages area */}
           <div 
-            id="chat-scroll-container"
+            id="mm-main"
             ref={scrollContainerRef}
             data-mm-chat-scroll=""
             onScroll={onChatScroll}
@@ -1097,7 +1097,7 @@ export default function ChatBotApp() {
                     <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-[#1c2640] dark:text-slate-200">
                       <FileText className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{draftFile.name}</span>
-                      <button type="button" aria-label={UI_DICTIONARY[language].copiedLabel} onClick={() => setDraftFile(null)} className="ml-1 text-slate-500 hover:text-slate-900 dark:hover:text-white">
+                      <button type="button" aria-label={`Remove ${draftFile.name}`} onClick={() => setDraftFile(null)} className="ml-1 text-slate-500 hover:text-slate-900 dark:hover:text-white">
                         <X className="h-3.5 w-3.5" />
                       </button>
                     </span>

@@ -138,6 +138,12 @@ export default function SiteHeader({
 
   return (
     <header ref={headerRef} className="sticky top-0 z-50 shrink-0 border-b border-slate-200 bg-white mm-theme-fade dark:border-slate-700 dark:bg-[#0c1222]">
+      <a
+        href="#mm-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:rounded-lg focus:bg-bis-navy focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+      >
+        {language === 'hi' ? 'मुख्य सामग्री पर जाएँ' : 'Skip to content'}
+      </a>
       <div className={bar}>
         <Link to="/" className="flex min-h-11 min-w-0 items-center gap-2.5" onClick={closeMenus}>
           <ManakMark

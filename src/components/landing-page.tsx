@@ -108,7 +108,7 @@ export default function LandingPage() {
     <div className="min-h-[100dvh] overflow-x-visible mm-theme-fade bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader variant="landing" />
 
-      <main>
+      <main id="mm-main">
         <section className="relative overflow-hidden">
           <SideField t={t} onPick={(query) => go(query)} />
           <div className="relative z-10 mx-auto max-w-3xl px-4 pt-16 pb-16 text-center sm:px-6 sm:pt-24 sm:pb-20">

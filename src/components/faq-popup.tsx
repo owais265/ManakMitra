@@ -16,7 +16,7 @@ export default function FaqPopup({ copy }: { copy: FaqCopy }) {
           {copy.title}
         </h2>
         <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-400">{copy.lede}</p>
-        <p className="mt-8 max-w-md text-xs leading-relaxed text-slate-500">{copy.note}</p>
+        <p className="mt-8 max-w-md text-xs leading-relaxed text-slate-400">{copy.note}</p>
       </div>
       <ul>
         {copy.items.map((item, index) => {
@@ -35,6 +35,7 @@ export default function FaqPopup({ copy }: { copy: FaqCopy }) {
                   {item.q}
                 </span>
                 <span
+                  aria-hidden="true"
                   className={`mm-faq-plus mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full border ${
                     on ? 'rotate-45 border-bis-saffron text-bis-saffron' : 'border-white/25 text-slate-300'
                   }`}
@@ -42,7 +43,7 @@ export default function FaqPopup({ copy }: { copy: FaqCopy }) {
                   <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </span>
               </button>
-              <div id={panelId} className="mm-faq-fold" data-open={on ? 'true' : 'false'} role="region">
+              <div id={panelId} className="mm-faq-fold" data-open={on ? 'true' : 'false'} role="region" aria-hidden={on ? undefined : true} inert={on ? undefined : true}>
                 <div>
                   <p className="pb-4 pr-12 pl-2 text-sm leading-relaxed text-slate-400">{item.a}</p>
                 </div>

@@ -76,7 +76,7 @@ export default function VerifyPage() {
   return (
     <div className="min-h-dvh bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader />
-      <main>
+      <main id="mm-main">
         <section className="mx-auto max-w-3xl px-4 pt-14 pb-4 text-center sm:px-6 sm:pt-20">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-bis-navy dark:text-blue-300">{t.verifyEyebrow}</p>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight text-balance text-ink sm:text-4xl lg:text-5xl dark:text-slate-50">

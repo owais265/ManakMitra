@@ -24,7 +24,7 @@ function DeskShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader />
-      <main>{children}</main>
+      <main id="mm-main">{children}</main>
       <SiteFooter />
     </div>
   );

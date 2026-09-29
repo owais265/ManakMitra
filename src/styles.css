@@ -527,7 +527,7 @@
   }
 }
 
-#chat-scroll-container {
+#mm-main {
   overflow-anchor: none;
   scroll-behavior: auto;
 }

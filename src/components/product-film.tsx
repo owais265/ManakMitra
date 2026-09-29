@@ -185,7 +185,7 @@ function Device({
               onPlay();
             }}
             className="mm-play z-20 flex items-center justify-center rounded-[1.25rem] bg-bis-navy text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-bis-saffron sm:rounded-[1.4rem]"
-            aria-label="Play"
+            aria-label={t.openAssistant}
           >
             <Play className="ml-0.5 h-7 w-7 fill-current sm:ml-1 sm:h-8 sm:w-8" strokeWidth={0} />
           </button>
@@ -279,6 +279,7 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
     shell.style.top = `${dest.top}px`;
     shell.style.width = `${dest.width}px`;
     shell.style.height = `${dest.height}px`;
+    shell.focus({ preventScroll: true });
     shell.style.transformOrigin = 'center center';
     if (!first || reduce) {
       shell.style.transform = 'translate(0px, 0px) scale(1)';
@@ -433,7 +434,7 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
               <button
                 type="button"
                 className={`fixed inset-0 z-[80] bg-bis-navy/80 backdrop-blur-[2px] ${mode === 'closing' ? 'mm-film-dim-out' : 'mm-film-dim-in'}`}
-                aria-label="Close"
+                aria-label={t.openAssistant}
                 onClick={close}
               />
               <div
@@ -442,6 +443,7 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
                 role="dialog"
                 aria-modal="true"
                 aria-label={t.h1}
+                tabIndex={-1}
               >
                 <Device t={t} poses={poses} playing />
               </div>

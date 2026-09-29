@@ -15,7 +15,7 @@ export default function LegalPage({ kind }: { kind: 'privacy' | 'terms' }) {
   return (
     <div className="min-h-dvh bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
       <SiteHeader />
-      <main className="mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-20">
+      <main id="mm-main" className="mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-20">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-bis-navy dark:text-blue-300">{page.kicker}</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance text-ink sm:text-4xl lg:text-5xl dark:text-slate-50">{page.title}</h1>
         <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{chrome.updated}</p>
