@@ -116,7 +116,7 @@ function ArcCard({
   count: number;
   onPick: (query: string) => void;
 }) {
-  const loop = side === 'left' ? 12 : 14.5;
+  const loop = side === 'left' ? 38 : 46;
   return (
     <div
       className={`mm-arc pointer-events-auto ${side === 'left' ? 'mm-arc-l' : 'mm-arc-r'}`}
