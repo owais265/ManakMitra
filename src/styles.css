@@ -70,7 +70,6 @@
     .mm-drift-rev,
     .mm-arc-l,
     .mm-arc-r,
-    .mm-orbit-stage,
     .mm-slide,
     .mm-play,
     .mm-play::before,
@@ -152,6 +151,7 @@
     transform-style: preserve-3d;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    will-change: transform;
   }
 
   @keyframes mm-drop {
@@ -201,22 +201,15 @@
     }
   }
 
-  .mm-orbit-stage {
-    transform: translate3d(0, calc(var(--mm-scroll, 0) * -0.22px), 0);
-  }
-
   .mm-arc {
     position: absolute;
-    width: 8.35rem;
-    --mm-out: 0.75rem;
-    --mm-in: 39rem;
+    top: 0;
+    width: 9.5rem;
+    will-change: transform, opacity;
   }
 
-  .mm-arc-l1 { --mm-out: 3.6rem; --mm-in: 36.4rem; }
-  .mm-arc-l2 { --mm-out: 6.35rem; --mm-in: 34rem; }
-  .mm-arc-r0 { --mm-out: 9.15rem; --mm-in: 30.5rem; }
-  .mm-arc-r1 { --mm-out: 12.1rem; --mm-in: 28rem; }
-  .mm-arc-r2 { --mm-out: 14.9rem; --mm-in: 25.5rem; }
+  .mm-arc-l { left: 0.75rem; animation: mm-arc-l 42s linear infinite; }
+  .mm-arc-r { right: 0.75rem; left: auto; animation: mm-arc-r 48s linear infinite; }
 
   .mm-arc:hover,
   .mm-arc:focus-within {
@@ -224,77 +217,47 @@
     z-index: 30;
   }
 
-  .mm-arc-l {
-    animation: mm-arc-l 40s linear infinite;
-  }
-
-  .mm-arc-r {
-    animation: mm-arc-r 44s linear infinite;
-  }
-
   @keyframes mm-arc-l {
     0% {
-      left: max(var(--mm-out), calc(50% - var(--mm-in)));
-      top: 108%;
+      transform: translate3d(max(0px, calc(50vw - 36rem)), 74vh, 0);
       opacity: 0;
     }
-    10% { opacity: 1; }
-    22% {
-      left: max(var(--mm-out), calc(50% - var(--mm-in) - 4rem));
-      top: 78%;
-    }
-    50% {
-      left: var(--mm-out);
-      top: 36%;
-    }
-    78% {
-      left: max(var(--mm-out), calc(50% - var(--mm-in) - 4rem));
-      top: 2%;
-    }
-    92% { opacity: 1; }
+    12% { opacity: 1; }
+    30% { transform: translate3d(max(0px, calc(50vw - 46rem)), 50vh, 0); }
+    50% { transform: translate3d(0, 28vh, 0); }
+    70% { transform: translate3d(max(0px, calc(50vw - 46rem)), 8vh, 0); }
+    90% { opacity: 1; }
     100% {
-      left: max(var(--mm-out), calc(50% - var(--mm-in)));
-      top: -22%;
+      transform: translate3d(max(0px, calc(50vw - 36rem)), -12vh, 0);
       opacity: 0;
     }
   }
 
   @keyframes mm-arc-r {
     0% {
-      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in)));
-      top: 110%;
+      transform: translate3d(min(0px, calc(36rem - 50vw)), 76vh, 0);
       opacity: 0;
     }
-    10% { opacity: 1; }
-    22% {
-      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in) + 4rem));
-      top: 78%;
-    }
-    50% {
-      left: calc(100% - var(--mm-out));
-      top: 36%;
-    }
-    78% {
-      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in) + 4rem));
-      top: 2%;
-    }
-    92% { opacity: 1; }
+    12% { opacity: 1; }
+    30% { transform: translate3d(min(0px, calc(46rem - 50vw)), 50vh, 0); }
+    50% { transform: translate3d(0, 28vh, 0); }
+    70% { transform: translate3d(min(0px, calc(46rem - 50vw)), 8vh, 0); }
+    90% { opacity: 1; }
     100% {
-      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in)));
-      top: -22%;
+      transform: translate3d(min(0px, calc(36rem - 50vw)), -12vh, 0);
       opacity: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .mm-arc-l,
-    .mm-arc-r { opacity: 1; }
-    .mm-arc-l:nth-child(1) { left: 0.75rem; top: 10%; }
-    .mm-arc-l:nth-child(2) { left: max(0.75rem, calc(50% - 36rem)); top: 42%; }
-    .mm-arc-l:nth-child(3) { left: 0.75rem; top: 74%; }
-    .mm-arc-r:nth-child(7) { left: calc(100% - 9.15rem); top: 10%; }
-    .mm-arc-r:nth-child(8) { left: min(calc(100% - 12rem), calc(50% + 28rem)); top: 42%; }
-    .mm-arc-r:nth-child(9) { left: calc(100% - 9.15rem); top: 74%; }
+    .mm-arc-r { opacity: 1; animation: none !important; }
+    .mm-arc-l:nth-child(1) { transform: translate3d(0, 10vh, 0); }
+    .mm-arc-l:nth-child(2) { transform: translate3d(max(0px, calc(50vw - 36rem)), 30vh, 0); }
+    .mm-arc-l:nth-child(3) { transform: translate3d(0, 50vh, 0); }
+    .mm-arc-r:nth-child(7) { transform: translate3d(0, 10vh, 0); }
+    .mm-arc-r:nth-child(8) { transform: translate3d(min(0px, calc(36rem - 50vw)), 30vh, 0); }
+    .mm-arc-r:nth-child(9) { transform: translate3d(0, 50vh, 0); }
     .mm-arc-l:nth-child(n + 4),
     .mm-arc-r:nth-child(n + 10) { display: none; }
   }

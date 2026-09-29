@@ -41,6 +41,17 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
     let raf = 0;
     let lastH = 0;
+    let pinMode = '';
+    let frameTf = '';
+    let railTf = '';
+    let headerH = 64;
+    let railW = 0;
+
+    const measure = () => {
+      const header = document.querySelector('header');
+      headerH = Math.max(56, header?.getBoundingClientRect().height || 64);
+      railW = rail && window.innerWidth >= 1024 ? rail.offsetWidth : 0;
+    };
 
     const clearPin = () => {
       pin.style.position = '';
@@ -50,9 +61,12 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
       pin.style.zIndex = '';
       runway.style.height = '';
       frame.style.transform = 'none';
+      pinMode = '';
+      frameTf = '';
       if (rail) {
         rail.style.opacity = '';
         rail.style.transform = '';
+        railTf = '';
       }
     };
 
@@ -62,56 +76,66 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
         clearPin();
         return;
       }
-      const header = document.querySelector('header');
-      const top = Math.max(56, header?.getBoundingClientRect().height || 64);
+      const top = headerH;
       const vh = window.visualViewport?.height || window.innerHeight || 800;
       const vw = window.innerWidth || 360;
       const narrow = vw < 1024;
       const pinH = pin.offsetHeight || Math.round(vh * 0.72);
+      const box = runway.getBoundingClientRect();
       const travel = Math.round(vh * (narrow ? 0.9 : 1.15));
       const nextH = pinH + travel;
       if (Math.abs(nextH - lastH) > 2) {
         lastH = nextH;
         runway.style.height = `${nextH}px`;
       }
-      const box = runway.getBoundingClientRect();
       const raw = clamp((top - box.top) / travel, 0, 1);
       const e = smooth(raw);
       const open = 1 - e;
-
-      if (box.top > top) {
-        pin.style.position = 'relative';
-        pin.style.top = '0px';
-        pin.style.left = '0px';
-        pin.style.width = '100%';
-        pin.style.zIndex = '1';
-      } else if (box.bottom <= top + pinH + 1) {
+      const mode = box.top > top ? 'before' : box.bottom <= top + pinH + 1 ? 'after' : 'fixed';
+      if (mode !== pinMode) {
+        pinMode = mode;
+        if (mode === 'before') {
+          pin.style.position = 'relative';
+          pin.style.top = '0px';
+          pin.style.left = '0px';
+          pin.style.width = '100%';
+          pin.style.zIndex = '1';
+        } else if (mode === 'fixed') {
+          pin.style.position = 'fixed';
+          pin.style.top = `${top}px`;
+          pin.style.left = '0px';
+          pin.style.width = '100%';
+          pin.style.zIndex = '20';
+        }
+      }
+      if (mode === 'after') {
         pin.style.position = 'absolute';
         pin.style.top = `${Math.max(0, box.height - pinH)}px`;
         pin.style.left = '0px';
         pin.style.width = '100%';
         pin.style.zIndex = '1';
-      } else {
-        pin.style.position = 'fixed';
-        pin.style.top = `${top}px`;
-        pin.style.left = '0px';
-        pin.style.width = '100%';
-        pin.style.zIndex = '30';
       }
 
-      const railW = !narrow && rail ? rail.offsetWidth : 0;
       const pull = narrow ? Math.min(22, vw * 0.045) : railW * 0.48;
       const shift = narrow ? open * pull : open * -pull;
       const rotY = open * (narrow ? -10 : -13);
       const rotX = open * (narrow ? 7 : 6);
       const lift = open * (narrow ? 8 : 14);
       const scale = 1 + open * (narrow ? 0.035 : 0.06);
-      frame.style.transform = `translate3d(${shift}px, ${lift}px, 0) rotateX(${rotX}deg) rotateY(${rotY}deg) scale(${scale})`;
+      const nextFrame = `translate3d(${shift.toFixed(2)}px, ${lift.toFixed(2)}px, 0) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale(${scale.toFixed(4)})`;
+      if (nextFrame !== frameTf) {
+        frameTf = nextFrame;
+        frame.style.transform = nextFrame;
+      }
 
       if (rail) {
         const shown = clamp((e - 0.12) / 0.5, 0, 1);
-        rail.style.opacity = String(shown);
-        rail.style.transform = `translate3d(${(1 - shown) * 18}px, 0, 0)`;
+        const nextRail = `translate3d(${((1 - shown) * 18).toFixed(2)}px, 0, 0)`;
+        if (nextRail !== railTf) {
+          railTf = nextRail;
+          rail.style.opacity = shown.toFixed(3);
+          rail.style.transform = nextRail;
+        }
       }
 
       const zone = raw < 0.34 ? 0 : raw < 0.67 ? 1 : 2;
@@ -126,20 +150,21 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
       if (!raf) raf = requestAnimationFrame(apply);
     };
 
+    measure();
     apply();
+    const onResize = () => {
+      measure();
+      schedule();
+    };
     document.addEventListener('scroll', schedule, { passive: true, capture: true });
-    window.addEventListener('resize', schedule);
-    window.addEventListener('orientationchange', schedule);
-    window.visualViewport?.addEventListener('resize', schedule);
-    window.visualViewport?.addEventListener('scroll', schedule);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     reduce.addEventListener('change', schedule);
     return () => {
       cancelAnimationFrame(raf);
       document.removeEventListener('scroll', schedule, true);
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('orientationchange', schedule);
-      window.visualViewport?.removeEventListener('resize', schedule);
-      window.visualViewport?.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       reduce.removeEventListener('change', schedule);
       clearPin();
     };
