@@ -1131,14 +1131,13 @@ export default function ChatBotApp() {
                 >
                   <Plus className="h-5 w-5" />
                 </button>
-                </div>
                 <button 
                   type="button"
                   aria-label={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}
                   onClick={toggleListening}
                   onTouchStart={(e) => e.stopPropagation()}
                   disabled={isWaitingForMic}
-                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-11 sm:w-11 sm:right-2 sm:bottom-2 sm:top-auto sm:translate-y-0 p-0 rounded-lg sm:rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 overflow-hidden ${
+                  className={`absolute right-1.5 top-1/2 z-10 -translate-y-1/2 h-8 w-8 sm:h-11 sm:w-11 sm:right-2 p-0 rounded-lg sm:rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 overflow-hidden ${
                     isListening ? 'bg-red-600 text-white border-red-700 sm:ring-4 sm:ring-red-200 shadow-md' : 
                     isWaitingForMic ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700' :
                     'bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 border-slate-200 active:scale-95 dark:bg-[#1c2640] dark:text-slate-300 dark:border-slate-600 dark:hover:text-blue-300 dark:hover:border-blue-400'
@@ -1157,6 +1156,7 @@ export default function ChatBotApp() {
                     <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
                   )}
                 </button>
+                </div>
               </div>
               <button 
                 type="submit"
@@ -1231,7 +1231,7 @@ function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang })
                 <span className="shrink-0 text-sm text-bis-navy dark:text-blue-300">{lab.km} km</span>
               </span>
               <span className="mt-1 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{lab.address}</span>
-              <span className={`mt-1 inline-flex text-xs font-semibold ${lab.confidence === 'high' ? 'text-emerald-700' : 'text-amber-700'}`}>
+              <span className={`mt-1 inline-flex text-xs font-semibold ${lab.confidence === 'high' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}>
                 {lab.confidence === 'high' ? t.bisLab : t.cityList}
               </span>
             </button>
@@ -1325,7 +1325,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
           {isAI && !msg.isError && (
             <button
               onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:text-slate-600 hover:bg-slate-200 rounded-md transition-all focus:opacity-100 dark:hover:text-slate-200 dark:hover:bg-slate-700"
+              className="absolute top-3 right-3 p-1.5 text-slate-400 opacity-100 hover:text-slate-600 hover:bg-slate-200 rounded-md transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 dark:hover:text-slate-200 dark:hover:bg-slate-700"
               aria-label={UI_DICTIONARY[language].copyLabel}
               title={UI_DICTIONARY[language].copyLabel}
             >

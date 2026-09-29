@@ -255,7 +255,7 @@ export default function SiteHeader({
             aria-label={copy.langLabel}
             value={language}
             onChange={(e) => setLang(e.target.value as AppLang)}
-            className="h-11 max-w-[7.5rem] truncate rounded border border-line bg-white px-2 text-sm text-ink sm:max-w-[10rem] dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100"
+            className="h-11 max-w-[4.6rem] shrink truncate rounded border border-line bg-white px-1.5 text-xs text-ink sm:max-w-[10rem] sm:px-2 sm:text-sm dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100"
           >
             {APP_LANGS.map((l) => (
               <option key={l.id} value={l.id}>

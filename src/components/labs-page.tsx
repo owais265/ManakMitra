@@ -134,7 +134,7 @@ export default function LabsPage() {
             </button>
             {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{error}</p> : null}
             {result ? (
-              <p className="mt-4 text-xs leading-relaxed text-slate-500">
+              <p className="mt-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                 {t.fromPlace} {result.source === 'device' ? t.thisDevice : result.origin.label}. {result.nearby.length ? t.noteNear : t.noteFar}
               </p>
             ) : null}
@@ -151,7 +151,7 @@ export default function LabsPage() {
                 referrerPolicy="no-referrer-when-downgrade"
               />
             ) : (
-              <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-slate-300 text-sm text-slate-500 sm:h-80">
+              <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-slate-300 px-4 text-center text-sm text-slate-500 sm:h-80 dark:border-slate-600 dark:text-slate-400">
                 {t.mapEmpty}
               </div>
             )}
