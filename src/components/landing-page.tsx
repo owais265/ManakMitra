@@ -99,7 +99,7 @@ function ArcCard({
   return (
     <div
       className={`mm-arc pointer-events-auto ${side === 'left' ? 'mm-arc-l' : 'mm-arc-r'}`}
-      style={{ animationDelay: `${-((index + 0.35) * loop) / count}s` }}
+      style={{ animationDelay: `${-((index + 0.5) * loop) / count}s` }}
     >
       <button
         type="button"
