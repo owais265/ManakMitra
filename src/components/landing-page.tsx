@@ -116,21 +116,25 @@ function ArcCard({
   count: number;
   onPick: (query: string) => void;
 }) {
-  const loop = side === 'left' ? 38 : 46;
+  const lane = index % 3;
+  const loop = (side === 'left' ? 40 : 44) + lane * 7;
   return (
     <div
-      className={`mm-arc pointer-events-auto ${side === 'left' ? 'mm-arc-l' : 'mm-arc-r'}`}
-      style={{ animationDelay: `${-(index * loop) / count}s` }}
+      className={`mm-arc pointer-events-auto ${side === 'left' ? `mm-arc-l mm-arc-l${lane}` : `mm-arc-r mm-arc-r${lane}`}`}
+      style={{
+        animationDuration: `${loop}s`,
+        animationDelay: `${-((index * loop) / count + lane * 4)}s`,
+      }}
     >
       <button
         type="button"
         onClick={() => onPick(tile.query)}
-        className="group relative w-full rounded-2xl border-2 border-[#0B1F3A] bg-white p-3 text-left shadow-[0_16px_34px_-12px_rgba(11,31,58,0.38)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_20px_36px_-12px_rgba(11,31,58,0.48)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-saffron dark:border-bis-saffron dark:bg-[#1b335c] dark:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.75)]"
+        className="group relative w-full rounded-xl border-2 border-[#0B1F3A] bg-white px-2.5 py-2 text-left shadow-[0_14px_28px_-12px_rgba(11,31,58,0.38)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_18px_32px_-12px_rgba(11,31,58,0.48)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-saffron dark:border-bis-saffron dark:bg-[#1b335c] dark:shadow-[0_16px_32px_-14px_rgba(0,0,0,0.75)]"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B1F3A] text-bis-saffron dark:bg-bis-saffron dark:text-[#0B1F3A]">
-          <tile.Icon className="h-4 w-4" strokeWidth={2.1} />
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0B1F3A] text-bis-saffron dark:bg-bis-saffron dark:text-[#0B1F3A]">
+          <tile.Icon className="h-3.5 w-3.5" strokeWidth={2.1} />
         </span>
-        <span className="mt-2 line-clamp-3 block text-[13px] leading-snug font-semibold text-[#0B1F3A] dark:text-white">
+        <span className="mt-1.5 line-clamp-2 block text-[12px] leading-snug font-semibold text-[#0B1F3A] dark:text-white">
           {tile.label}
         </span>
         <span

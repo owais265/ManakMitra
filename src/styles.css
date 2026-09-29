@@ -207,8 +207,16 @@
 
   .mm-arc {
     position: absolute;
-    width: 10.5rem;
+    width: 8.35rem;
+    --mm-out: 0.75rem;
+    --mm-in: 39rem;
   }
+
+  .mm-arc-l1 { --mm-out: 3.6rem; --mm-in: 36.4rem; }
+  .mm-arc-l2 { --mm-out: 6.35rem; --mm-in: 34rem; }
+  .mm-arc-r0 { --mm-out: 9.15rem; --mm-in: 30.5rem; }
+  .mm-arc-r1 { --mm-out: 12.1rem; --mm-in: 28rem; }
+  .mm-arc-r2 { --mm-out: 14.9rem; --mm-in: 25.5rem; }
 
   .mm-arc:hover,
   .mm-arc:focus-within {
@@ -217,48 +225,35 @@
   }
 
   .mm-arc-l {
-    animation: mm-arc-l 38s linear infinite;
+    animation: mm-arc-l 40s linear infinite;
   }
 
   .mm-arc-r {
-    animation: mm-arc-r 46s linear infinite;
+    animation: mm-arc-r 44s linear infinite;
   }
 
-  /* One smooth bulge to the screen edge. No tilt, no second bend — that read as a snake. */
   @keyframes mm-arc-l {
     0% {
-      left: max(0.75rem, calc(50% - 36rem));
+      left: max(var(--mm-out), calc(50% - var(--mm-in)));
       top: 108%;
       opacity: 0;
     }
-    10% {
-      opacity: 1;
-    }
-    18% {
-      left: max(0.75rem, calc(50% - 40rem));
-      top: 82%;
-    }
-    34% {
-      left: max(0.75rem, calc(50% - 48rem));
-      top: 58%;
+    10% { opacity: 1; }
+    22% {
+      left: max(var(--mm-out), calc(50% - var(--mm-in) - 4rem));
+      top: 78%;
     }
     50% {
-      left: 0.75rem;
+      left: var(--mm-out);
       top: 36%;
     }
-    66% {
-      left: max(0.75rem, calc(50% - 48rem));
-      top: 14%;
+    78% {
+      left: max(var(--mm-out), calc(50% - var(--mm-in) - 4rem));
+      top: 2%;
     }
-    82% {
-      left: max(0.75rem, calc(50% - 40rem));
-      top: -2%;
-    }
-    92% {
-      opacity: 1;
-    }
+    92% { opacity: 1; }
     100% {
-      left: max(0.75rem, calc(50% - 36rem));
+      left: max(var(--mm-out), calc(50% - var(--mm-in)));
       top: -22%;
       opacity: 0;
     }
@@ -266,38 +261,26 @@
 
   @keyframes mm-arc-r {
     0% {
-      left: min(calc(100% - 11.25rem), calc(50% + 25.5rem));
+      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in)));
       top: 110%;
       opacity: 0;
     }
-    10% {
-      opacity: 1;
-    }
-    18% {
-      left: min(calc(100% - 11.25rem), calc(50% + 30rem));
-      top: 84%;
-    }
-    34% {
-      left: min(calc(100% - 11.25rem), calc(50% + 38rem));
-      top: 58%;
+    10% { opacity: 1; }
+    22% {
+      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in) + 4rem));
+      top: 78%;
     }
     50% {
-      left: calc(100% - 11.25rem);
+      left: calc(100% - var(--mm-out));
       top: 36%;
     }
-    66% {
-      left: min(calc(100% - 11.25rem), calc(50% + 38rem));
-      top: 14%;
+    78% {
+      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in) + 4rem));
+      top: 2%;
     }
-    82% {
-      left: min(calc(100% - 11.25rem), calc(50% + 30rem));
-      top: -2%;
-    }
-    92% {
-      opacity: 1;
-    }
+    92% { opacity: 1; }
     100% {
-      left: min(calc(100% - 11.25rem), calc(50% + 25.5rem));
+      left: min(calc(100% - var(--mm-out)), calc(50% + var(--mm-in)));
       top: -22%;
       opacity: 0;
     }
@@ -309,9 +292,9 @@
     .mm-arc-l:nth-child(1) { left: 0.75rem; top: 10%; }
     .mm-arc-l:nth-child(2) { left: max(0.75rem, calc(50% - 36rem)); top: 42%; }
     .mm-arc-l:nth-child(3) { left: 0.75rem; top: 74%; }
-    .mm-arc-r:nth-child(7) { left: calc(100% - 11.25rem); top: 10%; }
-    .mm-arc-r:nth-child(8) { left: min(calc(100% - 11.25rem), calc(50% + 25.5rem)); top: 42%; }
-    .mm-arc-r:nth-child(9) { left: calc(100% - 11.25rem); top: 74%; }
+    .mm-arc-r:nth-child(7) { left: calc(100% - 9.15rem); top: 10%; }
+    .mm-arc-r:nth-child(8) { left: min(calc(100% - 12rem), calc(50% + 28rem)); top: 42%; }
+    .mm-arc-r:nth-child(9) { left: calc(100% - 9.15rem); top: 74%; }
     .mm-arc-l:nth-child(n + 4),
     .mm-arc-r:nth-child(n + 10) { display: none; }
   }
