@@ -1,11 +1,14 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ComponentType } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
   Award,
+  BadgeCheck,
+  BookOpen,
   Building2,
+  ClipboardList,
   FileSearch,
   Gem,
   Globe,
@@ -32,64 +35,112 @@ function openAssistant(query?: string) {
   }
 }
 
+type TileIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
+
+type Tile = {
+  label: string;
+  body: string;
+  query: string;
+  Icon: TileIcon;
+};
+
+function heroTiles(t: LandingCopy): { left: Tile[]; right: Tile[] } {
+  const s = t.starters;
+  const c = t.caps;
+  const links = t.links;
+  return {
+    left: [
+      { label: s[0].label, body: c[0].body, query: s[0].query, Icon: FileSearch },
+      { label: c[4].title, body: c[4].body, query: c[4].title, Icon: Microscope },
+      { label: c[3].title, body: c[3].body, query: s[2].query, Icon: Gem },
+      { label: links[0].title, body: links[0].job, query: links[0].title, Icon: BookOpen },
+      { label: s[3].label, body: links[6].job, query: s[3].query, Icon: Scale },
+      { label: links[2].title, body: links[2].job, query: links[2].title, Icon: Award },
+    ],
+    right: [
+      { label: s[1].label, body: c[1].body, query: s[1].query, Icon: Award },
+      { label: c[5].title, body: c[5].body, query: c[5].title, Icon: Globe },
+      { label: c[1].title, body: c[1].body, query: s[1].query, Icon: BadgeCheck },
+      { label: links[5].title, body: links[5].job, query: s[2].query, Icon: Gem },
+      { label: c[2].title, body: c[2].body, query: c[2].title, Icon: ClipboardList },
+      { label: links[7].title, body: links[7].job, query: c[4].title, Icon: Microscope },
+    ],
+  };
+}
+
 function SideField({ t, onPick }: { t: LandingCopy; onPick: (query: string) => void }) {
-  const left = [
-    { label: t.starters[0].label, body: t.caps[0].body, query: t.starters[0].query, Icon: CAP_ICONS[0], tilt: '-7deg' },
-    { label: t.caps[4].title, body: t.caps[4].body, query: t.caps[4].title, Icon: CAP_ICONS[4], tilt: '5deg' },
-    { label: t.starters[2].label, body: t.caps[3].body, query: t.starters[2].query, Icon: CAP_ICONS[3], tilt: '-3deg' },
-  ];
-  const right = [
-    { label: t.starters[1].label, body: t.caps[1].body, query: t.starters[1].query, Icon: CAP_ICONS[1], tilt: '6deg' },
-    { label: t.starters[3].label, body: t.caps[2].body, query: t.starters[3].query, Icon: CAP_ICONS[2], tilt: '-5deg' },
-    { label: t.caps[5].title, body: t.caps[5].body, query: t.caps[5].title, Icon: CAP_ICONS[5], tilt: '4deg' },
-  ];
+  const stageRef = useRef<HTMLDivElement>(null);
+  const { left, right } = heroTiles(t);
+
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const y = Math.min(window.scrollY, 520);
+        el.style.setProperty('--mm-scroll', `${y}`);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
   return (
-    <>
-      <Rail side="left" tiles={left} onPick={onPick} />
-      <Rail side="right" tiles={right} onPick={onPick} />
-    </>
+    <div ref={stageRef} className="mm-orbit-stage pointer-events-none absolute inset-x-0 -bottom-28 top-0 z-0 hidden xl:block">
+      {left.map((tile, i) => (
+        <ArcCard key={`l-${tile.label}`} tile={tile} side="left" index={i} count={left.length} onPick={onPick} />
+      ))}
+      {right.map((tile, i) => (
+        <ArcCard key={`r-${tile.label}`} tile={tile} side="right" index={i} count={right.length} onPick={onPick} />
+      ))}
+    </div>
   );
 }
 
-function Rail({
+function ArcCard({
+  tile,
   side,
-  tiles,
+  index,
+  count,
   onPick,
 }: {
+  tile: Tile;
   side: 'left' | 'right';
-  tiles: { label: string; body: string; query: string; Icon: (typeof CAP_ICONS)[number]; tilt: string }[];
+  index: number;
+  count: number;
   onPick: (query: string) => void;
 }) {
+  const loop = side === 'left' ? 12 : 14.5;
   return (
-    <div className={`pointer-events-none absolute inset-y-0 z-0 hidden w-44 xl:block ${side === 'left' ? 'left-3' : 'right-3'}`}>
-      <div className={`pointer-events-auto h-[200%] ${side === 'left' ? 'mm-drift' : 'mm-drift-rev'}`}>
-        {[0, 1].map((copy) => (
-          <div key={copy} className="flex h-1/2 flex-col justify-evenly py-8">
-            {tiles.map((tile) => (
-              <div key={`${side}-${copy}-${tile.label}`} className="w-[148px]" style={{ transform: `rotate(${tile.tilt})` }}>
-                <button
-                  type="button"
-                  onClick={() => onPick(tile.query)}
-                  className="group relative w-full rounded-2xl border border-[#c5d0d8] bg-white p-3 text-left shadow-[0_10px_28px_-12px_rgba(11,31,58,0.45)] ring-1 ring-bis-saffron/70 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-navy dark:border-white/30 dark:bg-[#243656] dark:shadow-[0_14px_32px_-12px_rgba(0,0,0,0.75)] dark:ring-bis-saffron"
-                >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#fff4e8] text-bis-saffron dark:bg-bis-saffron dark:text-white">
-                    <tile.Icon className="h-4 w-4" strokeWidth={2.1} />
-                  </span>
-                  <span className="mt-2 block text-[13px] leading-snug font-semibold text-[#0B1F3A] dark:text-white">{tile.label}</span>
-                  <span
-                    className={`pointer-events-none absolute top-0 z-30 hidden w-52 rounded-xl border border-[#c5d0d8] bg-white p-3 text-xs leading-relaxed font-medium text-[#0B1F3A] shadow-lg group-hover:block group-focus-visible:block dark:border-white/25 dark:bg-[#122033] dark:text-white ${
-                      side === 'left' ? 'left-[calc(100%+12px)]' : 'right-[calc(100%+12px)]'
-                    }`}
-                  >
-                    {tile.body}
-                  </span>
-                </button>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+    <div
+      className={`mm-arc pointer-events-auto ${side === 'left' ? 'mm-arc-l' : 'mm-arc-r'}`}
+      style={{ animationDelay: `${-(index * loop) / count}s` }}
+    >
+      <button
+        type="button"
+        onClick={() => onPick(tile.query)}
+        className="group relative w-full rounded-2xl border-2 border-[#0B1F3A] bg-white p-3 text-left shadow-[0_16px_34px_-12px_rgba(11,31,58,0.38)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_20px_36px_-12px_rgba(11,31,58,0.48)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bis-saffron dark:border-bis-saffron dark:bg-[#1b335c] dark:shadow-[0_18px_36px_-14px_rgba(0,0,0,0.75)]"
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B1F3A] text-bis-saffron dark:bg-bis-saffron dark:text-[#0B1F3A]">
+          <tile.Icon className="h-4 w-4" strokeWidth={2.1} />
+        </span>
+        <span className="mt-2 line-clamp-3 block text-[13px] leading-snug font-semibold text-[#0B1F3A] dark:text-white">
+          {tile.label}
+        </span>
+        <span
+          className={`pointer-events-none absolute top-0 z-30 hidden w-52 rounded-xl border-2 border-[#0B1F3A] bg-white p-3 text-xs leading-relaxed font-medium text-[#0B1F3A] shadow-lg group-hover:block group-focus-visible:block dark:border-bis-saffron dark:bg-[#122033] dark:text-white ${
+            side === 'left' ? 'right-[calc(100%+12px)]' : 'left-[calc(100%+12px)]'
+          }`}
+        >
+          {tile.body}
+        </span>
+      </button>
     </div>
   );
 }
@@ -109,7 +160,7 @@ export default function LandingPage() {
       <SiteHeader variant="landing" />
 
       <main id="mm-main">
-        <section className="relative overflow-hidden">
+        <section className="relative">
           <SideField t={t} onPick={(query) => go(query)} />
           <div className="relative z-10 mx-auto max-w-3xl px-4 pt-16 pb-16 text-center sm:px-6 sm:pt-24 sm:pb-20">
           <p className="mm-rise mm-d1 text-[11px] font-semibold tracking-[0.14em] text-balance text-bis-navy uppercase sm:text-xs sm:tracking-[0.18em] dark:text-blue-300">

@@ -68,6 +68,9 @@
     .mm-sheet,
     .mm-drift,
     .mm-drift-rev,
+    .mm-arc-l,
+    .mm-arc-r,
+    .mm-orbit-stage,
     .mm-slide,
     .mm-play,
     .mm-play::before,
@@ -196,6 +199,104 @@
     50% {
       transform: translate3d(0, -12px, 0);
     }
+  }
+
+  .mm-orbit-stage {
+    transform: translate3d(0, calc(var(--mm-scroll, 0) * -0.22px), 0);
+  }
+
+  .mm-arc {
+    position: absolute;
+    width: 10.5rem;
+  }
+
+  .mm-arc:hover,
+  .mm-arc:focus-within {
+    animation-play-state: paused;
+    z-index: 30;
+  }
+
+  .mm-arc-l {
+    animation: mm-arc-l 12s linear infinite;
+  }
+
+  .mm-arc-r {
+    animation: mm-arc-r 14.5s linear infinite;
+  }
+
+  @keyframes mm-arc-l {
+    0% {
+      left: max(0.75rem, calc(50% - 36rem));
+      top: 108%;
+      opacity: 0;
+      transform: rotate(-8deg);
+    }
+    14% {
+      opacity: 1;
+    }
+    36% {
+      left: max(0.75rem, calc(50% - 46rem));
+      top: 54%;
+      transform: rotate(7deg);
+    }
+    68% {
+      left: max(0.75rem, calc(50% - 37rem));
+      top: 18%;
+      transform: rotate(-5deg);
+    }
+    88% {
+      opacity: 1;
+    }
+    100% {
+      left: max(0.75rem, calc(50% - 42rem));
+      top: -26%;
+      opacity: 0;
+      transform: rotate(-10deg);
+    }
+  }
+
+  @keyframes mm-arc-r {
+    0% {
+      left: min(calc(100% - 11.75rem), calc(50% + 25.5rem));
+      top: 112%;
+      opacity: 0;
+      transform: rotate(8deg);
+    }
+    14% {
+      opacity: 1;
+    }
+    40% {
+      left: min(calc(100% - 11.75rem), calc(50% + 35rem));
+      top: 50%;
+      transform: rotate(-7deg);
+    }
+    70% {
+      left: min(calc(100% - 11.75rem), calc(50% + 26rem));
+      top: 16%;
+      transform: rotate(5deg);
+    }
+    88% {
+      opacity: 1;
+    }
+    100% {
+      left: min(calc(100% - 11.75rem), calc(50% + 32rem));
+      top: -28%;
+      opacity: 0;
+      transform: rotate(10deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mm-arc-l,
+    .mm-arc-r { opacity: 1; }
+    .mm-arc-l:nth-child(1) { left: max(0.75rem, calc(50% - 42rem)); top: 8%; }
+    .mm-arc-l:nth-child(2) { left: max(0.75rem, calc(50% - 36rem)); top: 40%; }
+    .mm-arc-l:nth-child(3) { left: max(0.75rem, calc(50% - 42rem)); top: 72%; }
+    .mm-arc-r:nth-child(7) { left: min(calc(100% - 11.75rem), calc(50% + 26rem)); top: 8%; }
+    .mm-arc-r:nth-child(8) { left: min(calc(100% - 11.75rem), calc(50% + 31rem)); top: 40%; }
+    .mm-arc-r:nth-child(9) { left: min(calc(100% - 11.75rem), calc(50% + 26rem)); top: 72%; }
+    .mm-arc-l:nth-child(n + 4),
+    .mm-arc-r:nth-child(n + 10) { display: none; }
   }
 
   .mm-drift {
