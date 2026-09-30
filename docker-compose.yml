@@ -1,0 +1,17 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: manakmitra:sih26107
+    container_name: manakmitra
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8080"
+      HYBRID_RAG: ${HYBRID_RAG:-0}
+    restart: unless-stopped
