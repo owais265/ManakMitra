@@ -29,15 +29,15 @@ Judges score understanding, novelty, depth, feasibility, design, a working build
 
 | Criterion | What to inspect here | Live proof |
 | --- | --- | --- |
-| Problem understanding | [§1](#1-problem--who-pays-for-the-wrong-door) | Wrong-door examples in the [demo video](https://www.youtube.com/watch?v=oi7lZYGw1Uw) |
-| Innovation | [§2](#2-innovation--why-a-chatbot-was-not-enough) | Fan + HUID **refuse** (retrieval = 0) |
-| Technical complexity | [§3](#3-technical-complexity--what-is-actually-hard) | Four locks before search; RRF only after unlock |
-| Feasibility | [§4](#4-feasibility--it-already-runs) | [Live MVP](https://forest-yonder-apex-plum.vercel.app/) |
-| Architecture | [§5](#5-architecture--system-design) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
-| Implementation | [§6](#6-implementation-quality) | Desks + `npm run eval:all` |
-| UX / UI | [§7](#7-user-experience) | First-run path under 30 seconds |
-| Impact | [§8](#8-impact) | Official BIS scale, not invented MAU |
-| Scalability | [§9](#9-scalability--deployment) | Pack-only → hybrid extras → Vercel |
+| Problem understanding | [1](#1-problem--who-pays-for-the-wrong-door) | Wrong-door examples in the [demo video](https://www.youtube.com/watch?v=oi7lZYGw1Uw) |
+| Innovation | [2](#2-innovation--why-a-chatbot-was-not-enough) | Fan + HUID **refuse** (retrieval = 0) |
+| Technical complexity | [3](#3-technical-complexity--what-is-actually-hard) | Four locks before search; RRF only after unlock |
+| Feasibility | [4](#4-feasibility--it-already-runs) | [Live MVP](https://forest-yonder-apex-plum.vercel.app/) |
+| Architecture | [5](#5-architecture--system-design) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
+| Implementation | [6](#6-implementation-quality) | Desks + `npm run eval:all` |
+| UX / UI | [7](#7-user-experience) | First-run path under 30 seconds |
+| Impact | [8](#8-impact) | Official BIS scale, not invented MAU |
+| Scalability | [9](#9-scalability--deployment) | Pack-only → hybrid extras → Vercel |
 
 ---
 
