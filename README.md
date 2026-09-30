@@ -10,6 +10,8 @@
 > Lock-first → retrieve-second → ground → **Allow / Clarify / Refuse**.  
 > Public catalogue **metadata** only. No paid clause text. No invented fees.
 
+**Smart India Hackathon 2026** · Problem statement **SIH26107**  
+Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automation · Team ID **175176**
 
 | Live MVP | Demo | Repo | Architecture |
 | --- | --- | --- | --- |
@@ -17,41 +19,116 @@
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
----
-
-## Why this exists
-
-BIS publishes thousands of Indian Standards and runs certification, hallmarking, laboratory recognition, training and consumer services. MSMEs, startups, students and consumers still lose days jumping across PDFs and portals to answer:
-
-- Which Indian Standard applies to this product?
-- Which scheme — ISI (Scheme-I), CRS (Scheme-II), FMCS, QCO, hallmarking?
-- Where is the recognised lab? How do I check a HUID?
-- Where do I file a complaint for a fake Standard Mark?
-
-ManakMitra is the conversational layer on the **public record**. It does not replace BIS or a consultant. It stops a user from walking into the wrong BIS door.
+**Contents:** [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Architecture](#5-architecture--system-design) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Docker](#docker) · [Team](#team-prograckers)
 
 ---
 
-## What it does
+## How this maps to evaluation
 
-Mapped 1:1 to SIH26107 expected capabilities.
+Judges score understanding, novelty, depth, feasibility, design, a working build, UX, impact and scale. This README answers those questions with the live product — not a claim sheet.
 
-| Problem-statement job | What ManakMitra does | What it will not do |
+| Criterion | What to inspect here | Live proof |
 | --- | --- | --- |
-| Answer questions on Indian Standards | Match product / IS number to catalogue title, group, official record | Invent an IS number or quote paid clause text |
-| Recommend a standard from a product description | Pack row + official “Know Your Standard” link | Guess a number when the pack is silent |
-| Guide certification schemes | Scheme router: ISI · CRS · FMCS · QCO | Mix jewellery HUID into a fan / helmet query |
-| Explain the process | Steps + portal (Manakonline, crsbis.in) when the FAQ pack has them | Invent fees or statutory timelines |
-| Consumer queries | Complaints, fake mark, CARE / CMED handoff | Act as a legal opinion |
-| Hallmarking / HUID | HUID format + official verify path | Treat HUID as a product-licence check |
-| Recognised laboratories | Name / city / PIN → nearest list + live LIMS | Book a test or invent a lab rating |
-| Multilingual | English · Hindi · Hinglish, header language lock | Claim 22 languages it cannot ground |
-
-Desks on the live site: **Assistant · Verify product · Testing labs · HUID · Hallmark finder · Indian Standards finder · Certification steps · File a complaint**.
+| Problem understanding | [§1](#1-problem--who-pays-for-the-wrong-door) | Wrong-door examples in the [demo video](https://www.youtube.com/watch?v=oi7lZYGw1Uw) |
+| Innovation | [§2](#2-innovation--why-a-chatbot-was-not-enough) | Fan + HUID **refuse** (retrieval = 0) |
+| Technical complexity | [§3](#3-technical-complexity--what-is-actually-hard) | Four locks before search; RRF only after unlock |
+| Feasibility | [§4](#4-feasibility--it-already-runs) | [Live MVP](https://forest-yonder-apex-plum.vercel.app/) |
+| Architecture | [§5](#5-architecture--system-design) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
+| Implementation | [§6](#6-implementation-quality) | Desks + `npm run eval:all` |
+| UX / UI | [§7](#7-user-experience) | First-run path under 30 seconds |
+| Impact | [§8](#8-impact) | Official BIS scale, not invented MAU |
+| Scalability | [§9](#9-scalability--deployment) | Pack-only → hybrid extras → Vercel |
 
 ---
 
-## How an answer is made
+## 1. Problem — who pays for the wrong door
+
+**Why does this problem exist?**  
+BIS already publishes standards and runs certification, hallmarking, laboratory recognition, Standards Clubs, training and consumer affairs. The record is public. The path is not. A manufacturer, jeweller, student or consumer still has to guess which portal, which scheme and which document applies.
+
+**Who faces it?**
+
+| User | What they need | What goes wrong today |
+| --- | --- | --- |
+| MSME / startup | Applicable IS + scheme before they apply | Consultant fees, or days on the wrong form |
+| Manufacturer / importer | ISI vs CRS vs FMCS vs QCO | One product family, several legal doors |
+| Jeweller / consumer | Hallmark / HUID check | HUID language applied to fans, helmets, appliances |
+| QC / lab user | Recognised lab + LIMS scope | Directory hunting; no PIN-to-lab path |
+| Student / Standards Club | Plain-language IS identity | Catalogue and paid text mixed together |
+| BIS / DoCA helpdesk | First-level routing | Repeat “which portal?” calls |
+
+**How serious is it?**  
+Official published scale of the BIS space (not ManakMitra usage):
+
+| Published stock | Order of magnitude | Source class |
+| --- | --- | --- |
+| Indian Standards in force | ~23,300 | BIS public reporting cited on the idea PPT |
+| Operative licences | ~51,500 | Same |
+| New licences in a recent year | ~9,700 | Same |
+
+Searching many portals and PDFs is exactly the pain SIH26107 names. The gap is not “there is no chatbot”. The gap is **routing with evidence**, so a user does not lose days at the wrong BIS door.
+
+---
+
+## 2. Innovation — why a chatbot was not enough
+
+Generic RAG on mixed PDFs looks complete and still sends a fan query to jewellery verification. ManakMitra treats **refusal as a feature**.
+
+What is unique (not a bundle of existing tools):
+
+1. **Lock-first, retrieve-second.** Search is illegal until scope, scheme, source and evidence unlock.
+2. **Scheme router.** ISI, CRS, FMCS, QCO and HUID stay separate. A mismatch does not retrieve.
+3. **Three exits.** Allow (sourced row) · Clarify (one missing fact) · Refuse (portal handoff, retrieval = 0).
+4. **Hybrid retrieve only after unlock.** Sparse TF-IDF on the pack, then optional `pg_trgm` + pgvector HNSW, then RRF.
+5. **Model-down continuity.** If the LLM is offline, the pack still returns IS number, scheme path and official URL.
+6. **Public metadata only.** No paid clause text, no invented fees, no fake confidence score.
+
+**Why this was not already solved:** BIS.gov.in is a library of portals, not a gate. A generic assistant can quote a paragraph and still pick the wrong scheme. The hard product is the gate.
+
+---
+
+## 3. Technical complexity — what is actually hard
+
+Complexity is used where the problem needs it.
+
+| Hard part | Why it is not a wrapper |
+| --- | --- |
+| Policy gate before any index call | Off-topic, clause-ask, and scheme mix-up must die in milliseconds |
+| Scheme-conflict detection | “Fan pe HUID” must not become a jewellery flow |
+| Sparse + dense + RRF on one authorised pack | Rank fusion only on allowlisted rows |
+| Ground-then-generate | The model may phrase a pack row. It may not invent an IS number |
+| Standalone turns | Chat history must not leak yesterday’s IS into today’s product |
+| Language lock | Header language (EN / HI / Hinglish) beats query-script guessing |
+| Eval harness M1–M10 | Gates are tested without an LLM |
+
+Not used: a billion-vector demo index, synthetic “official” PDFs, or a 22-language claim the pack cannot ground.
+
+---
+
+## 4. Feasibility — it already runs
+
+The MVP is public. A judge can open it without installing anything.
+
+| Proof | Where |
+| --- | --- |
+| Working app | https://forest-yonder-apex-plum.vercel.app/ |
+| Demo walkthrough | https://www.youtube.com/watch?v=oi7lZYGw1Uw |
+| Pack-only laptop path | `docker compose up --build` → http://localhost:8080 |
+| Eval without an LLM | `npm run eval:all` |
+
+Roadmap after the MVP (from the idea PPT, not vapour):
+
+1. Scheme-conflict graph
+2. Evidence freshness leases
+3. Adversarial safety harness
+4. Officer escalation packets
+5. Gap scanner as a pathway constraint engine
+
+Mature pieces: Postgres FTS + pgvector, serverless Node, optional LLM phrasing. The pack path does not depend on a model vendor.
+
+---
+
+## 5. Architecture and system design
 
 Search is not allowed until the gate unlocks.
 
@@ -75,60 +152,130 @@ flowchart TD
   X --> R
 ```
 
+| Layer | Choice | Why this, not a larger stack |
+| --- | --- | --- |
+| App | React 19, TanStack Start, Vite, Tailwind | One TypeScript surface for UI + `/api/chat` |
+| Gate + sparse RAG | [`src/lib/rag.ts`](src/lib/rag.ts), [`src/data/rag-pack.json`](src/data/rag-pack.json) | Answers without a vendor |
+| Hybrid extras | Supabase: `pg_trgm` + pgvector HNSW + RRF | Optional. Kill switch `HYBRID_RAG=0` |
+| Phrasing LLM | Optional xAI, Gemini fallback | Phrases pack rows. Never the source of an IS number |
+| Hosting | Vercel + Supabase | Live MVP for evaluation |
+
 | Lock | Blocks |
 | --- | --- |
-| Scope | Sports, movies, trivia, general chat |
-| Scheme | HUID on a fan, CRS language on jewellery, ISI/CRS mix-up |
+| Scope | Sports, movies, trivia |
+| Scheme | HUID on a fan, CRS language on jewellery |
 | Source | Non-allowlisted hosts |
 | Evidence | No pack row → no generated “fact” |
 
-If the model is down, the **pack still returns** the IS number, scheme path and official link. That is a product requirement, not a fallback apology.
-
 ---
 
-## Measured latency (prototype)
+## 6. Implementation quality
 
-From the official idea PPT. Pack path does not wait on the model.
+Built desks, not a slide-only assistant.
+
+| Desk | User job |
+| --- | --- |
+| Assistant | Natural-language Q&A with three exits |
+| Verify product | Licence-shaped check against the verify pack |
+| Testing labs | PIN / city → nearest list + live LIMS |
+| HUID / Hallmark finder | Jewellery path only |
+| Indian Standards finder | Product / IS → catalogue row |
+| Certification steps | Scheme process + official portal |
+| File a complaint | CARE / CMED handoff |
+
+Measured latency (prototype, idea PPT):
 
 | Path | Measured / target | Notes |
 | --- | --- | --- |
 | Off-topic refuse | ~0.1–0.2 s | Gate only. Retrieval not called |
-| In-scope pack answer | ~1.0–1.8 s | Gate + hybrid retrieve + pack |
-| Greeting / social | ~1.5–2.0 s | Template path |
-| LLM phrasing | ~3–6 s | Pack + model rewrite when the key works |
+| In-scope pack answer | ~1.0–1.8 s | Gate + retrieve + pack |
+| LLM phrasing | ~3–6 s | Only when a key works |
 | Policy gate | < 50 ms | Four locks |
-| Sparse (`pg_trgm` / TF-IDF) | < 200 ms | Exact / fuzzy text |
-| Dense (pgvector HNSW) | < 300 ms | Meaning match |
-| RRF merge + pack build | < 100 ms | Rank fusion |
+| Sparse / dense / RRF | < 200 / 300 / 100 ms | After unlock |
+
+Safety eval (`npm run eval:all`, no LLM required):
+
+| Id | Gate |
+| --- | --- |
+| M1 | Product-family pin |
+| M2 | Retrieval@3 of the pinned IS / CRS row |
+| M3 | No invented IS; off-topic does not retrieve |
+| M4 | Official URL present |
+| M5 | Clarify-first on an underspecified product |
+| M6 | Scheme mix-up blocked |
+| M7 | Off-topic reject |
+| M8 | Standalone query (no leaked IS) |
+| M9 | Multilingual lock |
+| M10 | Clause honesty |
 
 ---
 
-## Jury demo queries
+## 7. User experience
 
-Run these in order. They are the product, not a script overlay.
+A first-time user should not need a manual.
 
-1. **Pack hit** — `Which Indian Standard applies to PET bottles for drinking water?`  
-   Expect a sourced IS row only if the pack has it.
-2. **Clarify** — `Helmet ke liye BIS kaise milega?`  
-   One question: which type of helmet.
-3. **Safe refuse** — `Fan pe HUID kaise check karun?`  
-   Scheme mismatch. Retrieval calls = 0. Product-certification handoff. Not jewellery verify.
-4. **Verify** — a `CM/L` licence shape the verify desk accepts.
-5. **Lab** — a PIN / city search. Map + LIMS, no invented rating.
-6. **HUID** — jewellery only.
+- One header language lock (English · Hindi · Hinglish) across every desk
+- Suggested prompts on the landing page, same queries the assistant accepts
+- Status the user can read: sourced answer, one clarifying question, or official handoff
+- Official URL on an Allow — not a screenshot of a PDF
+- Contact / complaint scrolls to the real handoff, it does not invent a ticket
+- Light and dark theme; mobile, tablet and laptop
+
+**Jury path (under two minutes):**
+
+1. Pack hit — `Which Indian Standard applies to PET bottles for drinking water?`
+2. Clarify — `Helmet ke liye BIS kaise milega?`
+3. Safe refuse — `Fan pe HUID kaise check karun?`
+4. Verify — a `CM/L` shape the verify desk accepts
+5. Lab — PIN or city; map + LIMS
+6. HUID — jewellery only
 
 ---
 
-## Stack
+## 8. Impact
 
-| Layer | Choice | Why |
+ManakMitra does not claim to serve every licence in India. It shortens the first-level path for people who already have to use BIS.
+
+| Who | Measurable change if the gate holds |
+| --- | --- |
+| MSMEs and startups | Fewer wrong-scheme applications before Manakonline / CRS |
+| Manufacturers and importers | ISI / CRS / FMCS named before they pay a consultant |
+| Consumers and jewellers | HUID stays on jewellery; fake-mark complaint goes to CARE |
+| QC and labs | Name / city / PIN → LIMS, not a guessed rating |
+| Students and Clubs | IS identity in plain language, with the official record |
+| BIS / DoCA helpdesks | Repeat “which portal?” questions drop to a handoff card |
+
+Published BIS stock (~23.3K standards, ~51.5K operative licences) is the **addressable official space**, cited from BIS / PIB material on the idea PPT. It is not a user-count for this app.
+
+---
+
+## 9. Scalability and deployment
+
+| Stage | What runs | What you add |
 | --- | --- | --- |
-| App | React 19, TanStack Start, Vite, Tailwind CSS | One TypeScript surface for UI + `/api/chat` |
-| Gate + sparse RAG | [`src/lib/rag.ts`](src/lib/rag.ts), [`src/data/rag-pack.json`](src/data/rag-pack.json) | Pack answers without a vendor |
-| Hybrid extras | Supabase Postgres: `pg_trgm` + pgvector HNSW + RRF | Optional. Kill switch `HYBRID_RAG=0` |
-| Phrasing LLM | Optional xAI, Gemini fallback | Phrases pack rows. Never a source of IS numbers |
-| Embeddings | Optional Gemini 768-d | Ingest only |
-| Hosting | Vercel + Supabase | Live MVP for evaluation |
+| Judge laptop | Pack-only Docker / `npm run dev` | Nothing |
+| Live MVP | Vercel + pack + optional LLM phrasing | `XAI_API_KEY` |
+| Hybrid | Same app + Supabase `pack_docs` | `SUPABASE_*`, `HYBRID_RAG=1` |
+| Production later | Same Postgres, freshness leases, conflict graph | Pack ops, not a rewrite |
+
+Horizontal scale is boring on purpose: the gate is CPU-cheap, the pack is a snapshot, dense extras are an index on official rows. Cost stays low because refuse and pack-hit do not need a model. Idea-PPT operating sketch: a few thousand rupees a month at pilot query volume; model tokens only on Allow phrasing.
+
+Kill switch: `HYBRID_RAG=0` → pack-only, still correct.
+
+---
+
+## What it does vs will not do
+
+| Problem-statement job | What ManakMitra does | What it will not do |
+| --- | --- | --- |
+| Answer questions on Indian Standards | Match product / IS to catalogue title + official record | Invent an IS number or quote paid clause text |
+| Recommend a standard from a product | Pack row + Know Your Standard link | Guess when the pack is silent |
+| Guide certification schemes | Router: ISI · CRS · FMCS · QCO | Mix HUID into a fan / helmet query |
+| Explain the process | Steps + portal when the FAQ pack has them | Invent fees or statutory timelines |
+| Consumer queries | Complaints, fake mark, CARE / CMED | Act as a legal opinion |
+| Hallmarking / HUID | Format + official verify path | Treat HUID as a product licence |
+| Recognised laboratories | PIN / city + live LIMS | Book a test or invent a rating |
+| Multilingual | EN · HI · Hinglish, header lock | Claim 22 languages it cannot ground |
 
 ---
 
@@ -150,13 +297,9 @@ npm test
 npm run eval:all
 ```
 
-`eval:all` does not need an LLM.
-
 ---
 
 ## Docker
-
-One command. Pack-only by default so a judge laptop does not need Supabase or an API key.
 
 ```bash
 cp .env.example .env.local   # optional keys
@@ -170,14 +313,6 @@ App: [http://localhost:8080](http://localhost:8080)
 | [`Dockerfile`](Dockerfile) | Multi-stage Node 22 build + preview |
 | [`docker-compose.yml`](docker-compose.yml) | Single service, port 8080 |
 | [`.dockerignore`](.dockerignore) | Keeps the image small |
-
-Pass keys at runtime if you want phrasing or hybrid extras:
-
-```bash
-docker compose up --build -d
-# or
-docker run --env-file .env.local -p 8080:8080 manakmitra
-```
 
 ---
 
@@ -197,30 +332,6 @@ Same names locally, in Docker, and on Vercel (Production + Preview). Redeploy af
 
 ---
 
-## Evaluation harness
-
-| Id | Gate |
-| --- | --- |
-| M1 | Product-family pin |
-| M2 | Retrieval@3 of the pinned IS / CRS row |
-| M3 | No invented IS; off-topic does not retrieve |
-| M4 | Official URL present |
-| M5 | Clarify-first on an underspecified product |
-| M6 | Scheme mix-up blocked (ISI vs CRS vs HUID) |
-| M7 | Off-topic reject |
-| M8 | Standalone query (no leaked IS from history) |
-| M9 | Multilingual lock |
-| M10 | Clause honesty (no invented clause text) |
-
-```bash
-npm run eval:golden
-npm run eval:rewrite
-npm run eval:pack
-npm run eval:metrics
-```
-
----
-
 ## Pack operations
 
 | Command | Effect |
@@ -231,10 +342,6 @@ npm run eval:metrics
 
 Do **not** scrape BIS, merge unknown dumps, or store paid clause text. Full document text lives on [Know Your Standard](https://www.bis.gov.in/know-your-standard/?lang=en) and [e-Sale](https://standardsbis.bsbedge.com/).
 
----
-
-## Layout
-
 ```
 src/routes/api/chat.ts     Chat handler
 src/lib/rag.ts             Policy + sparse lock
@@ -244,24 +351,9 @@ src/data/rag-pack.json     Authorised catalogue snapshot
 data/*.csv                 Human-editable sources
 supabase/*.sql             pack_docs + hybrid search
 scripts/eval-*.mjs         Golden + metrics
-Dockerfile                 Container build
-docker-compose.yml         One-command run
 ```
 
----
-
-## Deploy
-
-1. Import this repository on [Vercel](https://vercel.com).
-2. Set optional `XAI_API_KEY` and Supabase keys for Production and Preview.
-3. Deploy. After any env change, **Redeploy**.
-
-Operator rules:
-
-1. Labs are a name / city list. Confirm scope on [BIS LIMS](https://lims.bis.gov.in/).
-2. Fees in the pack are FAQ figures. Re-check the live page.
-3. Each chat turn is standalone. History must not leak an IS number into a new product.
-4. The pack is a snapshot. QCO / mandatory status can change on the official site.
+Operator rules: labs are a name/city list — confirm scope on [LIMS](https://lims.bis.gov.in/). Fees in the pack are FAQ figures. Each turn is standalone. QCO / mandatory status can change on the official site.
 
 Official hosts: [bis.gov.in](https://www.bis.gov.in) · [manakonline.in](https://www.manakonline.in) · [crsbis.in](https://www.crsbis.in) · [lims.bis.gov.in](https://lims.bis.gov.in)
 
