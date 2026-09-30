@@ -10,8 +10,6 @@
 > Lock-first → retrieve-second → ground → **Allow / Clarify / Refuse**.  
 > Public catalogue **metadata** only. No paid clause text. No invented fees.
 
-**Smart India Hackathon 2026** · Problem statement **SIH26107**  
-Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automation · Team ID **175176**
 
 | Live MVP | Demo | Repo | Architecture |
 | --- | --- | --- | --- |
