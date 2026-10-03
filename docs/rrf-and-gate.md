@@ -2,6 +2,8 @@
 
 This note matches the code in [`src/lib/hybrid.ts`](../src/lib/hybrid.ts) and [`supabase/search_pack_docs_hybrid.sql`](../supabase/search_pack_docs_hybrid.sql). It is not a second architecture.
 
+The four formulas (gate product, RRF, TF-IDF, faithfulness) are in [mathematical-framework.md](mathematical-framework.md).
+
 ## Two layers, on purpose
 
 The idea deck names the hybrid core as PostgreSQL full-text search, `pg_trgm`, pgvector HNSW, and Reciprocal Rank Fusion. In this repository those Postgres pieces are **optional extras**.
