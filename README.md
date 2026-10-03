@@ -19,7 +19,7 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
-**Contents:** [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Architecture](#5-architecture--system-design) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Docker](#docker) · [Team](#team-prograckers)
+**Contents:** [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Architecture](#5-architecture--system-design) · [RRF](#reciprocal-rank-fusion) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Docker](#docker) · [Team](#team-prograckers)
 
 ---
 
@@ -33,7 +33,7 @@ Judges score understanding, novelty, depth, feasibility, design, a working build
 | Innovation | [2](#2-innovation--why-a-chatbot-was-not-enough) | Fan + HUID **refuse** (retrieval = 0) |
 | Technical complexity | [3](#3-technical-complexity--what-is-actually-hard) | Four locks before search; RRF only after unlock |
 | Feasibility | [4](#4-feasibility--it-already-runs) | [Live MVP](https://forest-yonder-apex-plum.vercel.app/) |
-| Architecture | [5](#5-architecture--system-design) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
+| Architecture | [5](#5-architecture--system-design) | [RRF note](docs/rrf-and-gate.md) |
 | Implementation | [6](#6-implementation-quality) | Desks + `npm run eval:all` |
 | UX / UI | [7](#7-user-experience) | First-run path under 30 seconds |
 | Impact | [8](#8-impact) | Official BIS scale, not invented MAU |
@@ -95,7 +95,7 @@ Complexity is used where the problem needs it.
 | --- | --- |
 | Policy gate before any index call | Off-topic, clause-ask, and scheme mix-up must die in milliseconds |
 | Scheme-conflict detection | “Fan pe HUID” must not become a jewellery flow |
-| Sparse + dense + RRF on one authorised pack | Rank fusion only on allowlisted rows |
+| Sparse + dense + RRF on one authorised pack | Rank fusion only on the unfrozen tail of allowlisted rows |
 | Ground-then-generate | The model may phrase a pack row. It may not invent an IS number |
 | Standalone turns | Chat history must not leak yesterday’s IS into today’s product |
 | Language lock | Header language (EN / HI / Hinglish) beats query-script guessing |
@@ -141,7 +141,7 @@ flowchart TD
   S --> W{Pack strong?}
   W -->|yes| E[Evidence pack]
   W -->|no| H[Dense extras<br/>pg_trgm + pgvector HNSW]
-  H --> F[RRF merge]
+  H --> F[RRF merge<br/>k = 60]
   F --> E
   E --> O{Outcome}
   O -->|clear row| A[Allow<br/>IS + title + official URL]
@@ -152,11 +152,13 @@ flowchart TD
   X --> R
 ```
 
+The idea deck draws the hybrid core as PostgreSQL FTS + `pg_trgm` + pgvector HNSW + RRF. In this repo the **always-on sparse rank is local TF-IDF** over the JSON pack. `pg_trgm` and pgvector are optional, and only after that pack is weak.
+
 | Layer | Choice | Why this, not a larger stack |
 | --- | --- | --- |
 | App | React 19, TanStack Start, Vite, Tailwind | One TypeScript surface for UI + `/api/chat` |
 | Gate + sparse RAG | [`src/lib/rag.ts`](src/lib/rag.ts), [`src/data/rag-pack.json`](src/data/rag-pack.json) | Answers without a vendor |
-| Hybrid extras | Supabase: `pg_trgm` + pgvector HNSW + RRF | Optional. Kill switch `HYBRID_RAG=0` |
+| Hybrid extras | Optional `pg_trgm` + pgvector HNSW, fused by RRF (`k = 60`) | Never the rank lock. [`docs/rrf-and-gate.md`](docs/rrf-and-gate.md) |
 | Phrasing LLM | Optional xAI, Gemini fallback | Phrases pack rows. Never the source of an IS number |
 | Hosting | Vercel + Supabase | Live MVP for evaluation |
 
@@ -166,6 +168,16 @@ flowchart TD
 | Scheme | HUID on a fan, CRS language on jewellery |
 | Source | Non-allowlisted hosts |
 | Evidence | No pack row → no generated “fact” |
+
+### Reciprocal Rank Fusion
+
+Sparse and dense stay on their own scales. RRF adds rank, not raw cosine.
+
+```text
+score(d) = 1/(60 + rank_pgvector(d)) + 1/(60 + rank_pg_trgm(d))
+```
+
+A lane that did not return the row adds 0. A TF-IDF hit at score ≥ 0.45 is frozen, so a near vector neighbour cannot replace an exact IS row. Extras are capped at three. A policy pin never calls the embedder or RRF. The out-of-scope gate trace is in [`docs/rrf-and-gate.md`](docs/rrf-and-gate.md).
 
 ---
 
@@ -187,11 +199,24 @@ Measured latency (prototype, idea PPT):
 
 | Path | Measured / target | Notes |
 | --- | --- | --- |
-| Off-topic refuse | ~0.1–0.2 s | Gate only. Retrieval not called |
+| Off-topic refuse | ~0.1–0.2 s | Gate only. Retrieval not called. [Trace](docs/rrf-and-gate.md) |
 | In-scope pack answer | ~1.0–1.8 s | Gate + retrieve + pack |
 | LLM phrasing | ~3–6 s | Only when a key works |
 | Policy gate | < 50 ms | Four locks |
 | Sparse / dense / RRF | < 200 / 300 / 100 ms | After unlock |
+
+Out-of-scope path shape (band from the idea deck, not a fresh production stopwatch):
+
+```text
+query            "who won the cricket match yesterday"
+lock.scope       FAIL
+lock.scheme      skip
+lock.source      skip
+lock.evidence    skip
+retrieval_calls  0
+exit             REFUSE
+time_band        0.1–0.2 s
+```
 
 Safety eval (`npm run eval:all`, no LLM required):
 
@@ -343,14 +368,13 @@ Same names locally, in Docker, and on Vercel (Production + Preview). Redeploy af
 Do **not** scrape BIS, merge unknown dumps, or store paid clause text. Full document text lives on [Know Your Standard](https://www.bis.gov.in/know-your-standard/?lang=en) and [e-Sale](https://standardsbis.bsbedge.com/).
 
 ```
-src/routes/api/chat.ts     Chat handler
-src/lib/rag.ts             Policy + sparse lock
-src/lib/retrieve.ts        Hybrid extras
-src/lib/intent.ts          Off-topic / social
-src/data/rag-pack.json     Authorised catalogue snapshot
-data/*.csv                 Human-editable sources
-supabase/*.sql             pack_docs + hybrid search
-scripts/eval-*.mjs         Golden + metrics
+src/routes/api/chat.ts          Chat handler
+src/lib/rag.ts                  Policy + TF-IDF lock
+src/lib/hybrid.ts               Optional extras + RRF merge
+supabase/search_pack_docs_hybrid.sql
+docs/rrf-and-gate.md            Fusion formula + gate trace
+src/data/rag-pack.json          Authorised catalogue snapshot
+scripts/eval-*.mjs              Golden + metrics
 ```
 
 Operator rules: labs are a name/city list — confirm scope on [LIMS](https://lims.bis.gov.in/). Fees in the pack are FAQ figures. Each turn is standalone. QCO / mandatory status can change on the official site.
