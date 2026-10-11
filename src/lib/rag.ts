@@ -388,12 +388,22 @@ for (const c of rag.chunks) {
 
 function exactIsChunk(id: string, prefer?: string): Chunk | undefined {
   let fallback: Chunk | undefined;
-  for (const i of catPost.isn.get(id) || []) {
-    const ch = catalogue[i];
+  for (const ch of rag.chunks) {
+    if (!ch.id.startsWith("inbox-")) continue;
     const nums = isNumbers(ch.title);
     if (nums[0] !== id) continue;
+    if (/not in this (catalogue )?snapshot|will not invent an edition/i.test(ch.body)) continue;
     if (!fallback) fallback = ch;
     if (prefer && `${ch.title} ${ch.body}`.toLowerCase().includes(prefer.toLowerCase())) return ch;
+  }
+  if (!fallback) {
+    for (const i of catPost.isn.get(id) || []) {
+      const ch = catalogue[i];
+      const nums = isNumbers(ch.title);
+      if (nums[0] !== id) continue;
+      if (!fallback) fallback = ch;
+      if (prefer && `${ch.title} ${ch.body}`.toLowerCase().includes(prefer.toLowerCase())) return ch;
+    }
   }
   return fallback;
 }
@@ -428,7 +438,18 @@ function pinFamilyHits(family: ProductFamily, seen: Set<string>): EvidenceHit[] 
       out.push(toHit(c, 0.94));
     }
   }
-  for (const id of family.is) {
+  const inboxNamed = rag.chunks.filter(
+    (c) =>
+      c.id.startsWith("inbox-") &&
+      family.aliases.some((alias) => aliasHitsText(alias, `${c.title} ${c.body}`)),
+  );
+  for (const c of inboxNamed.slice(0, 2)) {
+    if (seen.has(c.title)) continue;
+    seen.add(c.title);
+    out.push(toHit(c, 0.96));
+  }
+  for (const raw of family.is) {
+    const id = raw.match(/\d{3,6}/)?.[0] || raw;
     const ch = exactIsChunk(id, family.preferTitle?.[id]);
     if (!ch || seen.has(ch.title)) continue;
     seen.add(ch.title);
@@ -1642,6 +1663,19 @@ export function vectorRetrieve(query: string): Retrieval {
         finalHits = uniqueHits(fam.length ? [fam[0], ...cityLabs, ...fam.slice(1), ...rest] : [...cityLabs, ...rest]);
       }
     }
+  }
+
+  if (family?.is.length) {
+    const allowed = new Set<string>([
+      ...family.is.map((raw) => raw.match(/\d{3,6}/)?.[0] || raw),
+      ...ids,
+    ]);
+    finalHits = finalHits.filter((h) => {
+      if (h.kind !== "standard" && h.kind !== "product") return true;
+      const nums = isNumbers(h.title);
+      if (!nums.length) return true;
+      return nums.some((n) => allowed.has(n));
+    });
   }
 
   const best = finalHits[0];

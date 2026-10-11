@@ -122,7 +122,7 @@
     "id": "boost-product-utensils-5522",
     "kind": "product",
     "title": "Stainless steel sheets and strips for utensils — IS 5522",
-    "body": "IS 5522 : 2014 is Stainless steel sheets and strips for utensils - Specification (Third Revision). Related catalogue row: IS 15997 : 2012 Low nickel austenitic stainless steel plate, sheet, and strip for utensils and kitchen applications. This is material specification metadata, not paid clause text. Confirm status on Know Your Standard. Non-stick coated cookware (often cited as IS 14756) is not in this catalogue snapshot — look it up on the official portal rather than inventing an edition.",
+    "body": "IS 5522 : 2014 is Stainless steel sheets and strips for utensils - Specification (Third Revision). Related catalogue row: IS 15997 : 2012 Low nickel austenitic stainless steel plate, sheet, and strip for utensils and kitchen applications. This is material specification metadata, not paid clause text. Confirm status on Know Your Standard. IS 14756 is stainless steel cookware, a different product — do not substitute it when the question is about sheets or strips for utensils.",
     "url": "https://standards.bis.gov.in/website/know-your-standards"
   },
   {
@@ -135,8 +135,8 @@
   {
     "id": "boost-product-packaged-water-honest",
     "kind": "product",
-    "title": "Packaged drinking water — confirm IS 14543 / IS 13428 on Know Your Standard",
-    "body": "Packaged drinking water (other than packaged natural mineral water) and packaged natural mineral water are commonly cited as IS 14543 and IS 13428. Those two numbers are not in this catalogue snapshot, so this assistant will not invent an edition year (including a '2024' edition). What is in the snapshot: IS 15609 : 2005 Polyethylene flexible pouches for packing natural mineral water and packaged drinking water, and IS 10500 : 2012 Drinking water (piped/municipal). Confirm the live title, year and QCO on Know Your Standard before telling an MSME a licence is compulsory.",
+    "title": "Packaged drinking water — IS 14543:2024 title is on the BIS review page",
+    "body": "BIS standard review states IS 14543:2024, title: Packaged Drinking Water Other than Packaged Natural Mineral Water — Specification (Third Revision). That is title metadata only. No clause text and no fee. IS 13428 (packaged natural mineral water) was not on that page, so no edition year is stated for it. Still in this snapshot: IS 15609 : 2005 pouches for packing natural mineral water and packaged drinking water, and IS 10500 : 2012 piped drinking water. Confirm the live QCO before telling an MSME a licence is compulsory.",
     "url": "https://standards.bis.gov.in/website/know-your-standards"
   },
   {

@@ -6,7 +6,7 @@
  */
 import { isLabCityQuery, vectorRetrieve } from "@/lib/rag";
 import { isOfficialHost } from "@/lib/official-hosts";
-import { isPolicyPinned } from "@/lib/policy-gate";
+import { isPolicyPinned, policyPinName } from "@/lib/policy-gate";
 import { matchProductFamily } from "@/lib/product-playbook";
 import type { EvidenceHit, Retrieval } from "@/lib/rag-types";
 import { EMBED_MODEL, getServiceSupabase, isHybridRagOn, geminiEmbedKey } from "@/lib/supabase.server";
@@ -283,11 +283,44 @@ function extrasNeeded(query: string, base: Retrieval): boolean {
   return top < 0.35;
 }
 
+/** 5 Oct extract extras. Policy pins stay unless a precise corpus title matches. */
+async function mergeCorpus(query: string, base: Retrieval): Promise<Retrieval> {
+  let extras: EvidenceHit[] = [];
+  try {
+    const { searchBisCorpus } = await import("@/lib/corpus-search.server");
+    extras = await searchBisCorpus(query);
+  } catch {
+    return base;
+  }
+  extras = extras.filter((h) => isOfficialHost(h.url)).slice(0, 2);
+  if (!extras.length) return base;
+  const pin = policyPinName(base);
+  const softPin = pin === "no-table" || pin === "unknown-is" || pin === "what-bis";
+  if (isPolicyPinned(base) && !softPin) return base;
+  const top = base.hits[0]?.score ?? 0;
+  if (top >= 0.9 && !softPin) {
+    const locked = base.hits.filter((h) => h.score >= 0.45);
+    const rest = extras.filter((h) => !locked.some((x) => x.title === h.title));
+    if (!rest.length) return base;
+    return { ...base, hits: [...locked, ...rest].slice(0, 8) };
+  }
+  const hits = mergeLocked(softPin ? [] : base.hits, extras).filter((h) => isOfficialHost(h.url));
+  if (!hits.length) return base;
+  return {
+    ...base,
+    hits,
+    hasEvidence: true,
+    grounding: softPin ? "verified" : base.grounding,
+    confidence: base.confidence === "low" ? "medium" : base.confidence,
+  };
+}
+
 export async function runHybridRetrieve(query: string): Promise<Retrieval> {
   const base = vectorRetrieve(query);
-  if (!isHybridRagOn()) return base;
-  if (isPolicyPinned(base)) return base;
-  if (!extrasNeeded(query, base)) return base;
+  const withCorpus = await mergeCorpus(query, base);
+  if (!isHybridRagOn()) return withCorpus;
+  if (isPolicyPinned(withCorpus)) return withCorpus;
+  if (!extrasNeeded(query, withCorpus)) return withCorpus;
   try {
     const family = matchProductFamily(query);
     const labCity = isLabCityQuery(query);
@@ -305,19 +338,19 @@ export async function runHybridRetrieve(query: string): Promise<Retrieval> {
       extras = [...dense, ...trgm, ...labs];
       if (!extras.length && family) extras = await trgmExtras(query, null, null);
     }
-    if (!extras.length) return base;
+    if (!extras.length) return withCorpus;
     extras = extras.filter((h) => extraAllowed(query, h)).slice(0, 3);
-    if (!extras.length) return base;
-    const hits = mergeLocked(base.hits, extras).filter((h) => isOfficialHost(h.url));
+    if (!extras.length) return withCorpus;
+    const hits = mergeLocked(withCorpus.hits, extras).filter((h) => isOfficialHost(h.url));
     const hasEvidence = hits.length > 0;
     return {
-      ...base,
+      ...withCorpus,
       hits: hasEvidence ? hits : [],
       hasEvidence,
-      grounding: hasEvidence ? base.grounding : "refuse",
+      grounding: hasEvidence ? withCorpus.grounding : "refuse",
     };
   } catch (err) {
     console.warn("[hybrid]", err instanceof Error ? err.message : err);
-    return base;
+    return withCorpus;
   }
 }

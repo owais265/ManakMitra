@@ -104,7 +104,7 @@ export default function LabsPage() {
                 value={pin}
                 onChange={(event) => setPin(event.target.value)}
                 placeholder="492001"
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
               />
             </label>
             <label className="mt-4 block text-sm font-medium">
@@ -113,7 +113,7 @@ export default function LabsPage() {
                 value={product}
                 onChange={(event) => setProduct(event.target.value)}
                 placeholder={t.productPh}
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
               />
             </label>
             <button
@@ -164,6 +164,7 @@ export default function LabsPage() {
             {result ? (
               <div className="mt-4">
                 <p className="text-xs leading-relaxed text-slate-500">{result.nearby.length ? t.noteNear : t.noteFar}</p>
+                {result.note ? <p className="mt-2 text-sm leading-relaxed text-slate-500">{result.note}</p> : null}
                 <LabList title={result.nearby.length ? t.within : t.nearNo} labs={result.nearby} selectedId={selected?.id} onPick={setSelected} bis={t.bisLab} city={t.cityList} maps={t.openMaps} />
                 <LabList title={t.farther} labs={result.farther} selectedId={selected?.id} onPick={setSelected} bis={t.bisLab} city={t.cityList} maps={t.openMaps} />
               </div>

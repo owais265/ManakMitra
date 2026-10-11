@@ -48,6 +48,8 @@ export default function SiteHeader({
   const [faqOpen, setFaqOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetTop, setSheetTop] = useState(64);
+  const [sheetPanel, setSheetPanel] = useState<'links' | 'portals' | 'faq'>('links');
   const headerRef = useRef<HTMLElement>(null);
   const closeTimer = useRef<number | null>(null);
   const justOpened = useRef(0);
@@ -108,7 +110,17 @@ export default function SiteHeader({
     setPortalsOpen(false);
     setMoreOpen(false);
     setSheetOpen(false);
+    setSheetPanel('links');
   }, [path]);
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sheetOpen]);
 
   useEffect(() => {
     if (!portalsOpen && !faqOpen && !moreOpen && !sheetOpen) return;
@@ -165,7 +177,7 @@ export default function SiteHeader({
           </span>
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center gap-4 lg:flex lg:gap-6" aria-label={chrome.portals}>
+        <nav className="hidden min-w-0 flex-1 items-center gap-4 overflow-x-auto xl:flex xl:gap-6" aria-label={chrome.portals}>
           <button
             type="button"
             aria-expanded={portalsOpen}
@@ -236,10 +248,10 @@ export default function SiteHeader({
           </button>
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-1.5 bg-white sm:gap-2.5 dark:bg-[#0c1222]">
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded border border-line text-ink lg:hidden dark:border-slate-600 dark:text-slate-200"
+            className="inline-flex h-11 w-11 items-center justify-center rounded border border-line text-ink xl:hidden dark:border-slate-600 dark:text-slate-200"
             aria-expanded={sheetOpen}
             aria-controls="mm-sheet"
             onClick={() => {
@@ -247,6 +259,8 @@ export default function SiteHeader({
               setPortalsOpen(false);
               setFaqOpen(false);
               setMoreOpen(false);
+              setSheetTop(headerRef.current?.getBoundingClientRect().bottom ?? 64);
+              setSheetPanel('links');
               setSheetOpen((open) => !open);
             }}
           >
@@ -285,16 +299,47 @@ export default function SiteHeader({
       {sheetOpen ? (
         <div
           id="mm-sheet"
-          className="absolute inset-x-0 top-full z-50 max-h-[min(78dvh,40rem)] overflow-y-auto border-b border-slate-200 bg-white shadow-xl lg:hidden dark:border-slate-700 dark:bg-[#0c1222]"
+          className="fixed inset-x-0 bottom-0 z-[80] overflow-y-auto overscroll-contain border-t border-slate-200 bg-white xl:hidden dark:border-slate-700 dark:bg-[#0c1222]"
+          style={{ top: sheetTop }}
         >
           <nav className="mx-auto flex max-w-6xl flex-col px-3 py-3" aria-label={chrome.portals}>
+            {sheetPanel !== 'links' ? (
+              <button
+                type="button"
+                className="flex min-h-11 items-center rounded-lg px-3 text-left text-sm font-medium text-slate-500 dark:text-slate-400"
+                onClick={() => setSheetPanel('links')}
+              >
+                {sheetPanel === 'portals' ? chrome.portals : faq.label}
+              </button>
+            ) : null}
+            {sheetPanel === 'portals' ? (
+              copy.links.map((link, index) => (
+                <a
+                  key={PORTAL_HREFS[index]}
+                  href={PORTAL_HREFS[index]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeMenus}
+                  className="flex min-h-11 items-center rounded-lg px-3 text-base font-medium text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
+                >
+                  {link.title}
+                </a>
+              ))
+            ) : null}
+            {sheetPanel === 'faq'
+              ? faq.items.map((item) => (
+                  <details key={item.q} className="border-b border-slate-200 px-3 py-2 dark:border-slate-700">
+                    <summary className="min-h-11 cursor-pointer py-2 text-base font-medium text-ink dark:text-slate-100">{item.q}</summary>
+                    <p className="pb-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{item.a}</p>
+                  </details>
+                ))
+              : null}
+            {sheetPanel === 'links' ? (
+              <>
             <button
               type="button"
               className="flex min-h-11 items-center rounded-lg px-3 text-left text-base font-medium text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
-              onClick={() => {
-                setSheetOpen(false);
-                showMenu('portals');
-              }}
+              onClick={() => setSheetPanel('portals')}
             >
               {chrome.portals}
             </button>
@@ -347,13 +392,12 @@ export default function SiteHeader({
             <button
               type="button"
               className="flex min-h-11 items-center rounded-lg px-3 text-left text-base font-medium text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
-              onClick={() => {
-                setSheetOpen(false);
-                showMenu('faq');
-              }}
+              onClick={() => setSheetPanel('faq')}
             >
               {faq.label}
             </button>
+              </>
+            ) : null}
           </nav>
         </div>
       ) : null}

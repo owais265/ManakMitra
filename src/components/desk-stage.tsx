@@ -24,9 +24,11 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
   const railRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef(0);
   const lockRef = useRef<number | null>(null);
+  const lockY = useRef(0);
 
   const choose = (index: number) => {
     lockRef.current = index;
+    lockY.current = window.scrollY;
     activeRef.current = index;
     setActive(index);
   };
@@ -139,7 +141,9 @@ export default function DeskStage({ lang }: { lang: AppLang }) {
       }
 
       const zone = raw < 0.34 ? 0 : raw < 0.67 ? 1 : 2;
-      if (lockRef.current != null && zone !== lockRef.current) lockRef.current = null;
+      if (lockRef.current != null && Math.abs(window.scrollY - lockY.current) > 96) {
+        lockRef.current = null;
+      }
       if (lockRef.current == null && zone !== activeRef.current) {
         activeRef.current = zone;
         setActive(zone);

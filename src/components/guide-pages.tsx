@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, type ReactNode, useState, useSyncExternalStore } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState, useSyncExternalStore } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
@@ -19,6 +19,62 @@ import {
   type HuidCheck,
 } from '@/lib/more-desk';
 import { checkBrand } from '@/lib/verify-cert';
+import { fetchPackHits, PackHitList, type PackHit } from '@/components/pack-hit-list';
+
+function PackPinList({ kind, label }: { kind: "hallmark"; label: string }) {
+  const [pin, setPin] = useState("");
+  const [rows, setRows] = useState<{ id: string; name: string; address: string; km: number }[]>([]);
+  const [note, setNote] = useState("");
+  const [err, setErr] = useState("");
+
+  const onSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setErr("");
+    try {
+      const response = await fetch("/api/labs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin, kind }),
+      });
+      const json = (await response.json()) as { error?: string; note?: string; nearby?: { id: string; name: string; address: string; km: number }[] };
+      if (!response.ok) {
+        setRows([]);
+        setNote("");
+        setErr(json.error || "Enter a 6-digit PIN.");
+        return;
+      }
+      setRows(json.nearby || []);
+      setNote(json.note || "");
+    } catch {
+      setErr("The centre list could not be loaded.");
+    }
+  };
+
+  return (
+    <form className={`mt-8 ${card}`} onSubmit={onSubmit}>
+      <label className="block text-sm font-medium">
+        {label}
+        <input value={pin} onChange={(event) => setPin(event.target.value)} inputMode="numeric" placeholder="400001" className={field} />
+      </label>
+      <button type="submit" className={submit}>
+        Show centres
+      </button>
+      {err ? <p className="mt-3 text-sm text-red-700">{err}</p> : null}
+      {note ? <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{note}</p> : null}
+      {rows.length ? (
+        <ul className="mt-4 grid gap-2">
+          {rows.slice(0, 8).map((row) => (
+            <li key={row.id} className="rounded-2xl border border-line px-4 py-3 text-sm dark:border-slate-700">
+              <p className="font-semibold text-ink dark:text-slate-50">{row.name}</p>
+              <p className="mt-1 text-slate-600 dark:text-slate-300">{row.address}</p>
+              <p className="mt-1 text-bis-navy dark:text-blue-300">{row.km} km</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </form>
+  );
+}
 
 function DeskShell({ children }: { children: ReactNode }) {
   return (
@@ -70,7 +126,7 @@ function OfficialLink({ href, label, className = 'mt-6' }: { href: string; label
 }
 
 const field =
-  'mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]';
+  'mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100';
 const card = 'rounded-[1.75rem] border border-line bg-white p-5 sm:p-8 dark:border-slate-700 dark:bg-[#151d30]';
 const submit =
   'mt-6 inline-flex min-h-12 items-center rounded-full bg-bis-navy px-6 text-sm font-semibold text-white mm-press hover:bg-bis-navy-deep disabled:bg-slate-300 dark:disabled:bg-slate-700';
@@ -140,6 +196,9 @@ export function HuidPage() {
           </div>
         )}
       </section>
+      <section className="mx-auto max-w-3xl px-4 pb-12 sm:px-6">
+        <PackPinList kind="hallmark" label="Hallmarking centres for a PIN. The 6-character check above is only the shape. This extract is not the live BIS CARE register." />
+      </section>
     </DeskShell>
   );
 }
@@ -199,7 +258,7 @@ export function HallmarkPage() {
                         onClick={() => choose(row)}
                         className={`inline-flex min-h-11 items-center rounded-full border px-3 text-sm font-medium mm-press ${
                           on
-                            ? 'border-bis-navy bg-bis-navy text-white dark:border-blue-300'
+                            ? 'border-bis-navy bg-bis-navy text-white dark:border-blue-300 dark:bg-[#1a3f73] dark:text-white'
                             : 'border-line bg-white text-slate-700 hover:border-bis-navy/40 dark:border-slate-600 dark:bg-[#10182a] dark:text-slate-100'
                         }`}
                       >
@@ -232,6 +291,7 @@ export function HallmarkPage() {
           </div>
         )}
       </section>
+      <PackPinList kind="hallmark" label="Hallmarking centres for a PIN" />
     </DeskShell>
   );
 }
@@ -245,9 +305,14 @@ export function StandardsPage() {
   const verdict = asked ? checkBrand(asked) : null;
   const clarify = asked ? Boolean(verdict && verdict.status === 'unclear') : false;
 
-  const onSubmit = (event: FormEvent) => {
+  const [hits, setHits] = useState<PackHit[]>([]);
+
+  const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setAsked(name.trim());
+    const askedName = name.trim();
+    setAsked(askedName);
+    setHits([]);
+    setHits(await fetchPackHits("standard", askedName));
   };
 
   return (
@@ -277,6 +342,7 @@ export function StandardsPage() {
             ) : null}
             <Steps lines={copy.stSteps} />
             <OfficialLink href={MORE_URL.kys} label={copy.stOpen} />
+            <PackHitList hits={hits} label="From the loaded Indian Standards" />
           </article>
         ) : (
           <div className="mt-8">
@@ -299,9 +365,25 @@ export function CertifyPage() {
   const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, getLangServerSnapshot);
   const copy = moreCopy(lang);
   const [scheme, setScheme] = useState<CertScheme | null>(null);
+  const [hits, setHits] = useState<PackHit[]>([]);
   const steps = scheme === 'crs' ? copy.crsSteps : scheme === 'fmcs' ? copy.fmcsSteps : scheme === 'isi' ? copy.isiSteps : [];
   const link = SCHEMES.find((row) => row.id === scheme);
   const linkLabel = scheme === 'crs' ? copy.openCrs : scheme === 'fmcs' ? copy.openBis : copy.openManak;
+
+  useEffect(() => {
+    if (!scheme) {
+      setHits([]);
+      return;
+    }
+    const q = scheme === 'crs' ? 'Compulsory Registration' : scheme === 'fmcs' ? 'Foreign Manufacturers' : 'product certification';
+    let live = true;
+    void fetchPackHits('process', q).then((rows) => {
+      if (live) setHits(rows);
+    });
+    return () => {
+      live = false;
+    };
+  }, [scheme]);
 
   return (
     <DeskShell>
@@ -333,6 +415,7 @@ export function CertifyPage() {
               {scheme === 'isi' ? copy.isi : scheme === 'crs' ? copy.crs : copy.fmcs}
             </h2>
             <Steps lines={steps} />
+            <PackHitList hits={hits} label="From the loaded certification files" />
             <OfficialLink href={link.href} label={linkLabel} />
           </article>
         ) : null}

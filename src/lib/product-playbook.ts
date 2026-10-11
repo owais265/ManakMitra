@@ -8,6 +8,8 @@ export type ProductFamily = {
   disambiguate?: string;
   /** Prefer catalogue title containing this substring when pinning an IS id. */
   preferTitle?: Record<string, string>;
+  /** Official mark text when the catalogue id alone would hide the part or year. */
+  cite?: Record<string, string>;
 };
 
 export const HALLMARK_CUE =
@@ -191,7 +193,7 @@ const FAMILIES: ProductFamily[] = [
     scheme: "isi",
     preferTitle: { "15609": "packaged drinking" },
     disambiguate:
-      "This catalogue snapshot has IS 15609 (pouches for mineral / packaged drinking water). Packaged drinking water itself (commonly IS 14543) and packaged natural mineral water (commonly IS 13428) are not in this snapshot — confirm the live title and QCO on Know Your Standard. Do not invent an edition year.",
+      "This catalogue snapshot has IS 15609 (pouches for mineral / packaged drinking water). Packaged drinking water other than natural mineral water has a verified title row: IS 14543:2024. Packaged natural mineral water (often cited as IS 13428) has no confirmed year here. Confirm the live QCO on Know Your Standard. Do not invent a fee.",
   },
   {
     id: "drinking-water",
@@ -207,7 +209,7 @@ const FAMILIES: ProductFamily[] = [
     scheme: null,
     preferTitle: { "10500": "Drinking water" },
     disambiguate:
-      "IS 10500 is drinking water (piped / municipal) specification. Packaged bottled water is a different standard — confirm IS 14543 / IS 13428 on Know Your Standard.",
+      "IS 10500 is drinking water (piped / municipal) specification. Packaged bottled water other than natural mineral water is IS 14543:2024 on the BIS standard-review page. IS 13428 has no confirmed year in this pack.",
   },
   {
     id: "paver",
@@ -287,12 +289,19 @@ const FAMILIES: ProductFamily[] = [
     scheme: "isi",
   },
   {
+    id: "helmet-rider",
+    aliases: ["two wheeler helmet", "two-wheeler helmet", "motorcycle helmet", "rider helmet"],
+    is: ["4151"],
+    scheme: "isi",
+    preferTitle: { "4151": "Two Wheeler" },
+  },
+  {
     id: "helmet",
     aliases: ["helmet", "helmets", "हेलमेट"],
     is: ["2925", "18808", "2745", "9973"],
     scheme: "isi",
     disambiguate:
-      "Say which use: industrial/factory (IS 2925), bicycle/skate (IS 18808), fire/civil defence (IS 2745), or scooter visor (IS 9973). Two-wheeler protective helmet IS 4151 is not in this catalogue pack.",
+      "Say which use: industrial/factory (IS 2925), bicycle/skate (IS 18808), fire/civil defence (IS 2745), scooter visor (IS 9973), or two-wheeler rider (IS 4151). A bare 'helmet' question does not pick one of these.",
   },
   {
     id: "gold",
@@ -347,15 +356,17 @@ const FAMILIES: ProductFamily[] = [
     is: ["12252", "15609"],
     scheme: "isi",
     disambiguate:
-      "IS 12252 is PET polymer for food contact. Packaged drinking water IS 14543 is not in this catalogue pack — confirm on Know Your Standard. IS 15609 is pouch packing for mineral/packaged drinking water.",
+      "IS 12252 is PET polymer for food contact. Packaged drinking water other than natural mineral water is IS 14543:2024 on the BIS standard-review page. IS 15609 is pouch packing. IS 13428 has no confirmed year here.",
   },
   {
     id: "electric-iron",
     aliases: ["electric irons", "electric iron", "iron box"],
-    is: [],
+    is: ["302"],
     scheme: "isi",
+    preferTitle: { "302": "Electric Irons" },
+    cite: { "302": "IS 302 (Part 2/Sec 3):2024" },
     disambiguate:
-      "No dedicated electric-iron IS is pinned in this snapshot. Look up the live title and QCO on Know Your Standard. Do not invent an IS. Hallmark/HUID is jewellery, not irons.",
+      "Electric iron maps to IS 302 (Part 2/Sec 3):2024, Electric Irons, on the BIS standard-review page. Title only. No fee. Hallmark/HUID is jewellery, not irons. Confirm the live QCO before saying a licence is compulsory.",
   },
   {
     id: "laptop",
@@ -644,7 +655,7 @@ export function matchProductFamily(query: string): ProductFamily | null {
 }
 
 const SPECIFIC_PRODUCT =
-  /\b(916|22k|18k|huid|industrial|factory|bicycle|cycle|skate|mixer grinder|mixie|pvc pipe|upvc|concrete mixer|potable|gi pipe|steel pipe|steel tube|compensation|shortfall|geyser|stainless steel|paver|ceiling fan|packaged drinking|mineral water)\b|सोने का|गहना|आभूषण/i;
+  /\b(916|22k|18k|huid|industrial|factory|bicycle|cycle|skate|mixer grinder|mixie|pvc pipe|upvc|concrete mixer|potable|gi pipe|steel pipe|steel tube|compensation|shortfall|geyser|stainless steel|paver|ceiling fan|packaged drinking|mineral water|electric irons?|iron box)\b|सोने का|गहना|आभूषण/i;
 
 /** Underspecified product: ask one clarifying question instead of pinning an IS. */
 export function shouldClarify(query: string): string | null {

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { parseAttachment } from "@/lib/attachments";
+import { marksFromLabel } from "@/lib/label-text";
 import { checkBrand, checkLicence, verdictFromPhotoRead, type VerifyMode } from "@/lib/verify-cert";
 
 function usableKey(key: string): boolean {
@@ -62,7 +63,7 @@ export const Route = createFileRoute("/api/verify")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { mode?: string; query?: string; attachment?: unknown } = {};
+        let body: { mode?: string; query?: string; attachment?: unknown; ocrText?: string } = {};
         try {
           body = (await request.json()) as typeof body;
         } catch {
@@ -82,6 +83,10 @@ export const Route = createFileRoute("/api/verify")({
         if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
         if (!parsed.attachment || (parsed.attachment.kind !== "png" && parsed.attachment.kind !== "image")) {
           return Response.json({ error: "Attach a photo of the mark." }, { status: 400 });
+        }
+        if (typeof body.ocrText === "string") {
+          const marks = marksFromLabel(body.ocrText);
+          return Response.json(verdictFromPhotoRead(marks));
         }
         const read = await readMark(parsed.attachment.dataUrl);
         return Response.json(verdictFromPhotoRead(read));

@@ -4,10 +4,14 @@ import { useRef, useState, useSyncExternalStore } from 'react';
 import { ArrowUpRight, Camera, Hash, Search } from 'lucide-react';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
+import WorkPanel from '@/components/work-panel';
 import { parseAttachment } from '@/lib/attachments';
 import { deskUi, localOfficial, localVerdictTitle } from '@/lib/desk-ui';
+import { readProductLabel } from '@/lib/label-ocr';
 import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
 import type { VerifyMode, VerifyVerdict } from '@/lib/verify-cert';
+import type { WorkStep } from '@/lib/work-trace';
+import { fetchPackHits, PackHitList, type PackHit } from '@/components/pack-hit-list';
 
 const CHOICES: { id: VerifyMode; icon: typeof Hash }[] = [
   { id: 'licence', icon: Hash },
@@ -34,15 +38,23 @@ export default function VerifyPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<VerifyVerdict | null>(null);
+  const [hits, setHits] = useState<PackHit[]>([]);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [finishedAt, setFinishedAt] = useState<number | undefined>(undefined);
+  const [steps, setSteps] = useState<WorkStep[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const choose = (next: VerifyMode) => {
     setMode(next);
     setVerdict(null);
+    setHits([]);
     setError(null);
     setQuery('');
     setFileName(null);
     setDataUrl(null);
+    setSteps([]);
+    setStartedAt(null);
+    setFinishedAt(undefined);
   };
 
   const submit = async () => {
@@ -50,13 +62,39 @@ export default function VerifyPage() {
     setBusy(true);
     setError(null);
     setVerdict(null);
+    setHits([]);
+    const started = Date.now();
+    setStartedAt(started);
+    setFinishedAt(undefined);
+    setSteps([]);
     try {
+      let ocrText: string | undefined;
+      if (mode === 'photo' && dataUrl) {
+        const ocrStart = Date.now();
+        try {
+          const read = await readProductLabel(dataUrl, () => undefined);
+          ocrText = read.text;
+          const detail = read.licence
+            ? `Saw ${read.licence}`
+            : read.isNumber
+              ? `Saw IS ${read.isNumber}`
+              : read.text
+                ? read.text.slice(0, 140)
+                : 'No readable licence or IS number';
+          setSteps([{ id: 'ocr', label: 'Read the label', detail, ms: Date.now() - ocrStart }]);
+        } catch {
+          ocrText = '';
+          setSteps([{ id: 'ocr', label: 'Read the label', detail: 'The label reader failed', ms: Date.now() - ocrStart }]);
+        }
+      }
+      const checkStart = Date.now();
       const response = await fetch('/api/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode,
           query,
+          ocrText,
           attachment: mode === 'photo' && dataUrl ? { name: fileName || 'mark.jpg', kind: 'image', dataUrl } : undefined,
         }),
       });
@@ -65,10 +103,17 @@ export default function VerifyPage() {
         setError(t.errCheck);
         return;
       }
+      setSteps((prev) => [
+        ...prev,
+        { id: 'check', label: 'Checked the mark', detail: json.title, ms: Date.now() - checkStart },
+      ]);
       setVerdict(json);
+      const needle = (mode === 'photo' ? ocrText : query) || '';
+      setHits(await fetchPackHits('verify', needle));
     } catch {
       setError(t.errRetry);
     } finally {
+      setFinishedAt(Date.now());
       setBusy(false);
     }
   };
@@ -136,7 +181,7 @@ export default function VerifyPage() {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder="CM/L-1234567"
-                    className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+                    className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
                   />
                 </label>
               ) : null}
@@ -148,7 +193,7 @@ export default function VerifyPage() {
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     placeholder={t.brandPh}
-                    className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+                    className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
                   />
                 </label>
               ) : null}
@@ -205,6 +250,25 @@ export default function VerifyPage() {
                 {busy ? t.checking : t.check}
               </button>
               {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{error}</p> : null}
+              {startedAt ? (
+                <div className="mt-6">
+                  <WorkPanel
+                    startedAt={startedAt}
+                    finishedAt={finishedAt}
+                    steps={steps}
+                    stops={
+                      verdict
+                        ? [
+                            { lane: 'product', text: fileName || query || 'This check' },
+                            { lane: 'standard', text: verdict.marks[0] || 'No standard read' },
+                            { lane: 'source', text: verdict.officialLabel, href: verdict.officialUrl },
+                            { lane: 'note', text: verdict.detail.slice(0, 180) },
+                          ]
+                        : undefined
+                    }
+                  />
+                </div>
+              ) : null}
             </form>
           ) : null}
 
@@ -216,7 +280,7 @@ export default function VerifyPage() {
               {verdict.marks.length ? (
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {verdict.marks.map((mark) => (
-                    <li key={mark} className="rounded-full border border-current/40 bg-current/[0.08] px-3 py-1 text-sm font-medium text-current">{mark}</li>
+                    <li key={mark} className="rounded-full border border-bis-navy/25 bg-blue-50 px-3 py-1 text-sm font-medium text-bis-navy dark:border-blue-300/40 dark:bg-[#10243f] dark:text-blue-100">{mark}</li>
                   ))}
                 </ul>
               ) : null}
@@ -230,6 +294,7 @@ export default function VerifyPage() {
                 {verdict.status === 'not-found' || verdict.status === 'invalid' ? <li>• {t.miss1}</li> : null}
                 <li>• {t.noPercent}</li>
               </ul>
+              <PackHitList hits={hits} label="From the loaded standards and product files. Not a licence grant." />
               <a
                 href={verdict.officialUrl}
                 target="_blank"

@@ -142,7 +142,7 @@ export function checkBrand(raw: string): VerifyVerdict {
       title: family ? `${family.id.replace(/-/g, " ")} · one detail missing` : "One detail is still missing",
       detail: clarify,
       scheme,
-      marks: family?.is.map((n) => `IS ${n}`) ?? [],
+      marks: family?.is.map((n) => family.cite?.[n] || `IS ${n}`) ?? [],
       officialUrl: KYS,
       officialLabel: "Know Your Standard",
       confidence: "low",
@@ -151,7 +151,7 @@ export function checkBrand(raw: string): VerifyVerdict {
 
   const marks = [
     ...(isHit ? [`IS ${isHit[1]}`] : []),
-    ...(family?.is.map((n) => `IS ${n}`) ?? []),
+    ...(family?.is.map((n) => family.cite?.[n] || (n.startsWith("IS ") ? n : `IS ${n}`)) ?? []),
   ].filter((mark, index, all) => all.indexOf(mark) === index);
 
   if (!marks.length) {

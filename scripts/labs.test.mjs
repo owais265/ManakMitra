@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { areaMapUrl, BIS_LABS, haversineKm, pinCentroid, rankLabs } from "../src/lib/labs.ts";
+import { areaMapUrl, BIS_LABS, haversineKm, pinCentroid, publishedPin, rankLabs } from "../src/lib/labs.ts";
 
 let passed = 0;
 function check(fn) {
@@ -8,6 +8,8 @@ function check(fn) {
   passed += 1;
 }
 
+assert.equal(publishedPin("address: Plot 174, Gurgaon, India - 122015 | phone: 8165826"), "122015");
+assert.equal(publishedPin("OSL 8165826. City Ghaziabad."), null);
 const sahibabad = BIS_LABS.find((lab) => lab.id === "CL");
 const chennai = BIS_LABS.find((lab) => lab.id === "SRL");
 assert.ok(sahibabad && chennai);

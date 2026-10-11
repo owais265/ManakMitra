@@ -574,12 +574,38 @@
 .mm-d5 { animation-delay: 280ms; }
 .mm-d6 { animation-delay: 340ms; }
 
+@keyframes mm-work-shine {
+  0% { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
+.mm-work-shine {
+  background-image: linear-gradient(100deg, #475569 0%, #475569 35%, #b45309 50%, #475569 65%, #475569 100%);
+  background-size: 220% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: mm-work-shine 1.6s linear infinite;
+}
+
+.dark .mm-work-shine {
+  background-image: linear-gradient(100deg, #cbd5e1 0%, #cbd5e1 35%, #fbbf24 50%, #cbd5e1 65%, #cbd5e1 100%);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mm-rise {
     animation: none;
     opacity: 1;
     transform: none;
     filter: none;
+  }
+
+  .mm-work-shine {
+    animation: none;
+    color: #475569;
+    -webkit-text-fill-color: #475569;
+    background-image: none;
   }
 
   html {

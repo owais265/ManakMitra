@@ -304,6 +304,21 @@ const CITY_PIN: { re: RegExp; pin: string }[] = [
   { re: /mohali|मोहाली/i, pin: "160055" },
 ];
 
+/** Last published 6-digit PIN in a LIMS or centre row. Phones are 7 digits, so they do not match. */
+export function publishedPin(text: string): string | null {
+  const india = text.match(/India\s*-\s*([1-9]\d{5})\b/i);
+  if (india) return india[1];
+  const marked = text.match(/\b(?:pin(?:\s*code)?|pincode)\s*[:\-]?\s*([1-9]\d{5})\b/i);
+  if (marked) return marked[1];
+  const all = [...text.matchAll(/(?<!\d)([1-9]\d{5})(?!\d)/g)].map((match) => match[1]);
+  return all.length ? all[all.length - 1] : null;
+}
+
+export function publishedAddress(text: string): string {
+  const marked = text.match(/\baddress:\s*([^|]+)/i);
+  return marked ? marked[1].trim().slice(0, 180) : "";
+}
+
 export function cityToPin(text: string): string | null {
   for (const row of CITY_PIN) {
     if (row.re.test(text)) return row.pin;

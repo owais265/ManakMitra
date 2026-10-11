@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { areaMapUrl, NEAR_KM, pinCentroid, rankLabs } from "@/lib/labs";
+import { ownLabsNear, rankPublishedPlaces, searchField, type PackField } from "@/lib/place-catalogue.server";
 
 async function geocodePin(pin: string): Promise<{ lat: number; lng: number; label: string } | null> {
   const fallback = pinCentroid(pin);
@@ -29,13 +30,19 @@ export const Route = createFileRoute("/api/labs")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        let body: { pin?: unknown; lat?: unknown; lng?: unknown; product?: unknown } = {};
+        let body: { pin?: unknown; lat?: unknown; lng?: unknown; product?: unknown; kind?: unknown; q?: unknown } = {};
         try {
           body = (await request.json()) as typeof body;
         } catch {
           return Response.json({ error: "Send JSON." }, { status: 400 });
         }
         const product = typeof body.product === "string" ? body.product.slice(0, 80) : "";
+        const kind = typeof body.kind === "string" ? body.kind : "lab";
+        if (kind === "standard" || kind === "product" || kind === "verify" || kind === "file" || kind === "process") {
+          const q = typeof body.q === "string" ? body.q : product;
+          const hits = await searchField(q, kind as PackField);
+          return Response.json({ hits });
+        }
         const lat = typeof body.lat === "number" ? body.lat : Number.NaN;
         const lng = typeof body.lng === "number" ? body.lng : Number.NaN;
         let origin: { lat: number; lng: number; label: string } | null = null;
@@ -53,18 +60,30 @@ export const Route = createFileRoute("/api/labs")({
         if (!origin) {
           return Response.json({ error: "Enter a 6-digit PIN code, or use this device's location." }, { status: 400 });
         }
-        const labs = rankLabs(origin.lat, origin.lng, product);
-        const nearby = labs.filter((lab) => lab.km <= NEAR_KM);
+        const placeKind = kind === "hallmark" ? "hallmark" : "lab";
+        const userPin = typeof body.pin === "string" && /^[1-9][0-9]{5}$/.test(body.pin.replace(/\D/g, "")) ? body.pin.replace(/\D/g, "") : "";
+        const published = await rankPublishedPlaces(placeKind, origin, userPin, product);
+        const nearPublished = published.filter((place) => place.km <= NEAR_KM).slice(0, 12);
+        const own = kind === "lab" ? ownLabsNear(origin, product).filter((lab) => lab.km <= NEAR_KM) : [];
+        const nearby = nearPublished.length ? [...own, ...nearPublished] : rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km <= NEAR_KM);
+        const farther = nearPublished.length
+          ? published.filter((place) => place.km > NEAR_KM).slice(0, 4)
+          : rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km > NEAR_KM).slice(0, 4);
         return Response.json({
           origin,
           source,
           product,
+          kind,
           nearby,
-          farther: labs.filter((lab) => lab.km > NEAR_KM).slice(0, 4),
+          farther,
           mapUrl: areaMapUrl(origin.lat, origin.lng, origin.label, product),
-          note: nearby.length
-            ? "High means a BIS laboratory with a published address. Low means a real laboratory whose pin is only the city. The map is Google’s own listing for this place."
-            : "No laboratory in this desk sits within 80 km. The distances below are real. The map still shows what Google lists around this PIN.",
+          note: nearPublished.length
+            ? kind === "hallmark"
+              ? "Hallmarking centres are from the BIS extract already loaded. Distance uses the published PIN, not a surveyed gate. This list is not a live HUID check."
+              : "Names and PINs are from the BIS LIMS extract already loaded. Distance uses that published PIN, not a surveyed gate. A BIS laboratory with a published address is marked high."
+            : kind === "hallmark"
+              ? "No hallmarking centre from the loaded extract sits within 80 km of this PIN."
+              : "No laboratory from the loaded LIMS extract sits within 80 km. The list below is the older desk list. The map still shows what Google lists around this PIN.",
         });
       },
     },

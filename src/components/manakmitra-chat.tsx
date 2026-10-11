@@ -12,6 +12,9 @@ import { parseAttachment } from '@/lib/attachments';
 import { initTheme } from '@/lib/theme';
 import { buildDocx, downloadBytes, transcriptPdf, transcriptPng, type ExportTurn } from '@/lib/export-chat';
 import ManakMark from '@/components/manak-mark';
+import WorkPanel from '@/components/work-panel';
+import { readProductLabel } from '@/lib/label-ocr';
+import type { GraphStop, WorkStep } from '@/lib/work-trace';
 import {
   subscribeLang,
   getLangSnapshot,
@@ -48,6 +51,10 @@ interface Message {
   isError?: boolean;
   retryQuery?: string;
   processSteps?: string[];
+  startedAt?: number;
+  finishedAt?: number;
+  workSteps?: WorkStep[];
+  graph?: GraphStop[];
   askLocation?: boolean;
   locationBusy?: boolean;
   locationError?: string;
@@ -239,7 +246,7 @@ export default function ChatBotApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState<string>('');
   const [inputText, setInputText] = useState('');
-  const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'text'; text?: string; dataUrl?: string } | null>(null);
+  const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text'; text?: string; dataUrl?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [, setContextMode] = useState<string>('general');
@@ -615,14 +622,42 @@ export default function ChatBotApp() {
     sendingRef.current = true;
 
     const aiMsgId = createUniqueId();
+    const startedAt = Date.now();
     setMessages(prev => [...prev, {
       id: aiMsgId,
       role: 'ai',
       text: '',
       timestamp: getFormattedTime(),
       isStreaming: true,
-      animate: true
+      animate: true,
+      startedAt,
     }]);
+
+    let labelText: string | undefined;
+    if (file && (file.kind === 'png' || file.kind === 'image') && file.dataUrl) {
+      const ocrStart = Date.now();
+      try {
+        const read = await readProductLabel(file.dataUrl);
+        labelText = read.text;
+        const detail = read.licence
+          ? `Saw ${read.licence}`
+          : read.isNumber
+            ? `Saw IS ${read.isNumber}`
+            : read.text
+              ? read.text.slice(0, 140)
+              : 'No readable licence or IS number';
+        setMessages(prev => prev.map((m) => m.id === aiMsgId ? {
+          ...m,
+          workSteps: [...(m.workSteps || []), { id: 'ocr', label: 'Read the label', detail, ms: Date.now() - ocrStart }],
+        } : m));
+      } catch {
+        labelText = '';
+        setMessages(prev => prev.map((m) => m.id === aiMsgId ? {
+          ...m,
+          workSteps: [...(m.workSteps || []), { id: 'ocr', label: 'Read the label', detail: 'The label reader failed', ms: Date.now() - ocrStart }],
+        } : m));
+      }
+    }
 
     try {
       const response = await fetch('/api/chat', {
@@ -635,6 +670,7 @@ export default function ChatBotApp() {
             .filter((m) => m.role === 'user' && m.text)
             .slice(-3)
             .map((m) => ({ role: 'user', text: m.text.slice(0, 400) })),
+          labelText,
           attachment: file
             ? { name: file.name, kind: file.kind, text: file.text, dataUrl: file.dataUrl }
             : undefined,
@@ -659,21 +695,36 @@ export default function ChatBotApp() {
         if (value) {
           chunks.push(decoder.decode(value, { stream: true }));
           const accumulatedString = chunks.join('');
+          const cut = accumulatedString.endsWith('\n')
+            ? accumulatedString.length
+            : accumulatedString.lastIndexOf('\n') + 1;
+          const pending = accumulatedString.slice(cut);
+          const complete = accumulatedString.slice(0, cut);
           
           setMessages(prev => {
             const newMsgs = [...prev];
             const msgIndex = newMsgs.findIndex(m => m.id === aiMsgId);
             if (msgIndex !== -1) {
               const msg = newMsgs[msgIndex];
-              const lines = accumulatedString.split('\n');
+              const lines = complete.split('\n');
               let pureText = '';
               const sources: Source[] = [];
               const followUps: string[] = [];
               let processSteps: string[] = [];
+              const serverSteps: WorkStep[] = [];
+              let graph: GraphStop[] | undefined;
 
               for (const line of lines) {
                 const raw = line.trim().replace(/^\*+\s*|\s*\*+$/g, "").trim();
-                if (raw.startsWith('[SOURCE]')) {
+                if (raw.startsWith('[WORK]')) {
+                  try {
+                    const event = JSON.parse(raw.slice(6)) as { kind?: string; step?: WorkStep; stops?: GraphStop[] };
+                    if (event.kind === 'step' && event.step?.id) serverSteps.push(event.step);
+                    if (event.kind === 'graph' && Array.isArray(event.stops)) graph = event.stops;
+                  } catch {
+                    // ignore a broken work line
+                  }
+                } else if (raw.startsWith('[SOURCE]')) {
                   const parts = raw.replace('[SOURCE]', '').split('|').map(s => s.trim());
                   const link = parts[parts.length - 1] || "";
                   if (parts.length >= 4 && isOfficialUrl(parts[3]) && !/google\.com\/search/i.test(parts[3])) {
@@ -701,12 +752,16 @@ export default function ChatBotApp() {
                   pureText += visible + '\n';
                 }
               }
+              if (pending && !pending.trimStart().startsWith('[')) pureText += pending;
 
+              const prior = (msg.workSteps || []).filter((step) => step.id === 'ocr');
               msg.text = pureText.trim();
               msg.isStreaming = !done;
               if (sources.length > 0) msg.sources = sources;
               if (followUps.length > 0) msg.followUpQuestions = followUps;
               if (processSteps.length > 0) msg.processSteps = processSteps;
+              if (serverSteps.length) msg.workSteps = [...prior, ...serverSteps];
+              if (graph) msg.graph = graph;
             }
             return newMsgs;
           });
@@ -720,6 +775,7 @@ export default function ChatBotApp() {
         if (msgIndex !== -1) {
           const msg = newMsgs[msgIndex];
           msg.isStreaming = false;
+          msg.finishedAt = msg.finishedAt || Date.now();
           if (!msg.text || !msg.text.trim()) {
             msg.text = UI_DICTIONARY[replyLang].errorServer;
             msg.confidence = 'low';
@@ -733,6 +789,26 @@ export default function ChatBotApp() {
         }
         return newMsgs;
       });
+      const board = !file ? labsFinderResult(text) : null;
+      if (board && aiMsgId) {
+        const pin = text.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1];
+        const body = pin ? { pin } : { lat: board.origin.lat, lng: board.origin.lng };
+        void fetch('/api/labs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+          .then((response) => response.json())
+          .then((json: { origin?: LabBoard['origin']; nearby?: LabBoard['nearby']; farther?: LabBoard['farther']; mapUrl?: string }) => {
+            if (!json.origin || !json.mapUrl) return;
+            const origin = json.origin;
+            const mapUrl = json.mapUrl;
+            const nearby = json.nearby || [];
+            const farther = json.farther || [];
+            setMessages((prev) => prev.map((m) => (m.id === aiMsgId ? { ...m, labBoard: { origin, nearby, farther, mapUrl } } : m)));
+          })
+          .catch(() => {});
+      }
       
     } catch (error) {
       console.error("handleSend Fetch Error:", error);
@@ -748,6 +824,7 @@ export default function ChatBotApp() {
               confidence: 'low',
               isError: true,
               isStreaming: false,
+              finishedAt: Date.now(),
               retryQuery: text
             };
             return newMsgs;
@@ -937,6 +1014,8 @@ export default function ChatBotApp() {
                                        mapUrl?: string;
                                      };
                                      if (!response.ok || !json.origin || !json.mapUrl) throw new Error(json.error || 'labs');
+                                     const origin = json.origin;
+                                     const mapUrl = json.mapUrl;
                                      const nearby = json.nearby || [];
                                      const farther = json.farther || [];
                                      const closest = nearby[0] || farther[0];
@@ -952,10 +1031,10 @@ export default function ChatBotApp() {
                                          timestamp: getFormattedTime(),
                                          confidence: nearby.some((lab) => lab.confidence === 'high') ? 'high' as const : 'low' as const,
                                          labBoard: {
-                                           origin: json.origin,
+                                           origin,
                                            nearby,
                                            farther,
-                                           mapUrl: json.mapUrl,
+                                           mapUrl,
                                          },
                                        },
                                      ]);
@@ -974,23 +1053,6 @@ export default function ChatBotApp() {
                      }
                    />
                  ))}
-                 
-                  {isTyping && (
-                    <div className="flex items-start gap-2 sm:gap-4 animate-in fade-in min-w-0">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0 border border-slate-200 dark:bg-[#151d30] dark:border-slate-600">
-                        <div className="w-3.5 h-3.5 sm:w-5 sm:h-5 bg-slate-200 dark:bg-slate-600 rounded-full animate-pulse"></div>
-                      </div>
-                      <div className="flex-1 min-w-0 max-w-2xl bg-white border border-slate-200 rounded-2xl p-3 sm:p-5 shadow-sm space-y-3 sm:space-y-4 dark:bg-[#151d30] dark:border-slate-700">
-                        <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-1/4 animate-pulse"></div>
-                        <div className="space-y-2">
-                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full animate-pulse"></div>
-                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-full animate-pulse"></div>
-                          <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-5/6 animate-pulse"></div>
-                        </div>
-                        <div className="h-6 bg-slate-100 dark:bg-slate-700 rounded w-32 animate-pulse mt-4"></div>
-                      </div>
-                    </div>
-                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -1027,7 +1089,7 @@ export default function ChatBotApp() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,.png,.txt,.md,.csv,.json,text/plain"
+                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp,.txt,.md,.csv,.json,text/plain"
                 className="sr-only"
                 aria-label={UI_DICTIONARY[language].attach}
                 onChange={(event) => {
@@ -1036,20 +1098,22 @@ export default function ChatBotApp() {
                   if (!picked) return;
                   void (async () => {
                     const ext = picked.name.split('.').pop()?.toLowerCase() ?? '';
-                    if (picked.type === 'image/png' || ext === 'png') {
+                    const image = picked.type === 'image/png' || picked.type === 'image/jpeg' || picked.type === 'image/webp' || ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
+                    if (image) {
                       const dataUrl = await new Promise<string>((resolve, reject) => {
                         const reader = new FileReader();
                         reader.onload = () => resolve(String(reader.result || ''));
                         reader.onerror = () => reject(new Error('read'));
                         reader.readAsDataURL(picked);
                       });
-                      const parsed = parseAttachment({ name: picked.name, kind: 'png', dataUrl });
-                      if (!parsed.ok || !parsed.attachment || parsed.attachment.kind !== 'png') {
+                      const kind = picked.type === 'image/png' || ext === 'png' ? 'png' : 'image';
+                      const parsed = parseAttachment({ name: picked.name, kind, dataUrl });
+                      if (!parsed.ok || !parsed.attachment || (parsed.attachment.kind !== 'png' && parsed.attachment.kind !== 'image')) {
                         setToastMessage(UI_DICTIONARY[language].pngReadError);
                         setTimeout(() => setToastMessage(null), 3500);
                         return;
                       }
-                      setDraftFile({ name: parsed.attachment.name, kind: 'png', dataUrl: parsed.attachment.dataUrl });
+                      setDraftFile({ name: parsed.attachment.name, kind: parsed.attachment.kind, dataUrl: parsed.attachment.dataUrl });
                       return;
                     }
                     const text = await picked.text();
@@ -1332,6 +1396,14 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
               {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
             </button>
           )}
+          {isAI && !msg.isError && msg.startedAt ? (
+            <WorkPanel
+              startedAt={msg.startedAt}
+              finishedAt={msg.finishedAt}
+              steps={msg.workSteps || []}
+              stops={msg.graph}
+            />
+          ) : null}
           {/* Main Text */}
           {!displayedText && isAI && !msg.isError ? (
             <div className="flex items-center gap-2 py-1 text-slate-500 dark:text-slate-400">

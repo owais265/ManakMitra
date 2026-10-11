@@ -252,12 +252,39 @@ async function upsertSlice(
   throw new Error(`upsert failed at ${at}: ${last}`);
 }
 
+function loadEmbedKeys(): string[] {
+  const out: string[] = [];
+  const push = (k: string | undefined) => {
+    const v = k?.trim();
+    if (v && !out.includes(v)) out.push(v);
+  };
+  push(process.env.GEMINI_API_KEY);
+  push(process.env.GOOGLE_API_KEY);
+  push(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  for (const part of (process.env.GEMINI_API_KEYS || "").split(/[\n,]/)) push(part);
+  try {
+    const text = readFileSync(join(root, ".grok/gemini-embed-keys.txt"), "utf8");
+    for (const line of text.split("\n")) {
+      const v = line.trim();
+      if (!v || v.startsWith("#")) continue;
+      push(v);
+    }
+  } catch {
+    /* pool file is optional */
+  }
+  return out;
+}
+
 async function main() {
   const { rows, rejectedHosts, skippedBad, inboxChunks } = loadRows();
-  const embedKey =
-    process.env.GEMINI_API_KEY?.trim() ||
-    process.env.GOOGLE_API_KEY?.trim() ||
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+  const embedKeys = loadEmbedKeys();
+  let keyIndex = 0;
+  try {
+    const saved = Number(readFileSync(join(root, ".grok/embed-key-cursor"), "utf8").trim());
+    if (Number.isInteger(saved) && saved >= 0 && saved < embedKeys.length) keyIndex = saved;
+  } catch {
+    /* start on the first key */
+  }
   const supabaseUrl = process.env.SUPABASE_URL?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
@@ -268,8 +295,9 @@ async function main() {
         inbox: inboxChunks,
         rejectedHosts,
         skippedBad,
-        embedModel: embedKey ? EMBED_MODEL : "none",
-        embedDims: embedKey ? 768 : 0,
+        embedModel: embedKeys.length ? EMBED_MODEL : "none",
+        embedDims: embedKeys.length ? 768 : 0,
+        embedKeys: embedKeys.length,
         hybridDefault: process.env.HYBRID_RAG === "1" ? "1" : "0",
         supabase: Boolean(supabaseUrl && serviceKey),
       },
@@ -322,7 +350,7 @@ async function main() {
   let embedded = 0;
   let embedFailed = 0;
   const maxEmbed = Number(process.env.INGEST_MAX_EMBED || "20000") || 20000;
-  if (embedKey) {
+  if (embedKeys.length) {
     const kinds = ["faq", "process", "hallmark", "crs", "lab", "consumer", "product", "link", "standard"];
     kindLoop: for (const kind of kinds) {
       if (embedded >= maxEmbed) break;
@@ -348,7 +376,7 @@ async function main() {
           try {
             const vecs = await embedBatch(
               slice.map((r) => r.text),
-              embedKey,
+              embedKeys[keyIndex],
             );
             const rows = [];
             for (let j = 0; j < slice.length; j++) {
@@ -375,7 +403,23 @@ async function main() {
             embedFailed += slice.length;
             const msg = err instanceof Error ? err.message : String(err);
             console.warn("embed batch failed", msg);
-            if (/401|403|API_KEY|invalid|PERMISSION/i.test(msg) && !/429/.test(msg)) {
+            if (/403/.test(msg) && !/429/.test(msg)) {
+              keyIndex += 1;
+              try {
+                writeFileSync(join(root, ".grok/embed-key-cursor"), String(keyIndex));
+              } catch {
+                /* cursor is a resume hint only */
+              }
+              if (keyIndex >= embedKeys.length) {
+                console.warn("403 on last Gemini embed key — embeddings stopped");
+                stop = true;
+                break kindLoop;
+              }
+              console.warn("403, next embed key", keyIndex + 1, "/", embedKeys.length);
+              i -= EMBED_BATCH;
+              continue;
+            }
+            if (/401|API_KEY|invalid|PERMISSION/i.test(msg) && !/429/.test(msg)) {
               stop = true;
               break kindLoop;
             }
@@ -403,7 +447,7 @@ async function main() {
         rejectedHosts,
         embedded,
         embedFailed,
-        embedModel: embedKey ? EMBED_MODEL : "none",
+        embedModel: embedKeys.length ? EMBED_MODEL : "none",
         packDocsRows: count ?? null,
         packDocsWithEmbedding: withEmbed ?? 0,
       },

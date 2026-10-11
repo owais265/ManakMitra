@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CertifyRouteImport } from './routes/certify'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ComplaintRouteImport } from './routes/complaint'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as HallmarkRouteImport } from './routes/hallmark'
 import { Route as HuidRouteImport } from './routes/huid'
 import { Route as LabsRouteImport } from './routes/labs'
@@ -44,6 +45,11 @@ const ChatRoute = ChatRouteImport.update({
 const ComplaintRoute = ComplaintRouteImport.update({
   id: '/complaint',
   path: '/complaint',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HallmarkRoute = HallmarkRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
   '/complaint': typeof ComplaintRoute
+  '/contact': typeof ContactRoute
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
   '/complaint': typeof ComplaintRoute
+  '/contact': typeof ContactRoute
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/certify': typeof CertifyRoute
   '/chat': typeof ChatRoute
   '/complaint': typeof ComplaintRoute
+  '/contact': typeof ContactRoute
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/certify'
     | '/chat'
     | '/complaint'
+    | '/contact'
     | '/hallmark'
     | '/huid'
     | '/labs'
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/certify'
     | '/chat'
     | '/complaint'
+    | '/contact'
     | '/hallmark'
     | '/huid'
     | '/labs'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/certify'
     | '/chat'
     | '/complaint'
+    | '/contact'
     | '/hallmark'
     | '/huid'
     | '/labs'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   CertifyRoute: typeof CertifyRoute
   ChatRoute: typeof ChatRoute
   ComplaintRoute: typeof ComplaintRoute
+  ContactRoute: typeof ContactRoute
   HallmarkRoute: typeof HallmarkRoute
   HuidRoute: typeof HuidRoute
   LabsRoute: typeof LabsRoute
@@ -266,6 +279,13 @@ declare module '@tanstack/react-router' {
       path: '/complaint'
       fullPath: '/complaint'
       preLoaderRoute: typeof ComplaintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hallmark': {
@@ -360,6 +380,7 @@ const rootRouteChildren: RootRouteChildren = {
   CertifyRoute: CertifyRoute,
   ChatRoute: ChatRoute,
   ComplaintRoute: ComplaintRoute,
+  ContactRoute: ContactRoute,
   HallmarkRoute: HallmarkRoute,
   HuidRoute: HuidRoute,
   LabsRoute: LabsRoute,

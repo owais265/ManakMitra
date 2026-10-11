@@ -7,6 +7,7 @@ import SiteHeader from '@/components/site-header';
 import { deskUi, localFactLabel, localOfficial, localVerdictTitle } from '@/lib/desk-ui';
 import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
 import { readinessSheet, type ReadinessSheet } from '@/lib/readiness';
+import { fetchPackHits, PackHitList, type PackHit } from '@/components/pack-hit-list';
 
 export default function ReadinessPage() {
   const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, getLangServerSnapshot);
@@ -14,11 +15,13 @@ export default function ReadinessPage() {
   const [query, setQuery] = useState('');
   const [licence, setLicence] = useState('');
   const [sheet, setSheet] = useState<ReadinessSheet | null>(null);
+  const [hits, setHits] = useState<PackHit[]>([]);
   const [copied, setCopied] = useState(false);
 
-  const run = () => {
+  const run = async () => {
     setCopied(false);
     setSheet(readinessSheet(query, licence));
+    setHits(await fetchPackHits('file', query));
   };
 
   const copySheet = async () => {
@@ -70,7 +73,7 @@ export default function ReadinessPage() {
               rows={5}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t.bulbPh}
-              className="mt-3 w-full resize-none rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base leading-relaxed outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+              className="mt-3 w-full resize-none rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base leading-relaxed text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
             />
             <label className="mt-4 block text-sm font-medium">
               {t.licenceLabel}
@@ -78,7 +81,7 @@ export default function ReadinessPage() {
                 value={licence}
                 onChange={(event) => setLicence(event.target.value)}
                 placeholder="CM/L-1234567"
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base outline-none focus:border-bis-navy dark:border-slate-600 dark:bg-[#151d30]"
+                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
               />
             </label>
             <button
@@ -107,7 +110,7 @@ export default function ReadinessPage() {
                     <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t.family}</h3>
                     <ul className="mt-2 flex flex-wrap gap-2">
                       {sheet.related.map((mark) => (
-                        <li key={mark} className="rounded-full border border-current/40 bg-current/[0.08] px-3 py-1 text-sm font-medium text-current">{mark}</li>
+                        <li key={mark} className="rounded-full border border-bis-navy/25 bg-blue-50 px-3 py-1 text-sm font-medium text-bis-navy dark:border-blue-300/40 dark:bg-[#10243f] dark:text-blue-100">{mark}</li>
                       ))}
                     </ul>
                   </section>
@@ -134,6 +137,8 @@ export default function ReadinessPage() {
                     <li>• {t.noPercent}</li>
                   </ul>
                 </section>
+
+                <PackHitList hits={hits} label="Product files from the loaded extract" />
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <a href={sheet.verdict.officialUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1 rounded-full bg-bis-navy px-4 text-sm font-semibold text-white mm-press hover:bg-bis-navy-deep">

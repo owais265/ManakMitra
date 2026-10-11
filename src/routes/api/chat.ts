@@ -1,17 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
+import { searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
-import { isHallmarkSchemeMix, matchProductFamily } from "@/lib/product-playbook";
+import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
 import { isFollowCue, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
+import { buildStops } from "@/lib/work-trace";
 
 type ChatBody = {
   query?: string;
   language?: AppLang;
   attachment?: unknown;
   history?: ChatTurn[];
+  labelText?: string;
 };
 
 const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra. You sound like a careful colleague who just checked the public BIS catalogue, not like a database printout and not like a general chatbot. You do not claim you are built by BIS or the Government of India.
@@ -85,25 +88,6 @@ function pickSpoken(modelText: string, fallback: string): string {
   return spoken || fallback;
 }
 
-function streamText(text: string): Response {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    start(controller) {
-      const chunkSize = 80;
-      for (let i = 0; i < text.length; i += chunkSize) {
-        controller.enqueue(encoder.encode(text.slice(i, i + chunkSize)));
-      }
-      controller.close();
-    },
-  });
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
-  });
-}
-
 function xaiKeys(): string[] {
   const primary = process.env.XAI_API_KEY?.trim() || "";
   const secondary = process.env.XAI_API_KEY_2?.trim() || "";
@@ -152,7 +136,7 @@ function geminiModels(): string[] {
   return [...new Set(list)];
 }
 
-async function streamXaiMessages(
+async function answerText(
   query: string,
   _language: AppLang,
   system: string,
@@ -160,7 +144,7 @@ async function streamXaiMessages(
   temperature = 0.1,
   maxTokens = 900,
   imageDataUrl?: string,
-): Promise<Response> {
+): Promise<string> {
   const keys = xaiKeys();
   const text = query.slice(0, 8000);
   const userContent = imageDataUrl
@@ -212,11 +196,11 @@ async function streamXaiMessages(
         continue;
       }
       console.info(`[chat] xAI streaming model=${model}`);
-      return pipeXaiSse(res, fallbackText);
+      return collectXai(res, fallbackText);
     }
   }
 
-  const gemini = await tryGeminiStream(query, system, fallbackText, temperature, maxTokens, imageDataUrl);
+  const gemini = await tryGeminiText(query, system, fallbackText, temperature, maxTokens, imageDataUrl);
   if (gemini) return gemini;
 
   if (!keys.length) {
@@ -224,17 +208,17 @@ async function streamXaiMessages(
   } else {
     console.error("[chat] all LLM attempts failed — pack fallback", lastDetail.slice(0, 200));
   }
-  return streamText(fallbackText);
+  return fallbackText;
 }
 
-async function tryGeminiStream(
+async function tryGeminiText(
   query: string,
   system: string,
   fallbackText: string,
   temperature: number,
   maxTokens: number,
   imageDataUrl?: string,
-): Promise<Response | null> {
+): Promise<string | null> {
   const keys = geminiKeys();
   if (!keys.length) return null;
   const text = query.slice(0, 8000);
@@ -270,127 +254,81 @@ async function tryGeminiStream(
         continue;
       }
       console.info(`[chat] Gemini streaming model=${model}`);
-      return pipeGeminiSse(res, fallbackText);
+      return collectGemini(res, fallbackText);
     }
   }
   console.error("[chat] Gemini attempts failed", lastDetail.slice(0, 200));
   return null;
 }
 
-function pipeGeminiSse(res: Response, fallbackText: string): Response {
-  const encoder = new TextEncoder();
+async function collectGemini(res: Response, fallbackText: string): Promise<string> {
   const decoder = new TextDecoder();
   const reader = res.body!.getReader();
-  const fallback = fallbackText;
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      let buffer = "";
-      let spoken = "";
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-            const data = trimmed.slice(5).trim();
-            if (!data || data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data) as {
-                candidates?: { content?: { parts?: { text?: string }[] } }[];
-              };
-              const text = json.candidates?.[0]?.content?.parts
-                ?.map((p) => p.text || "")
-                .join("");
-              if (text) spoken += text;
-            } catch {
-              // skip malformed SSE
-            }
-          }
-        }
-        const chosen = pickSpoken(spoken, fallback);
-        if (!spoken.trim()) console.error("[chat] Gemini empty stream — pack fallback");
-        controller.enqueue(encoder.encode(chosen));
-        controller.close();
-      } catch (error) {
-        console.error("[chat] Gemini stream failed:", error instanceof Error ? error.message : error);
+  let buffer = "";
+  let spoken = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (!data || data === "[DONE]") continue;
         try {
-          if (!spoken) controller.enqueue(encoder.encode(fallback));
+          const json = JSON.parse(data) as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[];
+          };
+          const text = json.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
+          if (text) spoken += text;
         } catch {
-          // ignore
+          // skip malformed SSE
         }
-        controller.close();
       }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
-  });
+    }
+    if (!spoken.trim()) console.error("[chat] Gemini empty stream — pack fallback");
+    return pickSpoken(spoken, fallbackText);
+  } catch (error) {
+    console.error("[chat] Gemini stream failed:", error instanceof Error ? error.message : error);
+    return spoken.trim() ? pickSpoken(spoken, fallbackText) : fallbackText;
+  }
 }
 
-function pipeXaiSse(res: Response, fallbackText: string): Response {
-  const encoder = new TextEncoder();
+async function collectXai(res: Response, fallbackText: string): Promise<string> {
   const decoder = new TextDecoder();
   const reader = res.body!.getReader();
-  const fallback = fallbackText;
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      let buffer = "";
-      let spoken = "";
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-            const data = trimmed.slice(5).trim();
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data) as {
-                choices?: { delta?: { content?: string } }[];
-              };
-              const text = json.choices?.[0]?.delta?.content;
-              if (text) spoken += text;
-            } catch {
-              // skip malformed SSE
-            }
-          }
-        }
-        const chosen = pickSpoken(spoken, fallback);
-        if (!spoken.trim()) console.error("[chat] xAI empty stream — pack fallback");
-        controller.enqueue(encoder.encode(chosen));
-        controller.close();
-      } catch (error) {
-        console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
+  let buffer = "";
+  let spoken = "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === "[DONE]") continue;
         try {
-          if (!spoken) controller.enqueue(encoder.encode(fallback));
+          const json = JSON.parse(data) as { choices?: { delta?: { content?: string } }[] };
+          const text = json.choices?.[0]?.delta?.content;
+          if (text) spoken += text;
         } catch {
-          // ignore
+          // skip malformed SSE
         }
-        controller.close();
       }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
-  });
+    }
+    if (!spoken.trim()) console.error("[chat] xAI empty stream — pack fallback");
+    return pickSpoken(spoken, fallbackText);
+  } catch (error) {
+    console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
+    return spoken.trim() ? pickSpoken(spoken, fallbackText) : fallbackText;
+  }
 }
 
 export const Route = createFileRoute("/api/chat")({
@@ -417,77 +355,184 @@ export const Route = createFileRoute("/api/chat")({
               { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
             );
           }
-          const prompt = modelPrompt(query, attachment);
+          const labelText = typeof body.labelText === "string" ? body.labelText.replace(/\s+/g, " ").trim().slice(0, 500) : "";
+          const sentLabel = Object.prototype.hasOwnProperty.call(body, "labelText");
           const history = Array.isArray(body.history) ? body.history : [];
-          let followSubject = "";
-          if (!attachment && isFollowCue(query)) {
-            for (let i = history.length - 1; i >= 0; i -= 1) {
-              const earlier = typeof history[i]?.text === "string" ? history[i].text : "";
-              const family = matchProductFamily(earlier);
-              const isNo = earlier.match(/\bIS[\s/.:-]*\d{3,5}\b/i)?.[0];
-              const subject = [family?.aliases[0], isNo].filter(Boolean).join(" ");
-              if (subject) {
-                followSubject = subject;
-                break;
+          const headers = {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+          };
+          const stream = new ReadableStream({
+            async start(controller) {
+              const encoder = new TextEncoder();
+              const say = (text: string) => {
+                if (text) controller.enqueue(encoder.encode(text));
+              };
+              const step = (id: string, label: string, detail: string, t0: number) => {
+                const payload = JSON.stringify({
+                  kind: "step",
+                  step: {
+                    id,
+                    label,
+                    detail: detail.slice(0, 220),
+                    ms: Math.max(0, Math.round(performance.now() - t0)),
+                  },
+                });
+                say(`[WORK]${payload}\n`);
+              };
+              try {
+                let t = performance.now();
+                let followSubject = "";
+                if (!attachment && isFollowCue(query)) {
+                  for (let i = history.length - 1; i >= 0; i -= 1) {
+                    const turn = history[i];
+                    const earlier = typeof turn?.text === "string" ? turn.text : "";
+                    const family = matchProductFamily(earlier);
+                    const isNo = earlier.match(/\bIS[\s/.:-]*\d{3,5}\b/i)?.[0];
+                    const subject = [family?.aliases[0], isNo].filter(Boolean).join(" ");
+                    if (subject) {
+                      followSubject = subject;
+                      break;
+                    }
+                  }
+                }
+                const intent = classifyIntent(query);
+                step(
+                  "read",
+                  "Read the question",
+                  intent === "bis" ? "Indian Standards question" : intent === "social" ? "Greeting" : "Outside Indian Standards",
+                  t,
+                );
+                if (attachment && attachment.kind !== "text" && sentLabel && !labelText && !query.trim()) {
+                  t = performance.now();
+                  step("label", "Read the label", "No readable licence or IS number", t);
+                  say("This photo had no readable licence or IS number. Type the number printed with the mark.");
+                  return;
+                }
+                const hard = !attachment ? chatHardCard(query) : null;
+                if (hard) {
+                  t = performance.now();
+                  const card = deskReply(query, language) || "";
+                  const hits = await searchField(query, hard === "file" ? "file" : "verify");
+                  step("desk", "Opened the desk card", hits.length ? `${hits.length} loaded rows` : "No title match", t);
+                  const lines = hits.map((hit) => `- ${hit.title}${hit.url ? ` — ${hit.url}` : ""}`);
+                  say([card, lines.length ? "Loaded rows for this field. Not a licence grant." : "", ...lines].filter(Boolean).join("\n"));
+                  return;
+                }
+                const desk = !attachment ? deskKind(query) : null;
+                const guidedKind = !attachment ? moreKind(query) : null;
+                if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
+                  t = performance.now();
+                  const spoken = await answerText(query, language, SOCIAL_PROMPT(language), socialReply(language), 0.4, 500);
+                  step("reply", "Answered the greeting", "No catalogue search", t);
+                  say(spoken);
+                  return;
+                }
+                if (!attachment && !followSubject && intent === "offtopic") {
+                  t = performance.now();
+                  step("refuse", "Refused", "Outside Indian Standards", t);
+                  say(offtopicReply(language));
+                  return;
+                }
+                t = performance.now();
+                const family = matchProductFamily(query);
+                const schemeDetail = isHallmarkSchemeMix(query)
+                  ? "Hallmark does not apply"
+                  : family?.scheme
+                    ? String(family.scheme)
+                    : "No scheme pinned";
+                step("scheme", "Checked the scheme", schemeDetail, t);
+                const typed = query.trim() ? retrievalText(query, attachment) : "";
+                const retrievalQuery = [followSubject, typed, labelText].filter(Boolean).join("\n").slice(0, 500);
+                const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
+                const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
+                t = performance.now();
+                const retrieved = await retrieveHybrid(retrievalQuery);
+                step(
+                  "search",
+                  "Searched the catalogue",
+                  `${retrieved.hits.length} rows · ${retrieved.mode} · ${retrieved.grounding}${labelText ? " · label text included" : ""}`,
+                  t,
+                );
+                t = performance.now();
+                const official = retrieved.hits.some((hit) => hit.url);
+                step(
+                  "evidence",
+                  "Checked the source",
+                  official ? "An official page is on a row" : "No official row",
+                  t,
+                );
+                say(`[WORK]${JSON.stringify({ kind: "graph", stops: buildStops(`${query}\n${labelText}`, retrieved) })}\n`);
+                t = performance.now();
+                const missing = shouldClarify(`${query}\n${labelText}`);
+                const exitDetail = missing
+                  ? "Clarify — one fact is missing"
+                  : !retrieved.hasEvidence
+                    ? "Refuse — no pack row"
+                    : retrieved.grounding === "refuse"
+                      ? "Refuse — a limit applies"
+                      : "Allow — sourced row";
+                step("exit", "Chose the exit", exitDetail, t);
+                const guided = !attachment ? moreReply(query, language) : null;
+                const pack = guided || getFallbackBISResponse(retrievalQuery, language);
+                const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
+                console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
+                let evidence = retrieved.hasEvidence
+                  ? formatEvidenceBlock(retrieved)
+                  : "MATCH: no\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST say the catalogue has no row. Do not invent an IS number, fee, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
+                if (labelText) {
+                  evidence += `\n\nLABEL TEXT READ IN THE BROWSER: ${labelText}\nUse a number from this label only when that same number is in the ranked hits. If it is not, say the photo text is not in this pack.`;
+                }
+                if (followSubject) {
+                  evidence = `FOLLOW-UP SUBJECT: ${followSubject}\nThe user already named this. Answer the new question about it. Do not switch products.\n\n${evidence}`;
+                }
+                if (!attachment && deskKind(query) === "labs") {
+                  const board = labsFinderResult(query);
+                  const facts = deskReply(query, language) || "";
+                  evidence += `\n\nLAB BOARD (names and kilometres only from here; do not invent a closer lab): ${board ? "map will show beside this reply." : "no pin yet."}\n${facts}`;
+                }
+                const field: PackField | null =
+                  guidedKind === "standards" ? "standard" : guidedKind === "certify" ? "process" : desk === "verify" ? "verify" : null;
+                if (field) {
+                  const hits = await searchField(query, field);
+                  if (hits.length) {
+                    evidence +=
+                      "\n\nFIELD ROWS from the loaded extract for this desk only. Quote a title only if it is listed. Do not treat a title match as a licence.\n" +
+                      hits.map((hit) => `- ${hit.title}${hit.url ? ` | ${hit.url}` : ""}`).join("\n");
+                  }
+                }
+                const code = huidToken(query);
+                if (code) {
+                  const shape = checkHuid(query);
+                  evidence += `\n\nHUID SHAPE: ${shape.code} is ${shape.status === "ok" ? "a 6-character shape" : "not a valid 6-character HUID"}. This is not the BIS CARE register. Do not say pass, fail, or genuine.`;
+                }
+                if (!attachment && isHallmarkSchemeMix(query)) {
+                  evidence += "\n\nSCHEME: Hallmark and HUID do not apply to this product. Say that first. Point to ISI or CRS, not jewellery verification.";
+                }
+                const userPrompt = labelText
+                  ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
+                  : modelPrompt(query, attachment);
+                t = performance.now();
+                const spoken = await answerText(
+                  userPrompt,
+                  language,
+                  SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
+                  pack,
+                  0.25,
+                  1600,
+                  image,
+                );
+                step("write", "Wrote the answer", "From the rows above", t);
+                say(spoken);
+              } catch (error) {
+                console.error("[chat] stream failed:", error instanceof Error ? error.message : error);
+                say(UI_DICTIONARY[language].catalogueLoadError);
+              } finally {
+                controller.close();
               }
-            }
-          }
-          const intent = classifyIntent(query);
-          const retrievalQuery = followSubject
-            ? `${followSubject} ${retrievalText(query, attachment)}`.slice(0, 500)
-            : retrievalText(query, attachment);
-          const hard = !attachment ? chatHardCard(query) : null;
-          if (hard) return streamText(deskReply(query, language) || "");
-          const desk = !attachment ? deskKind(query) : null;
-          const guidedKind = !attachment ? moreKind(query) : null;
-          if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
-            return streamXaiMessages(
-              query,
-              language,
-              SOCIAL_PROMPT(language),
-              socialReply(language),
-              0.4,
-              500,
-            );
-          }
-          if (!attachment && !followSubject && intent === "offtopic") {
-            return streamText(offtopicReply(language));
-          }
-          const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
-          const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
-          const retrieved = await retrieveHybrid(retrievalQuery);
-          const guided = !attachment ? moreReply(query, language) : null;
-          const pack = guided || getFallbackBISResponse(retrievalQuery, language);
-          const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
-          console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
-          let evidence = retrieved.hasEvidence
-            ? formatEvidenceBlock(retrieved)
-            : "MATCH: no\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST say the catalogue has no row. Do not invent an IS number, fee, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
-          if (followSubject) {
-            evidence = `FOLLOW-UP SUBJECT: ${followSubject}\nThe user already named this. Answer the new question about it. Do not switch products.\n\n${evidence}`;
-          }
-          if (!attachment && deskKind(query) === "labs") {
-            const board = labsFinderResult(query);
-            const facts = deskReply(query, language) || "";
-            evidence += `\n\nLAB BOARD (names and kilometres only from here; do not invent a closer lab): ${board ? "map will show beside this reply." : "no pin yet."}\n${facts}`;
-          }
-          const code = huidToken(query);
-          if (code) {
-            const shape = checkHuid(query);
-            evidence += `\n\nHUID SHAPE: ${shape.code} is ${shape.status === "ok" ? "a 6-character shape" : "not a valid 6-character HUID"}. This is not the BIS CARE register. Do not say pass, fail, or genuine.`;
-          }
-          if (!attachment && isHallmarkSchemeMix(query)) {
-            evidence += "\n\nSCHEME: Hallmark and HUID do not apply to this product. Say that first. Point to ISI or CRS, not jewellery verification.";
-          }
-          return streamXaiMessages(
-            prompt,
-            language,
-            SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
-            pack,
-            0.25,
-            1600,
-            image,
-          );
+            },
+          });
+          return new Response(stream, { headers });
         } catch {
           return new Response(UI_DICTIONARY[language].catalogueLoadError, {
             status: 200,

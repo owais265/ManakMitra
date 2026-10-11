@@ -5,8 +5,26 @@ declare module "@/data/rag-pack.json" {
     vocab: string[];
     idf: number[];
     docs: { i: number[]; v: number[] }[];
-    chunks: { id: string; kind: string; title: string; body: string; url: string }[];
-    catalogue?: { id: string; kind: string; title: string; body: string; url: string }[];
+    chunks: {
+      id: string;
+      kind: string;
+      title: string;
+      body: string;
+      url: string;
+      scheme: string | null;
+      family: string | null;
+      group_name: string | null;
+    }[];
+    catalogue?: {
+      id: string;
+      kind: string;
+      title: string;
+      body: string;
+      url: string;
+      scheme: string | null;
+      family: string | null;
+      group_name: string | null;
+    }[];
   };
   export default value;
 }
