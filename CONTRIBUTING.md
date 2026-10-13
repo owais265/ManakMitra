@@ -33,3 +33,9 @@ Do not ingest paid clause PDFs, scrape dumps, or synthetic Q&A files.
 ## Scope
 
 This repository is SIH **26107** (standards assistant), not 26108 (tender / procurement).
+
+## Team
+
+- [Mohammed Owais](https://github.com/owais265)
+- [Gurdev Singh](https://github.com/Gurdev-singh-007)
+- [Navneet Kumar Singh](https://github.com/Navneet557)
