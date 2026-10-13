@@ -15,7 +15,7 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 | Live MVP | Demo | Repo | Architecture |
 | --- | --- | --- | --- |
-| [Vercel](https://forest-yonder-apex-plum.vercel.app/) · [Grok preview](https://forest-yonder-apex-plum.grok.me) | [YouTube](https://www.youtube.com/watch?v=oi7lZYGw1Uw) | [github.com/owais265/ManakMitra](https://github.com/owais265/ManakMitra) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
+| [Vercel](https://forest-yonder-apex-plum.vercel.app/) | [YouTube](https://www.youtube.com/watch?v=oi7lZYGw1Uw) | [github.com/owais265/ManakMitra](https://github.com/owais265/ManakMitra) | [gitdiagram](https://gitdiagram.com/owais265/manakmitra) |
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
