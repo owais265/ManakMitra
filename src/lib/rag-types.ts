@@ -4,6 +4,7 @@ export type EvidenceHit = {
   body: string;
   url: string;
   score: number;
+  lane?: string;
 };
 
 /** verified = pack/official hit. refuse = no hit, absent IS, clause missing, scheme mix. */

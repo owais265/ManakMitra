@@ -1,0 +1,1072 @@
+{
+  "files": 108,
+  "new_rows": 1104,
+  "items": [
+    {
+      "file": "112_1789382223.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 8203,
+      "chunks": 9,
+      "is_number": "10271",
+      "title": "ANHYDROUS HYDROGEN FLUORIDE, TECHNICAL — IS 10271 1982",
+      "kind": "product"
+    },
+    {
+      "file": "175_1790065597.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 12941,
+      "chunks": 14,
+      "is_number": "4990",
+      "title": "175 1790065597 — IS 4990",
+      "kind": "product"
+    },
+    {
+      "file": "237_1791269093.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 8485,
+      "chunks": 9,
+      "is_number": "13983",
+      "title": "237 1791269093 — IS 13983",
+      "kind": "product"
+    },
+    {
+      "file": "241_1788771466.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 13812,
+      "chunks": 14,
+      "is_number": "458",
+      "title": "241 1788771466 — IS 458",
+      "kind": "product"
+    },
+    {
+      "file": "527_1789463230.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 11877,
+      "chunks": 13,
+      "is_number": "4992",
+      "title": "527 1789463230 — IS 4992",
+      "kind": "product"
+    },
+    {
+      "file": "739_1788239742.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 15675,
+      "chunks": 16,
+      "is_number": "1948",
+      "title": "739 1788239742 — IS 1948",
+      "kind": "product"
+    },
+    {
+      "file": "749_1789382256.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 12075,
+      "chunks": 13,
+      "is_number": "10332",
+      "title": "HYDROFLUORIC ACID, AQUEOUS — IS 10332 1982",
+      "kind": "product"
+    },
+    {
+      "file": "894_1790062355.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 9813,
+      "chunks": 10,
+      "is_number": "14858",
+      "title": "894 1790062355 — IS 14858",
+      "kind": "product"
+    },
+    {
+      "file": "939_1789376078.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 11135,
+      "chunks": 12,
+      "is_number": "1341",
+      "title": "939 1789376078 — IS 1341",
+      "kind": "product"
+    },
+    {
+      "file": "Designer.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0
+    },
+    {
+      "file": "IS-1038-Product-Manual (1).pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6460,
+      "chunks": 7,
+      "is_number": "1038",
+      "title": "STEEL DOORS, WINDOWS AND VENTILATORS — IS 1038",
+      "kind": "product"
+    },
+    {
+      "file": "IS-1038-Product-Manual.pdf",
+      "status": "duplicate-bytes"
+    },
+    {
+      "file": "IS-12118-Part-1-Product-Manual-.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7483,
+      "chunks": 8,
+      "is_number": "12118",
+      "title": "TWO PART POLYSULPHIDE BASED SEALANTS — IS 12118 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "IS-12330-Product-Manual-.pdf",
+      "status": "pdf",
+      "pages": 14,
+      "chars": 21113,
+      "chunks": 22,
+      "is_number": "12330",
+      "title": "SULPHATE RESISTING PORTLAND CEMENT — IS 12330",
+      "kind": "product"
+    },
+    {
+      "file": "IS-12592-Product-Manual-.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 8445,
+      "chunks": 9,
+      "is_number": "12592",
+      "title": "PRECAST CONCRETE MANHOLE COVER AND FRAME — IS 12592",
+      "kind": "product"
+    },
+    {
+      "file": "IS-12701-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9405,
+      "chunks": 10,
+      "is_number": "12701",
+      "title": "ROTATIONAL MOULDED POLYETHYLENE WATER STORAGE TANKS — IS 12701",
+      "kind": "product"
+    },
+    {
+      "file": "IS-13620-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 6840,
+      "chunks": 7,
+      "is_number": "13620",
+      "title": "FUSION BONDED EPOXY COATED REINFORCING BARS — IS 13620",
+      "kind": "product"
+    },
+    {
+      "file": "IS-14846-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5279,
+      "chunks": 6,
+      "is_number": "14846",
+      "title": "SLUICE VALVE FOR WATER WORKS PURPOSES (50 TO 1200 mm SIZE) — IS 14846",
+      "kind": "product"
+    },
+    {
+      "file": "IS-1489-Part-2-Final-Product-Manual-.pdf",
+      "status": "pdf",
+      "pages": 16,
+      "chars": 25344,
+      "chunks": 26,
+      "is_number": "1489",
+      "title": "PORTLAND POZZOLANA CEMENT – CALCINED CLAY BASED — IS 1489 Part 2",
+      "kind": "product"
+    },
+    {
+      "file": "IS-1592-PM-Jan-2021.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 9124,
+      "chunks": 10,
+      "is_number": "1592",
+      "title": "ASBESTOS CEMENT PRESSURE PIPES AND JOINTS — IS 1592 2003",
+      "kind": "product"
+    },
+    {
+      "file": "IS-16353-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 13597,
+      "chunks": 14,
+      "is_number": "16353",
+      "title": "PORTLAND CEMENT CLINKER — IS 16353",
+      "kind": "product"
+    },
+    {
+      "file": "IS-16714-Revised-Product-Manual-January-2020.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 10575,
+      "chunks": 11,
+      "is_number": "16714",
+      "title": "GROUND GRANULATED BLAST FURNACE SLAG FOR USE IN CEMENT, MORTAR AND CONCRETE — IS 16714",
+      "kind": "product"
+    },
+    {
+      "file": "IS-1785-Part-1-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5327,
+      "chunks": 6,
+      "is_number": "1785",
+      "title": "PLAIN HARD-DRAWN STEEL WIRE FOR PRESTRESSED CONCRETE – COLD DRAWN STRESS-RELIEVED WIRE — IS 1785 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "IS-1785-Part-2-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 4,
+      "chars": 4678,
+      "chunks": 5,
+      "is_number": "1785",
+      "title": "PLAIN HARD-DRAWN STEEL WIRE FOR PRESTRESSED CONCRETE – AS-DRAWN WIRE — IS 1785 Part 2",
+      "kind": "product"
+    },
+    {
+      "file": "IS-2185-PART-3-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 7892,
+      "chunks": 8,
+      "is_number": "2185",
+      "title": "CONCRETE MASONRY UNITS – AUTOCLAVED CELLULAR (AERATED) CONCRETE BLOCKS — IS 2185 Part 3",
+      "kind": "product"
+    },
+    {
+      "file": "IS-2547-PART-1-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 7636,
+      "chunks": 8,
+      "is_number": "2547",
+      "title": "GYPSUM BUILDING PLASTER – EXCLUDING PREMIXED LIGHTWEIGHT PLASTER — IS 2547 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "IS-2645-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 4,
+      "chars": 5147,
+      "chunks": 6,
+      "is_number": "2645",
+      "title": "INTEGRAL WATERPROOFING COMPOUNDS FOR CEMENT MORTAR AND CONCRETE — IS 2645",
+      "kind": "product"
+    },
+    {
+      "file": "IS-2713-Part-1-to-3-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7243,
+      "chunks": 8,
+      "is_number": "2713",
+      "title": "TUBULAR STEEL POLES FOR OVERHEAD POWER LINES — IS 2713",
+      "kind": "product"
+    },
+    {
+      "file": "IS-2925-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6547,
+      "chunks": 7,
+      "is_number": "2925",
+      "title": "INDUSTRIAL SAFETY HELMETS — IS 2925",
+      "kind": "product"
+    },
+    {
+      "file": "IS-3087-Product-Manual-.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 11930,
+      "chunks": 13,
+      "is_number": "3087",
+      "title": "PARTICLE BOARDS OF WOOD AND OTHER LIGNOCELLULOSIC MATERIALS (MEDIUM DENSITY) FOR GENERAL PURPOSES — IS 3087",
+      "kind": "product"
+    },
+    {
+      "file": "IS-3466-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 15,
+      "chars": 21153,
+      "chunks": 22,
+      "is_number": "3466",
+      "title": "MASONRY CEMENT — IS 3466",
+      "kind": "product"
+    },
+    {
+      "file": "IS-3564-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5774,
+      "chunks": 6,
+      "is_number": "3564",
+      "title": "HYDRAULICALLY REGULATED DOOR CLOSERS — IS 3564",
+      "kind": "product"
+    },
+    {
+      "file": "IS-4457-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 9092,
+      "chunks": 10,
+      "is_number": "4457",
+      "title": "CERAMIC UNGLAZED VITREOUS ACID RESISTING TILES — IS 4457",
+      "kind": "product"
+    },
+    {
+      "file": "IS-459-Final-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6581,
+      "chunks": 7,
+      "is_number": "459",
+      "title": "CORRUGATED AND SEMI-CORRUGATED ASBESTOS CEMENT SHEETS — IS 459",
+      "kind": "product"
+    },
+    {
+      "file": "IS-4947-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 4,
+      "chars": 4600,
+      "chunks": 5,
+      "is_number": "4947",
+      "title": "GAS CARTRIDGES FOR USE IN FIRE EXTINGUISHERS — IS 4947",
+      "kind": "product"
+    },
+    {
+      "file": "IS-5312-Part-1-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6081,
+      "chunks": 7,
+      "is_number": "5312",
+      "title": "SWING CHECK TYPE REFLUX (NON-RETURN) VALVES FOR WATER WORKS PURPOSES – SINGLE DOOR PATTERN — IS 5312 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "IS-6006-Product-Manual-1.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 7581,
+      "chunks": 8,
+      "is_number": "6006",
+      "title": "UNCOATED STRESS RELIEVED STRAND FOR PRESTRESSED CONCRETE — IS 6006",
+      "kind": "product"
+    },
+    {
+      "file": "IS-6452-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 13,
+      "chars": 18712,
+      "chunks": 19,
+      "is_number": "6452",
+      "title": "HIGH ALUMINA CEMENT FOR STRUCTURAL USE — IS 6452",
+      "kind": "product"
+    },
+    {
+      "file": "IS-778-Final-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6659,
+      "chunks": 7,
+      "is_number": "778",
+      "title": "COPPER ALLOY GATE, GLOBE AND CHECK VALVES FOR WATERWORKS PURPOSES — IS 778",
+      "kind": "product"
+    },
+    {
+      "file": "IS-779-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6488,
+      "chunks": 7,
+      "is_number": "779",
+      "title": "WATER METERS (DOMESTIC TYPE) — IS 779",
+      "kind": "product"
+    },
+    {
+      "file": "IS-8229-Product-Manual.pdf",
+      "status": "pdf",
+      "pages": 14,
+      "chars": 20486,
+      "chunks": 21,
+      "is_number": "8229",
+      "title": "OIL-WELL CEMENT — IS 8229",
+      "kind": "product"
+    },
+    {
+      "file": "IS-848-Product-manual.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5220,
+      "chunks": 6,
+      "is_number": "848",
+      "title": "SYNTHETIC RESIN ADHESIVES FOR PLYWOOD (PHENOLIC AND AMINOPLASTIC) — IS 848",
+      "kind": "product"
+    },
+    {
+      "file": "IS_10124-June2021.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 10810,
+      "chunks": 11,
+      "is_number": "10124",
+      "title": "FABRICATED PVC-U FITTINGS FOR POTABLE WATER SUPPLIES — IS 10124",
+      "kind": "product"
+    },
+    {
+      "file": "IS_12818-June2021.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 9914,
+      "chunks": 11,
+      "is_number": "12818",
+      "title": "UNPLASTICIZED POLYVINYL CHLORIDE (PVC-U) SCREEN AND CASING PIPES FOR BORE/TUBEWELLS — IS 12818 2010",
+      "kind": "product"
+    },
+    {
+      "file": "IS_13592-June2021.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 11910,
+      "chunks": 13,
+      "is_number": "13592",
+      "title": "UNPLASTICIZED POLYVINYL CHLORIDE (PVC-U) PIPES FOR SOIL AND WASTE DISCHARGE SYSTEM FOR INSIDE AND OUTSIDE BUILDINGS INCLUDING VENTILATION AND RAIN WATER SYSTEM — IS 13592 2013",
+      "kind": "product"
+    },
+    {
+      "file": "IS_15265-June2021.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 9489,
+      "chunks": 10,
+      "is_number": "15265",
+      "title": "FLEXIBLE PVC PIPES OR POLYMER REINFORCED THEMOPLASTIC HOSES FOR SUCTION AND DELIVERY LINES OF AGRICULTURE PUMPS — IS 15265 2003",
+      "kind": "product"
+    },
+    {
+      "file": "IS_15328-June2021.pdf",
+      "status": "pdf",
+      "pages": 11,
+      "chars": 12924,
+      "chunks": 14,
+      "is_number": "15328",
+      "title": "UNPLASTICIZED NON-PRESSURE POLYVINYL CHLORIDE (PVC-U) PIPES FOR USE IN UNDERGROUND DRAINAGE AND SEWERAGE SYSTEMS — IS 15328",
+      "kind": "product"
+    },
+    {
+      "file": "IS_7834-June2021.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 10717,
+      "chunks": 11,
+      "is_number": "7834",
+      "title": "INJECTION MOULDED PVC SOCKET FITTINGS WITH SOLVENT CEMENT JOINTS FOR WATER SUPPLIES — IS 7834",
+      "kind": "product"
+    },
+    {
+      "file": "IS_9271-June2021.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9197,
+      "chunks": 10,
+      "is_number": "9271",
+      "title": "UNPLASTICIZED POLYVINYL CHLORIDE (UPVC) SINGLE WALL CORRUGATED PIPES FOR DRAINAGE — IS 9271 2004",
+      "kind": "product"
+    },
+    {
+      "file": "In-house-Lab-Circular-Dec-2025.pdf",
+      "status": "pdf",
+      "pages": 1,
+      "chars": 1527,
+      "chunks": 2,
+      "is_number": null,
+      "title": "In house Lab Circular Dec 2025",
+      "kind": "product"
+    },
+    {
+      "file": "ManakMitra Ultra Detailed Guide — SIH26107.pdf",
+      "status": "pdf",
+      "pages": 14,
+      "chars": 29989,
+      "chunks": 31,
+      "is_number": null,
+      "title": "ManakMitra Ultra Detailed Guide — SIH26107",
+      "kind": "product"
+    },
+    {
+      "file": "ManakMitra.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 3175,
+      "chunks": 4,
+      "is_number": null,
+      "title": "ManakMitra",
+      "kind": "product"
+    },
+    {
+      "file": "ManakMitra_Demo_Proofs_Press_Pack.pdf",
+      "status": "pdf",
+      "pages": 1,
+      "chars": 3513,
+      "chunks": 4,
+      "is_number": "5522",
+      "title": "ManakMitra Demo Proofs Press Pack — IS 5522",
+      "kind": "product"
+    },
+    {
+      "file": "Modified-Draft-Product-Manual-IS-1395_CMD21.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 11458,
+      "chunks": 12,
+      "is_number": "1395",
+      "title": "Specification for Low and Medium Alloy Steel Covered Electrodes for Manual Metal Arc Welding — IS 1395",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1019.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 8072,
+      "chunks": 9,
+      "is_number": "1019",
+      "title": "RIM LATCHES ACCORDING to IS 1019:1974 — IS 1019 1974",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1065-2-CMD2.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 8958,
+      "chunks": 10,
+      "is_number": "1065",
+      "title": "STABLE BLEACHING POWDER PART 2 TREATMENT OF WATER INTENDED FOR DRINKING — IS 1065 Part 2",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1237-APRIL-2020.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 9010,
+      "chunks": 10,
+      "is_number": "1237",
+      "title": "CEMENT CONCRETE FLOORING TILES — IS 1237",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1580-APRIL-2020.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6247,
+      "chunks": 7,
+      "is_number": "1580",
+      "title": "BITUMINUOS COMPOUNDS FOR WATERPROOFING AND CAULKING PURPOSES — IS 1580",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1626-Part-3-APRIL-2020.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6865,
+      "chunks": 7,
+      "is_number": "1626",
+      "title": "ASBESTOS CEMENT BUILDING PIPES AND PIPE FITTINGS, GUTTER AND GUTTER FITTINGS AND ROOFING FITTINGS – ROOFING FITTINGS — IS 1626 Part 3",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1703-MAY-2020.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7189,
+      "chunks": 8,
+      "is_number": "1703",
+      "title": "WATER FITTINGS - COPPER ALLOY FLOAT VALVES (HORIZONTAL PLUNGR TYPE) — IS 1703",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1726-APRIL-2020.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6245,
+      "chunks": 7,
+      "is_number": "1726",
+      "title": "CAST IRON MANHOLE COVERS AND FRAMES — IS 1726",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-1838-PART-1-MAY-2020.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6272,
+      "chunks": 7,
+      "is_number": "1838",
+      "title": "PREFORMED FILLERS FOR EXPANSION JOINT IN CONCRETE PAVEMENT AND STRUCTURES (NON-EXTRUDING AND RESILIENT TYPE) – BITUMEN IMPREGNATED FIBRE — IS 1838 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-204-Part-1-May-2020.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 6070,
+      "chunks": 7,
+      "is_number": "204",
+      "title": "TOWER BOLTS -FERROUS METALS — IS 204 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-206.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6386,
+      "chunks": 7,
+      "is_number": "206",
+      "title": "TEE AND STRAP HINGES — IS 206 2010",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-2185-Part-1-APRIL-2020-1.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 8611,
+      "chunks": 9,
+      "is_number": "2185",
+      "title": "CONCRETE MASONRY UNITS - HOLLOW AND SOLID CONCRETE BLOCKS — IS 2185 Part 1",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-2373-MAY-2020.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5762,
+      "chunks": 6,
+      "is_number": "2373",
+      "title": "WATER METERS (BULK TYPE) — IS 2373",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-362-April-2020.pdf",
+      "status": "pdf",
+      "pages": 5,
+      "chars": 5337,
+      "chunks": 6,
+      "is_number": "362",
+      "title": "PARLIAMENT HINGES — IS 362",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-383-AUGUST-2020-REVISED-3.pdf",
+      "status": "pdf",
+      "pages": 15,
+      "chars": 16628,
+      "chunks": 17,
+      "is_number": "383",
+      "title": "COARSE AND FINE AGGREGATE FOR CONCRETE — IS 383",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-453.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 6743,
+      "chunks": 7,
+      "is_number": "453",
+      "title": "DOUBLE-ACTING SPRING HINGES — IS 453 1993",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-712-MAY-2020.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9795,
+      "chunks": 10,
+      "is_number": "712",
+      "title": "BUILDING LIMES — IS 712",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS-781-MAY-2020.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7291,
+      "chunks": 8,
+      "is_number": "781",
+      "title": "CAST COPPER ALLOY SCREW DOWN BIB TAPS AND STOP VALVES FOR WATER SEVICES — IS 781",
+      "kind": "product"
+    },
+    {
+      "file": "PM-IS1109.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 8930,
+      "chunks": 9,
+      "is_number": "1109",
+      "title": "BORAX ACCORDING TO IS 1109:1980",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-10360-_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 6993,
+      "chunks": 8,
+      "is_number": "10360",
+      "title": "LIME- POZZOLANA CONCRETE BLOCKS FOR PAVING — IS 10360 1982",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-12679.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 10344,
+      "chunks": 11,
+      "is_number": "12679",
+      "title": "BY-PRODUCT GYPSUM FOR USE IN PLASTER BLOCKS AND BOARDS — IS 12679",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-13158_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9439,
+      "chunks": 10,
+      "is_number": "13158",
+      "title": "PRESTRESSED CONCRETE CIRCULAR SPUN POLESFOROVERHEAD POWER TRACTION AND TELECOMMUNICATION LINES — IS 13158",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-1332_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9479,
+      "chunks": 10,
+      "is_number": "1332",
+      "title": "PRECAST REINFORCED CONCRETE STREET LIGHTING POLES — IS 1332 1986",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-13990_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 6554,
+      "chunks": 7,
+      "is_number": "13990",
+      "title": "PRECAST REINFORCED CONCRETE PLANKS AND JOISTS FOR ROOFING AND FLOORING — IS 13990",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-17400-_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 7366,
+      "chunks": 8,
+      "is_number": "17400",
+      "title": "GLASS FIBRE REINFORCED GYPSUM PANELS — IS 17400",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-17953_Sep-2023.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 12218,
+      "chunks": 13,
+      "is_number": "17953",
+      "title": "UPVC PROFILES FOR WINDOWS AND DOORS — IS 17953 2023",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-2095-2-_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7577,
+      "chunks": 8,
+      "is_number": "2095",
+      "title": "GYPSUM PLASTER BOARDS: PART 2 - COATED/LAMINATED GYPSUM PLASTER BOARD — IS 2095 Part 2 2022",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-2185-2_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 9947,
+      "chunks": 11,
+      "is_number": "2185",
+      "title": "CONCRETE MASONRY UNITS: PART II - HOLLOW AND SOLID LIGHTWEIGHT CONCRETE BLOCKS — IS 2185 Part 2",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-4621_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 7,
+      "chars": 8554,
+      "chunks": 9,
+      "is_number": "4621",
+      "title": "INDICATING BOLTS FOR USE IN PUBLIC BATHS AND LAVATORIES — IS 4621 1975",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-809_-Feb-23.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7427,
+      "chunks": 8,
+      "is_number": "809",
+      "title": "RUBBER FLOORING MATERIALS FOR GENERAL PURPOSES — IS 809 1992",
+      "kind": "product"
+    },
+    {
+      "file": "PM_-IS-8931_June-2022.pdf",
+      "status": "pdf",
+      "pages": 19,
+      "chars": 21811,
+      "chunks": 23,
+      "is_number": "8931",
+      "title": "COPPER ALLOY SINGLE TAPS, COMBINATION TAP ASSEMBLIES, STOP VALVES AND SINGLE LEVER MIXERS FOR WATER SERVICES — IS 8931 2021",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-14735_May-2023.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 11321,
+      "chunks": 12,
+      "is_number": "14735",
+      "title": "UNPLASTICIZED POLYVINYL CHLORIDE (UPVC) INJECTION MOULDED FITTINGS FOR SOIL AND WASTE DISCHARGE SYSTEM FOR INSIDE AND OUTSIDE BUILDINGS INCLUDING VENTILATION AND RAIN WATER SYSTEM ",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-14856_1_Sept-2020.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 12860,
+      "chunks": 14,
+      "is_number": "14856",
+      "title": "GLASS FIBRE REINFORCED PLASTIC (GRP) PANEL TYPE DOOR SHUTTERS FOR INTERNAL USE — IS 14856",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-16074_Oct-2023.pdf",
+      "status": "pdf",
+      "pages": 11,
+      "chars": 12791,
+      "chunks": 13,
+      "is_number": "16074",
+      "title": "STEEL FLUSH DOOR SHUTTERS — IS 16074",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-17546_Mar-2022.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 11370,
+      "chunks": 12,
+      "is_number": "17546",
+      "title": "CHLORINATED POLYVINYL CHLORIDE (CPVC) FITTINGS FOR POTABLE HOT AND COLD WATER DISTRIBUTION SUPPLIES — IS 17546 2021",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-2185-4-_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9475,
+      "chunks": 10,
+      "is_number": "2185",
+      "title": "CONCRETE MASONRY UNITS: PART IV - PREFORMED FOAM CELLULAR CONCRETE BLOCKS — IS 2185 Part 4",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-3006-Jan-2023.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 8943,
+      "chunks": 10,
+      "is_number": "3006",
+      "title": "CHEMICALLY RESISTANT GLAZED STONEWARE PIPES AND FITTINGS — IS 3006 1979",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-651-Feb-2022.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 9127,
+      "chunks": 10,
+      "is_number": "651",
+      "title": "GLAZED STONEWARE PIPES AND FITTINGS — IS 651 2007",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-653-Feb-2023.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7437,
+      "chunks": 8,
+      "is_number": "653",
+      "title": "LINOLEUM SHEETS AND TILES — IS 653 1992",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS-8419_Pt-1_Jan-2021.pdf",
+      "status": "pdf",
+      "pages": 10,
+      "chars": 11476,
+      "chunks": 12,
+      "is_number": "8419",
+      "title": "REQUIREMENTS FOR FILTRATION EQUIPMENT- FILTRATION MEDIA - SAND AND GRAVEL — IS 8419 Part 1 1977",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_12866-Apr_2021.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 10241,
+      "chunks": 11,
+      "is_number": "12866",
+      "title": "PLASTIC TRANSLUCENT SHEETS MADE FROM THERMO- SETTING POLYESTER RESIN (GLASSFIBRE REINFORCED) — IS 12866 2021",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_15962.pdf",
+      "status": "pdf",
+      "pages": 9,
+      "chars": 15676,
+      "chunks": 16,
+      "is_number": "15962",
+      "title": "Structural Steels for Buildings and Structures with Improved Seismic Resistance — IS 15962",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_16088_01072021.pdf",
+      "status": "pdf",
+      "pages": 12,
+      "chars": 13967,
+      "chunks": 15,
+      "is_number": "16088",
+      "title": "CHLORINATED POLYVINYL CHLORIDE (CPVC) PIPES FOR AUTOMATIC SPRINKLER FIRE EXTINGUISHING SYSTEM — IS 16088 2012",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556-Part-14_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 11370,
+      "chunks": 12,
+      "is_number": "2556",
+      "title": "VITREOUS SANITARY APPLIANCES (VITREOUSCHINA): PART 14 - SPECIFIC REQUIREMENTS OF INTEGRATED SQUATTING PANS — IS 2556 Part 14",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556-Part-17_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 10236,
+      "chunks": 11,
+      "is_number": "2556",
+      "title": "VITREOUS SANITARY APPLIANCES (VITREOUS CHINA): PART 17 - SPECIFIC REQUIREMENTS OF WALL MOUNTED BIDETS — IS 2556 Part 17",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556-Part-6_May-2023.pdf",
+      "status": "pdf",
+      "pages": 18,
+      "chars": 21300,
+      "chunks": 22,
+      "is_number": "2556",
+      "title": "VITREOUS CHINA SANITARY APPLIANCES : SPECIFIC REQUIREMENTS OF URINALS AND PARTITION PLATES — IS 2556 Part 6 2021",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556-Part-8_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 18,
+      "chars": 20179,
+      "chunks": 21,
+      "is_number": "2556",
+      "title": "VITREOUS CHINA SANITARY APPLIANCES: PART 8 - SPECIFIC REQUIREMENTS OF CLOSE-COUPLED AND ONE-PIECE PEDESTAL WASHDOWN AND SYPHONIC WATER CLOSETS — IS 2556 Part 8",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556-Part-9_Feb-23.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 10244,
+      "chunks": 11,
+      "is_number": "2556",
+      "title": "VITREOUS SANITARY APPLIANCES (VITREOUS CHINA): PART 9 - SPECIFIC REQUIREMENTS OF PEDESTAL TYPE BIDETS — IS 2556 Part 9",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_2556Part7.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 10585,
+      "chunks": 11,
+      "is_number": "2556",
+      "title": "VITREOUS SANITARY APPLIANCES (VITREOUS CHINA) – SPECIFIC REQUIREMENTS OF ACCESSORIES FOR SANITARY APPLIANCES — IS 2556 Part 7",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_5758_13042021.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 8534,
+      "chunks": 9,
+      "is_number": "5758",
+      "title": "PRECAST CONCRETE KERBS, CHANNELS, EDGING, QUADRANTS AND OTHER ASSOCIATED FITTINGS — IS 5758 2020",
+      "kind": "product"
+    },
+    {
+      "file": "PM_IS_8472_2_31122020.pdf",
+      "status": "pdf",
+      "pages": 8,
+      "chars": 8722,
+      "chunks": 9,
+      "is_number": "8472",
+      "title": "CENTRIFUGAL REGENERATIVE PUMPS FOR CLEAR, COLD WATER — IS 8472 2019",
+      "kind": "product"
+    },
+    {
+      "file": "Trial pdf.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 2949,
+      "chunks": 3,
+      "is_number": null,
+      "title": "Trial pdf",
+      "kind": "product"
+    },
+    {
+      "file": "What_Actually_Wins_A_Hackathon.pdf",
+      "status": "pdf",
+      "pages": 3,
+      "chars": 7703,
+      "chunks": 8,
+      "is_number": null,
+      "title": "What Actually Wins A Hackathon",
+      "kind": "product"
+    },
+    {
+      "file": "mathematical rigors.pdf",
+      "status": "pdf-no-text",
+      "pages": 3,
+      "chars": 0
+    },
+    {
+      "file": "table.pdf",
+      "status": "pdf",
+      "pages": 6,
+      "chars": 7222,
+      "chunks": 8,
+      "is_number": null,
+      "title": "table",
+      "kind": "product"
+    }
+  ]
+}

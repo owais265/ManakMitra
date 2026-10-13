@@ -4,12 +4,13 @@
  * real embeddings exist for that kind AND extras are needed.
  * Never ranks leftover vector(256). Lock/strong pack never call embed.
  */
-import { isLabCityQuery, vectorRetrieve } from "@/lib/rag";
+import { isLabCityQuery, labCityNeedles, vectorRetrieve } from "@/lib/rag";
 import { isOfficialHost } from "@/lib/official-hosts";
 import { isPolicyPinned, policyPinName } from "@/lib/policy-gate";
 import { matchProductFamily } from "@/lib/product-playbook";
 import type { EvidenceHit, Retrieval } from "@/lib/rag-types";
-import { EMBED_MODEL, getServiceSupabase, isHybridRagOn, geminiEmbedKey } from "@/lib/supabase.server";
+import { embedGemini768, getServiceSupabase, isHybridRagOn, geminiEmbedKey } from "@/lib/supabase.server";
+import { rerankCandidates } from "@/lib/rerank.server";
 
 type RpcHit = {
   kind?: string;
@@ -47,7 +48,7 @@ function asHit(row: RpcHit, score: number): EvidenceHit | null {
     .filter(Boolean)
     .join(" ")
     .slice(0, 700);
-  return { kind, title, body, url, score };
+  return { kind, title, body, url, score, lane: row.lane };
 }
 
 function mergeLocked(lock: EvidenceHit[], extras: EvidenceHit[]): EvidenceHit[] {
@@ -77,25 +78,7 @@ function mergeLocked(lock: EvidenceHit[], extras: EvidenceHit[]): EvidenceHit[] 
 }
 
 async function embedQuery(text: string): Promise<number[] | null> {
-  const key = geminiEmbedKey();
-  if (!key) return null;
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent` +
-    `?key=${encodeURIComponent(key)}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: `models/${EMBED_MODEL}`,
-      content: { parts: [{ text: text.slice(0, 4000) }] },
-      outputDimensionality: 768,
-    }),
-  });
-  if (!res.ok) return null;
-  const json = (await res.json()) as { embedding?: { values?: number[] } };
-  const values = json.embedding?.values;
-  if (!Array.isArray(values) || values.length !== 768) return null;
-  return values;
+  return embedGemini768(text);
 }
 
 const GENERIC_TOKEN =
@@ -155,16 +138,14 @@ async function canDense(kind: "lab" | "standard" | null): Promise<boolean> {
   return c.total >= 400;
 }
 
-async function denseExtras(
-  query: string,
+async function denseFromEmbedding(
+  embedding: number[] | null,
   family: ReturnType<typeof matchProductFamily> | null,
   kind: "lab" | "standard" | null,
 ): Promise<EvidenceHit[]> {
+  if (!embedding) return [];
   const sb = getServiceSupabase();
   if (!sb) return [];
-  if (!(await canDense(kind))) return [];
-  const embedding = await embedQuery(query);
-  if (!embedding) return [];
   const { data, error } = await sb.rpc("match_pack_docs", {
     query_embedding: embedding,
     match_count: 8,
@@ -178,7 +159,7 @@ async function denseExtras(
   }
   const hits: EvidenceHit[] = [];
   for (const row of data as RpcHit[]) {
-    const h = asHit(row, Number(row.score || 0));
+    const h = asHit({ ...row, lane: row.lane || "dense" }, Number(row.score || 0));
     if (h) hits.push(h);
   }
   return hits;
@@ -209,39 +190,94 @@ async function trgmExtras(
   if (error || !Array.isArray(data)) return [];
   const hits: EvidenceHit[] = [];
   for (const row of data as RpcHit[]) {
-    const h = asHit(row, Number(row.score || 0) * 0.3);
+    const h = asHit({ ...row, lane: row.lane || "trgm" }, Number(row.score || 0) * 0.3);
     if (h) hits.push(h);
   }
   return hits;
 }
 
+/** City must be a whole word in the lab name or address, not a contact-person first name. */
+function labRowHasCity(row: RpcHit, needles: string[]): boolean {
+  const title = row.title || "";
+  const raw = typeof row.body === "string" ? row.body : String((row as { text?: string }).text || "");
+  const cleaned = `${title}\n${raw}`.replace(/contact_person:\s*[^|\n]*/gi, " ");
+  return needles.some((city) => {
+    const esc = city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`(?:^|[^a-z])${esc}(?:[^a-z]|$)`, "i").test(cleaned);
+  });
+}
+
 async function labCityExtras(query: string): Promise<EvidenceHit[]> {
-  const toks = distinctiveTokens(query);
-  if (!toks.length) return [];
+  const needles = labCityNeedles(query);
+  if (!needles.length) return [];
   const sb = getServiceSupabase();
   if (!sb) return [];
-  const city = [...toks].sort((a, b) => b.length - a.length)[0];
-  if (!city || city.length > 40) return [];
-  const { data, error } = await sb
-    .from("pack_docs")
-    .select("kind,is_number,title,url,host,scheme,family,text")
-    .eq("kind", "lab")
-    .ilike("text", `%${city}%`)
-    .limit(6);
-  if (error || !Array.isArray(data)) return [];
+  const parts = await Promise.all(
+    needles.slice(0, 3).map(async (city) => {
+      const { data, error } = await sb
+        .from("pack_docs")
+        .select("kind,is_number,title,url,host,scheme,family,text")
+        .eq("kind", "lab")
+        .ilike("text", `%${city}%`)
+        .limit(8);
+      if (error || !Array.isArray(data)) return [] as RpcHit[];
+      return (data as RpcHit[]).filter((row) => labRowHasCity(row, needles));
+    }),
+  );
   const hits: EvidenceHit[] = [];
-  for (const row of data as RpcHit[]) {
-    const h = asHit({ ...row, body: typeof row.body === "string" ? row.body : String((row as { text?: string }).text || "") }, 0.4);
-    if (h && extraAllowed(query, h)) hits.push(h);
+  const seen = new Set<string>();
+  for (const row of parts.flat()) {
+    const h = asHit(
+      { ...row, body: typeof row.body === "string" ? row.body : String((row as { text?: string }).text || "") },
+      0.4,
+    );
+    if (!h || seen.has(h.title) || !extraAllowed(query, h)) continue;
+    seen.add(h.title);
+    hits.push(h);
+    if (hits.length >= 6) break;
   }
   return hits;
 }
+
+let bm25Missing = false;
+
+async function bm25Extras(
+  query: string,
+  family: ReturnType<typeof matchProductFamily> | null,
+  kind: string | null,
+): Promise<EvidenceHit[]> {
+  if (bm25Missing) return [];
+  const sb = getServiceSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb.rpc("search_pack_docs_bm25", {
+    q: sparseQuery(query, family),
+    match_count: 8,
+    filter_kind: kind,
+    filter_family: family?.id ?? null,
+  });
+  if (error || !Array.isArray(data)) {
+    if (error && /search_pack_docs_bm25|schema cache|does not exist|PGRST202/i.test(error.message || "")) {
+      bm25Missing = true;
+    } else if (error) {
+      console.warn("[hybrid bm25]", error.message);
+    }
+    return [];
+  }
+  const hits: EvidenceHit[] = [];
+  for (const row of data as RpcHit[]) {
+    const h = asHit({ ...row, lane: "bm25" }, Number(row.score || 0));
+    if (h) hits.push(h);
+  }
+  return hits;
+}
+
+type HybridRpc = EvidenceHit[] | { missing: true; embedding: number[] | null };
 
 async function hybridRpcExtras(
   query: string,
   family: ReturnType<typeof matchProductFamily> | null,
   kind: "lab" | "standard" | null,
-): Promise<EvidenceHit[] | "missing"> {
+): Promise<HybridRpc> {
   const sb = getServiceSupabase();
   if (!sb) return [];
   let embedding: number[] | null = null;
@@ -253,11 +289,11 @@ async function hybridRpcExtras(
     filter_kind: kind,
     filter_family: family?.id ?? null,
     filter_scheme: family?.scheme ?? null,
-    extra_cap: 3,
+    extra_cap: 20,
   });
   if (error) {
     const msg = error.message || "";
-    if (/search_pack_docs_hybrid|schema cache|does not exist|PGRST202/i.test(msg)) return "missing";
+    if (/search_pack_docs_hybrid|schema cache|does not exist|PGRST202/i.test(msg)) return { missing: true, embedding };
     console.warn("[hybrid rpc]", msg);
     return [];
   }
@@ -270,7 +306,41 @@ async function hybridRpcExtras(
   return hits;
 }
 
-/** Extras (trgm/dense) only when pack lock is weak or city labs are missing. Never on policy pin. */
+/** Rank-only fusion for the RPC-missing fallback. A missing lane adds 0. */
+function rrfLanes(lanes: EvidenceHit[][]): EvidenceHit[] {
+  const k = 60;
+  const map = new Map<string, { hit: EvidenceHit; s: number }>();
+  for (const lane of lanes) {
+    lane.forEach((hit, index) => {
+      const add = 1 / (k + index + 1);
+      const prev = map.get(hit.title);
+      if (prev) {
+        prev.s += add;
+        if (prev.hit.lane && hit.lane && prev.hit.lane !== hit.lane) prev.hit = { ...prev.hit, lane: "both" };
+      } else {
+        map.set(hit.title, { hit, s: add });
+      }
+    });
+  }
+  return [...map.values()].sort((a, b) => b.s - a.s).map((row) => row.hit);
+}
+
+/** A typed IS number already sitting on top is a lock. Extras must not replace it. */
+function typedIsOnTop(query: string, base: Retrieval): boolean {
+  if (!base.hasEvidence) return false;
+  const title = base.hits[0]?.title || "";
+  const ids = [...query.matchAll(/\bIS[\s/.:-]*(\d{3,5})\b/gi)].map((match) => match[1]);
+  return ids.some((id) => new RegExp(`(?:^|\\D)${id}(?:\\D|$)`).test(title));
+}
+
+/** Extras only when the pack lock is weak. Strong lock and policy pins skip embed, BM25, trigram, and rerank. */
+export function hybridExtrasAllowed(query: string, base: Retrieval): boolean {
+  if (!isHybridRagOn()) return false;
+  if (isPolicyPinned(base)) return false;
+  if (typedIsOnTop(query, base)) return false;
+  return extrasNeeded(query, base);
+}
+
 function extrasNeeded(query: string, base: Retrieval): boolean {
   if (isPolicyPinned(base)) return false;
   if (isLabCityQuery(query)) {
@@ -319,27 +389,30 @@ export async function runHybridRetrieve(query: string): Promise<Retrieval> {
   const base = vectorRetrieve(query);
   const withCorpus = await mergeCorpus(query, base);
   if (!isHybridRagOn()) return withCorpus;
-  if (isPolicyPinned(withCorpus)) return withCorpus;
-  if (!extrasNeeded(query, withCorpus)) return withCorpus;
+  if (!hybridExtrasAllowed(query, withCorpus)) return withCorpus;
   try {
     const family = matchProductFamily(query);
     const labCity = isLabCityQuery(query);
     const kind: "lab" | "standard" | null = labCity ? "lab" : family ? null : "standard";
-    const rpc = labCity ? "missing" : await hybridRpcExtras(query, family, kind);
+    const rpc: HybridRpc = labCity ? { missing: true, embedding: null } : await hybridRpcExtras(query, family, kind);
     let extras: EvidenceHit[] = [];
-    if (rpc !== "missing") extras = rpc;
+    if (Array.isArray(rpc)) extras = rpc;
     else {
-      const wantDense = !labCity && (await canDense(kind));
-      const [trgm, labs, dense] = await Promise.all([
+      const [trgm, labs, dense, bm25] = await Promise.all([
         labCity ? Promise.resolve([] as EvidenceHit[]) : trgmExtras(query, family, kind),
         labCity ? labCityExtras(query) : Promise.resolve([] as EvidenceHit[]),
-        wantDense ? denseExtras(query, family, kind) : Promise.resolve([] as EvidenceHit[]),
+        denseFromEmbedding(rpc.embedding, family, kind),
+        labCity ? Promise.resolve([] as EvidenceHit[]) : bm25Extras(query, family, kind),
       ]);
-      extras = [...dense, ...trgm, ...labs];
-      if (!extras.length && family) extras = await trgmExtras(query, null, null);
+      extras = rrfLanes([dense, bm25, trgm, labs]);
+      if (!extras.length && family && !labCity) extras = await trgmExtras(query, null, null);
     }
     if (!extras.length) return withCorpus;
-    extras = extras.filter((h) => extraAllowed(query, h)).slice(0, 3);
+    extras = extras.filter((h) => extraAllowed(query, h));
+    if (!extras.length) return withCorpus;
+    const top = withCorpus.hits[0]?.score ?? 0;
+    if (top < 0.45) extras = await rerankCandidates(query, extras, family?.id ?? null);
+    extras = extras.filter((h) => isOfficialHost(h.url)).slice(0, 3);
     if (!extras.length) return withCorpus;
     const hits = mergeLocked(withCorpus.hits, extras).filter((h) => isOfficialHost(h.url));
     const hasEvidence = hits.length > 0;

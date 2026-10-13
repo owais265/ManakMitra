@@ -262,6 +262,9 @@ export default function ChatBotApp() {
   const stickToBottomRef = useRef(true);
   const touchStartYRef = useRef(0);
   const programmaticScrollRef = useRef(false);
+  const scrollHoldRef = useRef(0);
+  const unpinnedUntilRef = useRef(0);
+  const pinnedTopRef = useRef(0);
   const recognitionRef = useRef<any>(null);
   const speechBaseTextRef = useRef<string>('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -319,12 +322,10 @@ export default function ChatBotApp() {
     };
     apply();
     window.visualViewport?.addEventListener("resize", apply);
-    window.visualViewport?.addEventListener("scroll", apply);
     window.addEventListener("orientationchange", apply);
     window.addEventListener("resize", apply);
     return () => {
       window.visualViewport?.removeEventListener("resize", apply);
-      window.visualViewport?.removeEventListener("scroll", apply);
       window.removeEventListener("orientationchange", apply);
       window.removeEventListener("resize", apply);
       root.style.removeProperty("--mm-vvw");
@@ -470,34 +471,42 @@ export default function ChatBotApp() {
     }
   };
 
-  // Single, centralized instant scroll-to-bottom. Never CSS smooth.
-  // The programmatic flag is cleared on the next frame — after the async
-  // scroll event has dispatched — so onChatScroll doesn't fight it.
   const scrollToBottomInstant = () => {
     const el = scrollContainerRef.current;
-    if (!el) return;
+    if (!el || !stickToBottomRef.current) return;
+    if (performance.now() < unpinnedUntilRef.current) return;
+    const caret = el.querySelector("[data-mm-caret]");
+    if (!(caret instanceof HTMLElement)) return;
+    const view = el.getBoundingClientRect();
+    const mark = caret.getBoundingClientRect();
+    const past = mark.bottom - (view.bottom - 28);
+    const above = view.top + 12 - mark.top;
+    if (past <= 1 && above <= 1) return;
     programmaticScrollRef.current = true;
-    el.scrollTop = el.scrollHeight;
-    requestAnimationFrame(() => {
+    if (past > 1) el.scrollTop += past;
+    else el.scrollTop -= above;
+    pinnedTopRef.current = el.scrollTop;
+    window.clearTimeout(scrollHoldRef.current);
+    scrollHoldRef.current = window.setTimeout(() => {
       programmaticScrollRef.current = false;
-    });
+    }, 140);
   };
 
-  const pinToBottom = () => {
-    stickToBottomRef.current = true;
-    scrollToBottomInstant();
+  const unpin = () => {
+    stickToBottomRef.current = false;
+    unpinnedUntilRef.current = performance.now() + 800;
+    programmaticScrollRef.current = false;
   };
 
   const onChatWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (e.deltaY < 0) {
-      stickToBottomRef.current = false;
+      unpin();
       return;
     }
     const el = scrollContainerRef.current;
-    if (!el) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 96) {
-      stickToBottomRef.current = true;
-    }
+    if (!el || e.deltaY <= 0) return;
+    if (performance.now() < unpinnedUntilRef.current) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) stickToBottomRef.current = true;
   };
 
   const onChatTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -506,17 +515,29 @@ export default function ChatBotApp() {
 
   const onChatTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     const y = e.touches[0]?.clientY ?? touchStartYRef.current;
-    if (y - touchStartYRef.current > 8) {
-      stickToBottomRef.current = false;
+    const dy = y - touchStartYRef.current;
+    if (dy > 6) unpin();
+    else if (dy < -6) {
+      const el = scrollContainerRef.current;
+      if (el && performance.now() >= unpinnedUntilRef.current && el.scrollHeight - el.scrollTop - el.clientHeight < 48) {
+        stickToBottomRef.current = true;
+      }
     }
     touchStartYRef.current = y;
   };
 
   const onChatScroll = () => {
-    if (programmaticScrollRef.current) return;
     const el = scrollContainerRef.current;
     if (!el) return;
-    stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (programmaticScrollRef.current) {
+      if (el.scrollTop < pinnedTopRef.current - 2) unpin();
+      return;
+    }
+    if (performance.now() < unpinnedUntilRef.current) {
+      stickToBottomRef.current = false;
+      return;
+    }
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > 32) stickToBottomRef.current = false;
   };
 
   // Centralized scroll follow: react to actual content changes (new messages
@@ -596,6 +617,7 @@ export default function ChatBotApp() {
     if (sendingRef.current) return;
     sendingRef.current = true;
     stickToBottomRef.current = true;
+    unpinnedUntilRef.current = 0;
 
     if (!isOnline) {
       sendingRef.current = false;
@@ -979,6 +1001,7 @@ export default function ChatBotApp() {
                      key={msg.id} 
                      msg={msg} 
                      language={language}
+                     onFollow={scrollToBottomInstant}
                      onRetry={
                        msg.isError && msg.retryQuery 
                          ? () => {
@@ -1309,7 +1332,7 @@ function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang })
   );
 }
 
-const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message, language: AppLang, onRetry?: () => void, onUseLocation?: () => void }) => {
+const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation }: { msg: Message, language: AppLang, onFollow?: () => void, onRetry?: () => void, onUseLocation?: () => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -1341,14 +1364,12 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
     return () => window.clearInterval(timer);
   }, [msg.text, msg.isStreaming, shouldType]);
 
+  const followRef = useRef(onFollow);
+  followRef.current = onFollow;
+
   useLayoutEffect(() => {
-    const node = rootRef.current;
-    if (!node || !shouldType) return;
-    const scroller = node.closest('[data-mm-chat-scroll]') as HTMLElement | null;
-    if (!scroller) return;
-    const nearBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 160;
-    if (!nearBottom) return;
-    scroller.scrollTop = scroller.scrollHeight;
+    if (!shouldType) return;
+    followRef.current?.();
   }, [shown, shouldType]);
 
   const caughtUp = shown.length >= msg.text.length;
@@ -1367,7 +1388,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
   };
   
   return (
-    <div ref={rootRef} className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''} animate-in slide-in-from-bottom-2 fade-in duration-300`}>
+    <div ref={rootRef} className={`flex gap-2 sm:gap-4 min-w-0 w-full ${!isAI ? 'flex-row-reverse' : ''}`}>
       {isAI && (
         msg.isError ? (
           <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-100 sm:mt-1 sm:h-8 sm:w-8 dark:border-red-800 dark:bg-red-950/50">
@@ -1406,7 +1427,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
           ) : null}
           {/* Main Text */}
           {!displayedText && isAI && !msg.isError ? (
-            <div className="flex items-center gap-2 py-1 text-slate-500 dark:text-slate-400">
+            <div data-mm-caret="" className="flex items-center gap-2 py-1 text-slate-500 dark:text-slate-400">
               <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                 {UI_DICTIONARY[language].writingResponse}
               </span>
@@ -1421,7 +1442,8 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
               {renderInline(displayedText, msg.sources, isAI)}
               {/* Natural glowing typing cursor while streaming */}
               {isActivelyTyping && !isFinishedTyping && displayedText.length > 0 && (
-                <span 
+                <span
+                  data-mm-caret=""
                   className="inline-block w-2 h-4 ml-1 -mb-0.5 align-middle bg-blue-600 rounded-[1px] animate-pulse motion-reduce:animate-none" 
                   style={{ animationDuration: '650ms' }}
                   aria-hidden="true"
@@ -1479,7 +1501,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
             </div>
           )}
 
-          {msg.processSteps && msg.processSteps.length > 0 && (
+          {isFinishedTyping && msg.processSteps && msg.processSteps.length > 0 && (
             <ol className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-700 w-full min-w-0 space-y-2">
               {msg.processSteps.map((step, idx) => (
                 <li key={idx} className="flex items-start gap-2 min-w-0">
@@ -1491,7 +1513,7 @@ const MessageBubble = ({ msg, language, onRetry, onUseLocation }: { msg: Message
           )}
 
           {/* Source Citations */}
-          {msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (
+          {isFinishedTyping && msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (
             <div className="mt-4 sm:mt-5 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-0 dark:bg-[#10182a] dark:border-slate-700">
               <h4 className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2">
                 <FileText className="w-4 h-4 text-blue-600 dark:text-blue-300" />

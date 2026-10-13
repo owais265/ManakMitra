@@ -60,11 +60,17 @@ def sb(method, path, body=None, headers=None):
         return e.code, e.read().decode()[:300]
 
 
+SKIP = set()
+FAILS = {}
+
+
 def fetch(n):
     path = (
         "/rest/v1/pack_docs?select=id,text"
         "&embedding=is.null&order=id.asc&limit=" + str(n)
     )
+    if SKIP:
+        path += "&id=not.in.(" + ",".join(sorted(SKIP)) + ")"
     code, data = sb("GET", path)
     if code != 200 or not isinstance(data, list):
         raise RuntimeError(f"fetch {code} {data}")
@@ -108,13 +114,35 @@ def embed(key, texts):
 
 
 def save(row_id, vec):
-    code, _ = sb(
-        "PATCH",
-        "/rest/v1/pack_docs?id=eq." + row_id + "&embedding=is.null",
-        {"embedding": vec},
-        {"Prefer": "return=minimal"},
-    )
-    return code in (200, 204)
+    last = 0
+    for _attempt in range(3):
+        try:
+            code, body = sb(
+                "PATCH",
+                "/rest/v1/pack_docs?id=eq." + row_id + "&embedding=is.null",
+                {"embedding": vec},
+                {"Prefer": "return=representation"},
+            )
+        except Exception as exc:
+            last = 0
+            log("save err " + str(exc)[:120])
+            time.sleep(0.4)
+            continue
+        if code in (200, 201) and isinstance(body, list) and body:
+            FAILS.pop(row_id, None)
+            return True
+        last = code if isinstance(code, int) else 0
+        if last in (408, 429, 500, 502, 503, 504) or last >= 500:
+            time.sleep(0.4)
+            continue
+        break
+    FAILS[row_id] = FAILS.get(row_id, 0) + 1
+    if FAILS[row_id] >= 3:
+        SKIP.add(row_id)
+        log(f"skip save after 3 code={last} skipped={len(SKIP)}")
+    else:
+        log(f"save fail code={last}")
+    return False
 
 
 def load_cool():
@@ -155,32 +183,42 @@ def parse_limit(err: str):
     return "rpm", min(delay, 90)
 
 
-def ready_key(cool):
+def next_ready(cool, start):
     now = time.time()
-    for i in range(len(KEYS)):
+    for step in range(len(KEYS)):
+        i = (start + step) % len(KEYS)
         if float(cool.get(str(i), 0)) <= now:
             return i
     return None
 
 
+def all_dead(cool):
+    now = time.time()
+    return all(float(cool.get(str(i), 0)) - now > 86400 * 7 for i in range(len(KEYS)))
+
+
 def main():
     if not KEYS:
         log("no embed keys")
-        return
+        return "no-keys"
     cool = load_cool()
     done = 0
     fail = 0
-    rpm_streak = {}
-    log(f"start one-key keys={len(KEYS)} batch={BATCH} model={MODEL}")
+    cursor = 0
+    last_hold = 0.0
+    log(f"start sticky-switch keys={len(KEYS)} batch={BATCH} model={MODEL}")
     while True:
-        cursor = ready_key(cool)
+        cursor = next_ready(cool, cursor)
         if cursor is None:
-            wait = min(float(v) for v in cool.values()) - time.time()
-            if wait > 900:
-                log(f"all keys cooling {int(wait)}s — stop done={done} fail={fail}")
-                return
-            log(f"all keys cooling {int(max(wait, 1))}s")
-            time.sleep(min(max(wait, 1), 60))
+            if all_dead(cool):
+                log(f"all keys dead — stop done={done} fail={fail}")
+                return "dead"
+            wait = min(float(cool.get(str(i), 0)) for i in range(len(KEYS))) - time.time()
+            if time.time() - last_hold > 60:
+                log(f"all keys cooling {int(max(wait, 1))}s — hold, not stop")
+                last_hold = time.time()
+            time.sleep(min(max(wait, 1), 20))
+            cursor = 0
             continue
         try:
             rows = fetch(BATCH)
@@ -190,34 +228,20 @@ def main():
             continue
         if not rows:
             log(f"complete done={done} fail={fail}")
-            return
+            return "complete"
         vecs, err = embed(KEYS[cursor], [r.get("text") or "" for r in rows])
         if err:
             kind, delay = parse_limit(err)
             if kind == "dead":
                 cool[str(cursor)] = time.time() + 86400 * 30
                 store_cool(cool)
-                log(f"key {cursor + 1}/{len(KEYS)} 403, retired")
-                if ready_key(cool) is None:
-                    log(f"403 and no keys left — stop done={done} fail={fail}")
-                    return
-                continue
-            if kind == "daily":
+                log(f"key {cursor + 1}/{len(KEYS)} 403 — switch")
+            else:
                 cool[str(cursor)] = time.time() + delay
                 store_cool(cool)
-                log(f"key {cursor + 1}/{len(KEYS)} daily, next in {delay}s")
-                continue
-            rpm_streak[cursor] = rpm_streak.get(cursor, 0) + 1
-            if rpm_streak[cursor] >= 12:
-                cool[str(cursor)] = time.time() + 6 * 3600
-                store_cool(cool)
-                log(f"key {cursor + 1}/{len(KEYS)} still 429, treat as daily")
-                rpm_streak[cursor] = 0
-                continue
-            log(f"key {cursor + 1}/{len(KEYS)} rpm {delay}s")
-            time.sleep(delay)
+                log(f"key {cursor + 1}/{len(KEYS)} {kind} {delay}s — switch")
+            cursor = (cursor + 1) % len(KEYS)
             continue
-        rpm_streak[cursor] = 0
         with ThreadPoolExecutor(max_workers=8) as pool:
             flags = list(pool.map(lambda pair: save(pair[0]["id"], pair[1]), zip(rows, vecs)))
         ok = sum(1 for flag in flags if flag)
@@ -228,4 +252,13 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        try:
+            status = main()
+        except Exception as e:
+            log("crash " + str(e)[:300])
+            time.sleep(5)
+            continue
+        if status in ("complete", "dead", "no-keys"):
+            log("exit " + status)
+            break

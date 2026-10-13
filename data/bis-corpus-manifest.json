@@ -1,0 +1,161 @@
+{
+  "files_seen": 239,
+  "docs": 40731,
+  "by_kind": {
+    "consumer": 80,
+    "crs": 3219,
+    "hallmark": 3457,
+    "lab": 729,
+    "process": 5807,
+    "product": 1913,
+    "standard": 25526
+  },
+  "status_counts": {
+    "pdf": 39,
+    "csv": 1,
+    "pdf-no-text": 17,
+    "pdf-duplicate-bytes": 1
+  },
+  "dupes_collapsed": 0,
+  "inbox_narratives": 99,
+  "needs_attention": [
+    {
+      "path": "Conformity assement/FMCS/Certification Process/How to apply/Application-Form-V.pdf",
+      "status": "pdf-no-text",
+      "pages": 2,
+      "chars": 0,
+      "empty_pages": 2,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MNRE Notifications/20181012_notification published in Gazette.pdf",
+      "status": "pdf-no-text",
+      "pages": 4,
+      "chars": 0,
+      "empty_pages": 4,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MNRE Notifications/20190506_LeadAcidBattery.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MNRE Notifications/20190528_OM (Lead Acid Battery) Secretary Revenue.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MNRE Notifications/20190703Published notifiecation on SPV_ Inverter.pdf",
+      "status": "pdf-no-text",
+      "pages": 3,
+      "chars": 0,
+      "empty_pages": 3,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MNRE Notifications/20191104SeriesGudlines_Inverter.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Circular No.2 of 2016.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Extension in date of implementation of IS 16333 (Part 3)2016- Indian Language Support for Mobile Phones dated 17-01-2018.pdf",
+      "status": "pdf-no-text",
+      "pages": 2,
+      "chars": 0,
+      "empty_pages": 2,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Extension order IS 16333(Part3) till 01.05.2018.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Extension_Notification_IS16333.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Extension_Order_Phase_3.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/Indian Language Support.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/New_Gazette_Notification_2014_11_13.pdf",
+      "status": "pdf-no-text",
+      "pages": 3,
+      "chars": 0,
+      "empty_pages": 3,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/clarification_regarding_coverage_of_multi-function_devices.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/extension_order.pdf",
+      "status": "pdf-no-text",
+      "pages": 2,
+      "chars": 0,
+      "empty_pages": 2,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/Registrations Scheam/About CRS/MeitY Notifications/gazette_notification_2012_10_03.pdf",
+      "status": "pdf-no-text",
+      "pages": 14,
+      "chars": 0,
+      "empty_pages": 14,
+      "chunks": 0
+    },
+    {
+      "path": "Conformity assement/System Under Certification/certification-process.pdf",
+      "status": "pdf-no-text",
+      "pages": 1,
+      "chars": 0,
+      "empty_pages": 1,
+      "chunks": 0
+    }
+  ],
+  "needs_attention_count": 17,
+  "db": "/workspace/data/bis-corpus.sqlite"
+}

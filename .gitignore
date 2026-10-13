@@ -32,6 +32,11 @@ Thumbs.db
 # generated scrape dump (baked into src/data/rag-pack.json)
 data/manakmitra_bis_knowledge.json
 
+# local corpus sqlite (over GitHub's 50MB warning; app fails open if missing)
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+
 # builder workspace (local only)
 .grok/
 AGENTS.md

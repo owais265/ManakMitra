@@ -23,15 +23,35 @@ An out-of-scope question fails scope and does not evaluate the other three. The 
 
 ## 2. Reciprocal Rank Fusion
 
-Used only after the gate, and only when the local pack row is weak. `k = 60`.
+Used only after the gate, and only when the local pack row is weak. `k = 60`. Three lanes. A lane that did not return `d` contributes 0.
 
 ```text
-RRF(d) = 1/(60 + rank_pgvector(d)) + 1/(60 + rank_pg_trgm(d))
+RRF(d) = 1/(60 + rank_dense(d)) + 1/(60 + rank_bm25(d)) + 1/(60 + rank_trgm(d))
 ```
 
-A lane that did not return `d` contributes 0. Rank 1 is the best hit in that lane. RRF adds ranks. It does not add raw cosine to raw trigram similarity, so the two scales cannot swamp each other.
+Rank 1 is the best hit in that lane. RRF adds ranks. It does not add raw cosine to raw BM25 or raw trigram similarity.
 
-A local TF-IDF hit with score ≥ 0.45 is frozen and is not re-ranked. At most three extra rows are merged, and an extra row’s displayed score is capped at 0.39. SQL: [supabase/search_pack_docs_hybrid.sql](../supabase/search_pack_docs_hybrid.sql). App merge: [src/lib/hybrid.ts](../src/lib/hybrid.ts).
+Dense runs only when the query embedding is present and that lane is filled (at least 400 embedded standard rows, 50 lab rows, otherwise 400 rows in total). BM25 and trigram are both lexical. Each lane is capped at 16 before fusion. The SQL result is capped by `extra_cap` (default 3, hard cap 20). The app still merges at most 3 extras.
+
+A local TF-IDF hit with score ≥ 0.45 is frozen and is not re-ranked. A typed IS number that is already the top pack hit is also a lock: dense, BM25, trigram, and rerank are not called. An extra row’s displayed score is capped at 0.39. SQL: [supabase/search_pack_docs_hybrid.sql](../supabase/search_pack_docs_hybrid.sql) and [supabase/search_pack_docs_bm25.sql](../supabase/search_pack_docs_bm25.sql). App merge: [src/lib/hybrid.ts](../src/lib/hybrid.ts).
+
+### BM25 lane
+
+Postgres has no BM25. `search_pack_docs_bm25` is Okapi, not `ts_rank` and not `pg_trgm`.
+
+```text
+idf(t) = ln( 1 + (N - df(t) + 0.5) / (df(t) + 0.5) )
+tf_norm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl / avgdl))
+BM25(q, d) = sum over t in q of idf(t) * tf_norm(t, d)
+k1 = 1.2
+b = 0.75
+```
+
+`tf` is the `simple` tsvector position count. `df` comes from `ts_stat` on that same vector. A term missing from `pack_term_df` adds 0. Candidate generation is the GIN index on the rarest query term (limit 400) plus the `is_number` btree. An exact `is_number` hit gets a prior of 1000 so it outranks a fuzzy title inside this lane. That prior is not part of the BM25 sum. RRF still uses rank only.
+
+### Rerank
+
+Rerank runs only after extras exist, only when the local top score is below 0.45, and never on a policy pin. Frozen pack rows are not in the rerank input, so they cannot move. A non-official URL is dropped. If `RERANK_API_KEY` or `COHERE_API_KEY` is set, the call is Cohere `rerank-v3.5` with a 2.5 s timeout. If it is not set, the order is an explicit `feature-rerank` (exact IS number, title token, BM25 lane, official host, family). That is a tie-break, not a neural score, and it does not call Gemini.
 
 ## 3. TF-IDF sparse rank
 

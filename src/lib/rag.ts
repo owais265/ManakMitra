@@ -318,6 +318,13 @@ const CITY_EXPAND: Record<string, string[]> = {
   ahmadabad: ["ahmedabad", "ahemdabad", "ahmadabad"],
 };
 
+/** City spellings for a lab+city ask. Empty when the query names no known city. */
+export function labCityNeedles(q: string): string[] {
+  const city = q.match(CITIES)?.[1]?.toLowerCase();
+  if (!city) return [];
+  return CITY_EXPAND[city] || [city];
+}
+
 function isPlaceToken(s: string): boolean {
   const x = s.replace(/[()]/g, "").trim();
   if (x.length < 3 || x.length > 28) return false;

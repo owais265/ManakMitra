@@ -726,6 +726,22 @@ const cases = [
     requireAny: /pack has no SOP|Know Your Standard|do not mix|not in this catalogue/i,
     hasEvidence: true,
   },
+  {
+    id: "exact-is-14543",
+    query: "IS 14543",
+    expectIntent: "bis",
+    requireTop1: /14543/,
+    forbid: /IS 4151/,
+    hasEvidence: true,
+  },
+  {
+    id: "paani-plastic-bottle",
+    query: "paani ki plastic bottle ka standard",
+    expectIntent: "bis",
+    requireTop1: /12252|15609|14543/,
+    forbid: /IS 4151|concrete mixer/i,
+    hasEvidence: true,
+  },
 ];
 
 const rows = [];
