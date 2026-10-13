@@ -19,7 +19,26 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
-**Contents:** [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Architecture](#5-architecture--system-design) · [RRF](#reciprocal-rank-fusion) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Docker](#docker) · [Team](#team-prograckers)
+**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
+
+---
+
+## TL;DR — what a judge can verify today
+
+A pure retrieval demo that always returns top-5 from one PDF is not this product. ManakMitra routes a user to the right BIS door, or refuses when the pack has no verified row.
+
+| Check | What is true | How to see it |
+| --- | --- | --- |
+| Live multi-desk product | Home, chat, verify, labs, HUID, standards, certify, complaint, contact | [Open the site](https://forest-yonder-apex-plum.vercel.app/) |
+| Three exits | Allow (sourced row) · Clarify (one missing fact) · Refuse (portal handoff, retrieval = 0) | Demo video + chat: IS 14543, unclear helmet, fan + HUID |
+| Golden gates | M1–M10 pass without an LLM | `npm run eval:all` |
+| Hybrid stress | 100 / 100 fail = 0 on the hybrid retrieve path (2026-10-13) | `scripts/hybrid-stress-100.mjs` |
+| No invented IS / fee / clause | Faithfulness is a pass/fail gate, not a published 0.95 score | M3 and M10 |
+| Official host only | A non-allowlisted URL is dropped | `src/lib/official-hosts.ts` |
+| Pack-only kill switch | `HYBRID_RAG=0` still returns IS + scheme + official URL | Environment table below |
+| No GPU required | Judge laptop runs the pack path in Docker or `npm run dev` | [Judge path](#judge-path--no-gpu-no-5-gb-download) |
+
+What this README will **not** claim: Hit@3 on a 10-query cement set, a 0.45 s GPU latency, or a 559-standard building-materials corpus. Those numbers belong to a different hackathon and a different product. Ours is the SIH26107 assistant: standards **and** schemes **and** process **and** hallmarking **and** labs **and** consumer handoff, with a refuse when evidence is missing.
 
 ---
 
@@ -68,6 +87,8 @@ Official published scale of the BIS space (not ManakMitra usage):
 
 Searching many portals and PDFs is exactly the pain SIH26107 names. The gap is not “there is no chatbot”. The gap is **routing with evidence**, so a user does not lose days at the wrong BIS door.
 
+A product that only maps a building-material description to a 2005 summary PDF solves one slice of that pain. SIH26107 asks for the rest: certification schemes, process, consumer queries, hallmarking, testing laboratories, and multilingual interaction.
+
 ---
 
 ## 2. Innovation — why a chatbot was not enough
@@ -79,11 +100,30 @@ What is unique (not a bundle of existing tools):
 1. **Lock-first, retrieve-second.** Search is illegal until scope, scheme, source and evidence unlock.
 2. **Scheme router.** ISI, CRS, FMCS, QCO and HUID stay separate. A mismatch does not retrieve.
 3. **Three exits.** Allow (sourced row) · Clarify (one missing fact) · Refuse (portal handoff, retrieval = 0).
-4. **Hybrid retrieve only after unlock.** Sparse TF-IDF on the pack, then optional `pg_trgm` + pgvector HNSW, then RRF.
+4. **Hybrid retrieve only after unlock.** Sparse TF-IDF on the pack, then optional Okapi BM25 + `pg_trgm` + pgvector, then RRF.
 5. **Model-down continuity.** If the LLM is offline, the pack still returns IS number, scheme path and official URL.
 6. **Public metadata only.** No paid clause text, no invented fees, no fake confidence score.
 
 **Why this was not already solved:** BIS.gov.in is a library of portals, not a gate. A generic assistant can quote a paragraph and still pick the wrong scheme. The hard product is the gate.
+
+---
+
+## Why this design wins
+
+Compared with a local BM25 + dense + cross-encoder stack over one PDF, these choices match the SIH26107 product, not a retrieval leaderboard.
+
+| Decision | Why this, not the alternative |
+| --- | --- |
+| **Lock-first gate** | A fan + HUID query must not become a jewellery flow. Retrieval = 0 is the correct answer. |
+| **Local TF-IDF as the rank lock** | Answers without a GPU, without a 5 GB model download, and without a vendor. Freeze at ≥ 0.45 so a near neighbour cannot replace an exact IS row. |
+| **Official-host filter** | A row is usable only if its URL is on `bis.gov.in`, `manakonline.in`, `crsbis.in`, or an allowlisted host. A local whitelist of PDF titles is not the same guarantee. |
+| **Refuse when the pack is silent** | Always returning top-5 invents confidence. Clarify or Refuse is the honest exit. |
+| **Hybrid extras only when the lock is weak** | Dense, BM25, trigram, and rerank are skipped on a strong lock, a policy pin, and a typed IS already on top. |
+| **RRF k = 60, rank only** | Sparse and dense stay on their own scales. Raw cosine is not added to raw BM25. |
+| **Gated rerank** | Feature-rerank (or Cohere `rerank-v3.5` if a key is set) runs only when the local top is below 0.45. Frozen hits do not move. |
+| **LLM phrases, never sources** | The model may phrase a pack row. It may not invent an IS number, a fee, or a clause. |
+| **No paid IS text** | Full document text stays on Know Your Standard and e-Sale. The pack stores public metadata. |
+| **Serverless, no GPU** | A judge opens the live site. A laptop runs the pack path with `npm run dev` or Docker. |
 
 ---
 
@@ -100,6 +140,7 @@ Complexity is used where the problem needs it.
 | Standalone turns | Chat history must not leak yesterday’s IS into today’s product |
 | Language lock | Header language (EN / HI / Hinglish) beats query-script guessing |
 | Eval harness M1–M10 | Gates are tested without an LLM |
+| Lab-city word boundary | A contact-person first name must not match a city |
 
 Not used: a billion-vector demo index, synthetic “official” PDFs, or a 22-language claim the pack cannot ground.
 
@@ -115,6 +156,17 @@ The MVP is public. A judge can open it without installing anything.
 | Demo walkthrough | https://www.youtube.com/watch?v=oi7lZYGw1Uw |
 | Pack-only laptop path | `docker compose up --build` → http://localhost:8080 |
 | Eval without an LLM | `npm run eval:all` |
+| Hybrid retrieve stress | 100 questions, 0 fail (2026-10-13) |
+
+Business path the product already supports:
+
+| Actor | First action on ManakMitra | Official door it hands off to |
+| --- | --- | --- |
+| MSME with a product | Ask which IS and which scheme | Manakonline / CRS / Know Your Standard |
+| Jeweller | Ask HUID format and verify path | huid.manakonline.in |
+| Consumer with a fake mark | File a complaint | CARE / CMED |
+| Lab user | Enter a PIN | LIMS directory |
+| Student | Ask what an IS number is | Catalogue row + official URL |
 
 Roadmap after the MVP (from the idea PPT, not vapour):
 
@@ -140,9 +192,10 @@ flowchart TD
   G -->|pass| S[Sparse retrieve<br/>TF-IDF on authorised pack]
   S --> W{Pack strong?}
   W -->|yes| E[Evidence pack]
-  W -->|no| H[Dense extras<br/>pg_trgm + pgvector HNSW]
+  W -->|no| H[Hybrid extras<br/>Okapi BM25 + pg_trgm + pgvector]
   H --> F[RRF merge<br/>k = 60]
-  F --> E
+  F --> RR[Gated rerank<br/>only if top < 0.45]
+  RR --> E
   E --> O{Outcome}
   O -->|clear row| A[Allow<br/>IS + title + official URL]
   O -->|one missing fact| C[Clarify<br/>one question]
@@ -152,13 +205,13 @@ flowchart TD
   X --> R
 ```
 
-The idea deck draws the hybrid core as PostgreSQL FTS + `pg_trgm` + pgvector HNSW + RRF. In this repo the **always-on sparse rank is local TF-IDF** over the JSON pack. `pg_trgm` and pgvector are optional, and only after that pack is weak.
+The idea deck draws the hybrid core as PostgreSQL FTS + `pg_trgm` + pgvector HNSW + RRF. In this repo the **always-on sparse rank is local TF-IDF** over the JSON pack. Okapi BM25, `pg_trgm`, and pgvector are optional, and only after that pack is weak.
 
 | Layer | Choice | Why this, not a larger stack |
 | --- | --- | --- |
 | App | React 19, TanStack Start, Vite, Tailwind | One TypeScript surface for UI + `/api/chat` |
 | Gate + sparse RAG | [`src/lib/rag.ts`](src/lib/rag.ts), [`src/data/rag-pack.json`](src/data/rag-pack.json) | Answers without a vendor |
-| Hybrid extras | Optional `pg_trgm` + pgvector HNSW, fused by RRF (`k = 60`) | Never the rank lock. [`docs/rrf-and-gate.md`](docs/rrf-and-gate.md) |
+| Hybrid extras | Optional Okapi BM25 + `pg_trgm` + pgvector HNSW, fused by RRF (`k = 60`) | Never the rank lock. [`docs/rrf-and-gate.md`](docs/rrf-and-gate.md) |
 | Phrasing LLM | Optional xAI, Gemini fallback | Phrases pack rows. Never the source of an IS number |
 | Hosting | Vercel + Supabase | Live MVP for evaluation |
 
@@ -169,15 +222,79 @@ The idea deck draws the hybrid core as PostgreSQL FTS + `pg_trgm` + pgvector HNS
 | Source | Non-allowlisted hosts |
 | Evidence | No pack row → no generated “fact” |
 
-### Reciprocal Rank Fusion
+---
 
-Sparse and dense stay on their own scales. RRF adds rank, not raw cosine.
+## Hybrid retrieval — the actual math
+
+Formulas below are what the repository runs. Full write-up: [`docs/mathematical-framework.md`](docs/mathematical-framework.md).
+
+### Policy gate
+
+Four locks, each 0 or 1. Search is allowed only when the product is 1.
 
 ```text
-score(d) = 1/(60 + rank_pgvector(d)) + 1/(60 + rank_pg_trgm(d))
+Proceed(Q) = 1    iff    L_scope(Q) * L_scheme(Q) * L_source(Q) * L_evidence(Q) = 1
 ```
 
-A lane that did not return the row adds 0. A TF-IDF hit at score ≥ 0.45 is frozen, so a near vector neighbour cannot replace an exact IS row. Extras are capped at three. A policy pin never calls the embedder or RRF. The out-of-scope gate trace is in [`docs/rrf-and-gate.md`](docs/rrf-and-gate.md).
+There is no soft cutoff. One failed lock stops the path.
+
+### Local TF-IDF lock
+
+Unigrams and bigrams. Sublinear TF. Smoothed IDF. L2-normalised cosine.
+
+```text
+tf(t, d)  = 1 + log(count(t, d))     when count > 0, else 0
+idf(t)    = log( (1 + |D|) / (1 + df(t)) ) + 1
+score     = cosine( normalise(q), normalise(d) )
+```
+
+A hit at score ≥ 0.45 is frozen. A typed IS number already on top is also a lock. Neither calls dense, BM25, trigram, or rerank.
+
+### Okapi BM25 extras
+
+Postgres has no BM25. `search_pack_docs_bm25` is Okapi, not `ts_rank`.
+
+```text
+idf(t) = ln( 1 + (N - df(t) + 0.5) / (df(t) + 0.5) )
+tf_norm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * dl / avgdl))
+BM25(q, d) = sum over t in q of idf(t) * tf_norm(t, d)
+k1 = 1.2
+b = 0.75
+```
+
+An exact `is_number` hit gets a prior of 1000 inside the BM25 lane only. That prior is not added into the RRF sum. SQL: [`supabase/search_pack_docs_bm25.sql`](supabase/search_pack_docs_bm25.sql).
+
+### Three-lane RRF
+
+Used only after the gate, and only when the local pack row is weak. A missing lane adds 0.
+
+```text
+RRF(d) = 1/(60 + rank_dense(d)) + 1/(60 + rank_bm25(d)) + 1/(60 + rank_trgm(d))
+```
+
+RRF adds ranks. It does not add raw cosine to raw BM25. Extras are capped at three. An extra row’s displayed score is capped at 0.39 so it cannot sit above a frozen pack row.
+
+### Gated rerank
+
+Rerank runs only when extras exist and the local top is below 0.45, and never on a policy pin. Frozen pack rows are not in the rerank input. A non-official URL is dropped. With no rerank key the order is an explicit feature-rerank (exact IS, title token, BM25 lane, official host, family). That is a tie-break, not a neural score.
+
+---
+
+## Anti-hallucination — stronger than a whitelist
+
+A whitelist extracted from one PDF guarantees the code exists in that PDF. It does not guarantee the code is the right door, the current title, or an official host.
+
+ManakMitra stacks four independent refusals:
+
+| Guard | What it stops |
+| --- | --- |
+| Official-host filter | Any URL not on `bis.gov.in`, `manakonline.in`, `crsbis.in`, or an allowlisted host |
+| Evidence lock | No pack row → no generated fact. Exit is Refuse or Clarify |
+| Faithfulness M3 / M10 | An IS number or clause that is not in the retrieved rows |
+| Policy pin | Scheme mix-up, unknown IS, fake portal — extras are not called |
+| Typed-IS freeze | A user-typed IS already on top cannot be replaced by a neighbour |
+
+The system can still be wrong when the pack is stale. It cannot invent an IS that is not in the retrieved rows, and it will not answer a scheme mix-up with a retrieved neighbour.
 
 ---
 
@@ -324,6 +441,21 @@ npm run eval:all
 
 ---
 
+## Judge path — no GPU, no 5 GB download
+
+A judge does not need CUDA, a model cache, or a local FastAPI process.
+
+| Step | Command or URL | What it proves |
+| --- | --- | --- |
+| 1. Open the product | https://forest-yonder-apex-plum.vercel.app/ | Multi-desk live app |
+| 2. Walk the jury path | Prompts in [UX](#7-user-experience) | Allow, Clarify, Refuse, verify, lab, HUID |
+| 3. Clone and eval | `npm install && npm run eval:all` | M1–M10 without an LLM |
+| 4. Pack-only Docker | `docker compose up --build` | Same product offline from the pack |
+
+Hybrid extras need `SUPABASE_*` and `HYBRID_RAG=1`. They are optional. The pack path is the rank lock either way.
+
+---
+
 ## Docker
 
 ```bash
@@ -354,6 +486,7 @@ Same names locally, in Docker, and on Vercel (Production + Preview). Redeploy af
 | `SUPABASE_URL` | No | Hybrid extras on `pack_docs` |
 | `SUPABASE_SERVICE_ROLE_KEY` | No | Server only. Never ship to the browser |
 | `HYBRID_RAG` | No | `0` = pack-only kill switch |
+| `RERANK_API_KEY` / `COHERE_API_KEY` | No | Optional Cohere `rerank-v3.5` on weak locks only |
 
 ---
 
@@ -371,8 +504,11 @@ Do **not** scrape BIS, merge unknown dumps, or store paid clause text. Full docu
 src/routes/api/chat.ts          Chat handler
 src/lib/rag.ts                  Policy + TF-IDF lock
 src/lib/hybrid.ts               Optional extras + RRF merge
+src/lib/rerank.server.ts        Gated rerank
 supabase/search_pack_docs_hybrid.sql
+supabase/search_pack_docs_bm25.sql
 docs/rrf-and-gate.md            Fusion formula + gate trace
+docs/mathematical-framework.md  Gate, RRF, TF-IDF, BM25, faithfulness
 src/data/rag-pack.json          Authorised catalogue snapshot
 scripts/eval-*.mjs              Golden + metrics
 ```
