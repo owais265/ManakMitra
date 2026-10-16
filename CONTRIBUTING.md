@@ -36,6 +36,10 @@ This repository is SIH **26107** (standards assistant), not 26108 (tender / proc
 
 ## Team
 
-- [Mohammed Owais](https://github.com/owais265)
-- [Gurdev Singh](https://github.com/Gurdev-singh-007)
-- [Navneet Kumar Singh](https://github.com/Navneet557)
+Collaborators with write access. The contributors graph lists people who have a commit or a `Co-authored-by` trailer that matches their GitHub email.
+
+- [Mohammed Owais](https://github.com/owais265) — data, backend, RAG, servers
+- [Gurdev Singh](https://github.com/Gurdev-singh-007) — research, GitHub, live deployment
+- [Navneet Kumar Singh](https://github.com/Navneet557) — leadership, resource allocation, presenter
+
+Also on the project (no public GitHub id in this file yet): Prapti Verma, Rohit Kumar, Aman Dwivedi.
