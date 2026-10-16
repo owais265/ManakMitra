@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Fill null pack_docs embeddings, one Gemini key at a time.
+"""Fill null pack_docs embeddings. One Gemini request at a time.
 
-Model is gemini-embedding-001, outputDimensionality 768, same space as
-existing vectors. Keys are read from .grok/gemini-embed-keys.txt (gitignored).
-A key is used until its daily quota or a 403, then the next key. Short 429s
-stay on the same key. No key left, or 403 on the last key, stops the job.
+Round-robin across keys. A short 429 cools only that key. When every key
+is on a long cooldown (daily quota or 403), the process exits.
 """
 import json
 import os
@@ -30,6 +28,8 @@ KEYS = [
     if ln.strip() and not ln.strip().startswith("#")
 ]
 CURSOR = ROOT / ".grok/embed-key-cool.json"
+if os.environ.get("EMBED_COOL_PATH"):
+    CURSOR = Path(os.environ["EMBED_COOL_PATH"])
 MODEL = "gemini-embedding-001"
 BATCH = 16
 LOG = Path("/tmp/embed_gemini.log")
@@ -62,6 +62,24 @@ def sb(method, path, body=None, headers=None):
 
 SKIP = set()
 FAILS = {}
+
+
+def fetch_with_backoff(n, fetch_fn=None, sleep_fn=None):
+    call = fetch_fn or fetch
+    pause = sleep_fn or time.sleep
+    delay = 0.4
+    last = None
+    for attempt in range(3):
+        try:
+            return call(n)
+        except Exception as e:
+            last = e
+            if "57014" not in str(e) or attempt == 2:
+                raise
+            log(f"fetch 57014 retry {attempt + 1}")
+            pause(delay)
+            delay *= 2
+    raise last
 
 
 def fetch(n):
@@ -114,6 +132,9 @@ def embed(key, texts):
 
 
 def save(row_id, vec):
+    if not isinstance(vec, list) or len(vec) != 768:
+        log("skip save bad-dim")
+        return False
     last = 0
     for _attempt in range(3):
         try:
@@ -205,23 +226,19 @@ def main():
     done = 0
     fail = 0
     cursor = 0
-    last_hold = 0.0
-    log(f"start sticky-switch keys={len(KEYS)} batch={BATCH} model={MODEL}")
+    log(f"start round-robin keys={len(KEYS)} batch={BATCH} model={MODEL}")
     while True:
         cursor = next_ready(cool, cursor)
         if cursor is None:
-            if all_dead(cool):
-                log(f"all keys dead — stop done={done} fail={fail}")
-                return "dead"
             wait = min(float(cool.get(str(i), 0)) for i in range(len(KEYS))) - time.time()
-            if time.time() - last_hold > 60:
-                log(f"all keys cooling {int(max(wait, 1))}s — hold, not stop")
-                last_hold = time.time()
-            time.sleep(min(max(wait, 1), 20))
+            if wait > 600 or all_dead(cool):
+                log(f"all keys exhausted {int(max(wait, 0))}s — stop done={done} fail={fail}")
+                return "quota"
+            time.sleep(max(wait, 1))
             cursor = 0
             continue
         try:
-            rows = fetch(BATCH)
+            rows = fetch_with_backoff(BATCH)
         except Exception as e:
             log("fetch err " + str(e)[:200])
             time.sleep(5)
@@ -248,7 +265,8 @@ def main():
         fail += len(flags) - ok
         done += ok
         log(f"done={done} batch_ok={ok}/{len(rows)} fail={fail} key={cursor + 1}/{len(KEYS)}")
-        time.sleep(0.05)
+        cursor = (cursor + 1) % len(KEYS)
+        time.sleep(0.25)
 
 
 if __name__ == "__main__":
@@ -259,6 +277,6 @@ if __name__ == "__main__":
             log("crash " + str(e)[:300])
             time.sleep(5)
             continue
-        if status in ("complete", "dead", "no-keys"):
+        if status in ("complete", "dead", "no-keys", "quota"):
             log("exit " + status)
             break

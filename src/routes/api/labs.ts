@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { areaMapUrl, NEAR_KM, pinCentroid, rankLabs } from "@/lib/labs";
 import { ownLabsNear, rankPublishedPlaces, searchField, type PackField } from "@/lib/place-catalogue.server";
+import { chatLog } from "@/lib/chat-log";
+import { clientIp, takeLimit } from "@/lib/rate-limit";
 
 async function geocodePin(pin: string): Promise<{ lat: number; lng: number; label: string } | null> {
   const fallback = pinCentroid(pin);
@@ -30,6 +32,23 @@ export const Route = createFileRoute("/api/labs")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const started = performance.now();
+        const gate = takeLimit(`labs:${clientIp(request)}`);
+        if (!gate.ok) {
+          chatLog({
+            id: crypto.randomUUID(),
+            desk: "labs",
+            path: "-",
+            cache: "skip",
+            limited: "yes",
+            refuse: "rate",
+            ms: Math.round(performance.now() - started),
+          });
+          return Response.json(
+            { error: "Too many requests." },
+            { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+          );
+        }
         let body: { pin?: unknown; lat?: unknown; lng?: unknown; product?: unknown; kind?: unknown; q?: unknown } = {};
         try {
           body = (await request.json()) as typeof body;

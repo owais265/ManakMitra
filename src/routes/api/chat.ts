@@ -8,6 +8,10 @@ import { isFollowCue, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 import { buildStops } from "@/lib/work-trace";
+import { chatLog } from "@/lib/chat-log";
+import { fetchOnceRetry } from "@/lib/http-retry";
+import { clientIp, takeLimit } from "@/lib/rate-limit";
+import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
 
 type ChatBody = {
   query?: string;
@@ -163,21 +167,25 @@ async function answerText(
     for (const model of xaiModels()) {
       let res: Response;
       try {
-        res = await fetch("https://api.x.ai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
-            stream: true,
-            max_tokens: maxTokens,
-            temperature,
-            messages,
-          }),
-          signal: AbortSignal.timeout(28_000),
-        });
+        res = await fetchOnceRetry(
+          (ms) =>
+            fetch("https://api.x.ai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                model,
+                stream: true,
+                max_tokens: maxTokens,
+                temperature,
+                messages,
+              }),
+              signal: AbortSignal.timeout(ms),
+            }),
+          28_000,
+        );
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
         console.error("[chat] xAI threw:", lastDetail);
@@ -233,16 +241,20 @@ async function tryGeminiText(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
       let res: Response;
       try {
-        res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: system }] },
-            contents: [{ role: "user", parts }],
-            generationConfig: { temperature, maxOutputTokens: maxTokens },
-          }),
-          signal: AbortSignal.timeout(12_000),
-        });
+        res = await fetchOnceRetry(
+          (ms) =>
+            fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                system_instruction: { parts: [{ text: system }] },
+                contents: [{ role: "user", parts }],
+                generationConfig: { temperature, maxOutputTokens: maxTokens },
+              }),
+              signal: AbortSignal.timeout(ms),
+            }),
+          12_000,
+        );
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
         console.error("[chat] Gemini threw:", lastDetail);
@@ -335,6 +347,27 @@ export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const reqId = crypto.randomUUID();
+        const started = performance.now();
+        const gate = takeLimit(`chat:${clientIp(request)}`);
+        if (!gate.ok) {
+          chatLog({
+            id: reqId,
+            desk: "chat",
+            path: "-",
+            cache: "skip",
+            limited: "yes",
+            refuse: "rate",
+            ms: Math.round(performance.now() - started),
+          });
+          return new Response("Too many requests.", {
+            status: 429,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Retry-After": String(gate.retryAfter),
+            },
+          });
+        }
         let query = "";
         let language: AppLang = "en";
         try {
@@ -431,6 +464,15 @@ export const Route = createFileRoute("/api/chat")({
                 if (!attachment && !followSubject && intent === "offtopic") {
                   t = performance.now();
                   step("refuse", "Refused", "Outside Indian Standards", t);
+                  chatLog({
+                    id: reqId,
+                    desk: "chat",
+                    path: "refuse",
+                    cache: "skip",
+                    limited: "no",
+                    refuse: "offtopic",
+                    ms: Math.round(performance.now() - started),
+                  });
                   say(offtopicReply(language));
                   return;
                 }
@@ -447,11 +489,30 @@ export const Route = createFileRoute("/api/chat")({
                 const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
                 const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
                 t = performance.now();
-                const retrieved = await retrieveHybrid(retrievalQuery);
+                const deskName = desk || guidedKind || "chat";
+                const cacheKey = retrievalCacheKey(deskName, retrievalQuery);
+                const bust = request.headers.get("x-cache-bust");
+                let cacheFlag = "miss";
+                let retrieved = bust ? null : cacheGet(cacheKey);
+                if (retrieved) cacheFlag = "hit";
+                if (!retrieved) {
+                  retrieved = await retrieveHybrid(retrievalQuery);
+                  if (!bust) cacheSet(cacheKey, retrieved);
+                }
+                const locked = (retrieved.hits[0]?.score ?? 0) >= 0.45;
+                chatLog({
+                  id: reqId,
+                  desk: deskName,
+                  path: locked ? "lock" : "extras",
+                  cache: cacheFlag,
+                  limited: "no",
+                  refuse: retrieved.hasEvidence ? "-" : "no-row",
+                  ms: Math.round(performance.now() - started),
+                });
                 step(
                   "search",
                   "Searched the catalogue",
-                  `${retrieved.hits.length} rows · ${retrieved.mode} · ${retrieved.grounding}${labelText ? " · label text included" : ""}`,
+                  `${cacheFlag} · ${retrieved.hits.length} rows · ${retrieved.mode} · ${retrieved.grounding}${labelText ? " · label text included" : ""}`,
                   t,
                 );
                 t = performance.now();

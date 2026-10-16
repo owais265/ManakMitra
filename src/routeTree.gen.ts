@@ -24,6 +24,7 @@ import { Route as StandardsRouteImport } from './routes/standards'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiLabsRouteImport } from './routes/api/labs'
 import { Route as ApiVerifyRouteImport } from './routes/api/verify'
 
@@ -102,6 +103,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLabsRoute = ApiLabsRouteImport.update({
   id: '/api/labs',
   path: '/api/labs',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
 }
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
 }
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
 }
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/health'
     | '/api/labs'
     | '/api/verify'
   fileRoutesByTo: FileRoutesByTo
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/health'
     | '/api/labs'
     | '/api/verify'
   id:
@@ -227,6 +238,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/health'
     | '/api/labs'
     | '/api/verify'
   fileRoutesById: FileRoutesById
@@ -247,6 +259,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiHealthRoute: typeof ApiHealthRoute
   ApiLabsRoute: typeof ApiLabsRoute
   ApiVerifyRoute: typeof ApiVerifyRoute
 }
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/labs': {
       id: '/api/labs'
       path: '/api/labs'
@@ -391,6 +411,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiHealthRoute: ApiHealthRoute,
   ApiLabsRoute: ApiLabsRoute,
   ApiVerifyRoute: ApiVerifyRoute,
 }

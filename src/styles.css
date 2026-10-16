@@ -301,6 +301,12 @@
       opacity 420ms ease;
   }
 
+  @media (max-width: 639px) {
+    .mm-slide {
+      max-height: 28%;
+    }
+  }
+
   .mm-play {
     position: absolute;
     top: 50%;

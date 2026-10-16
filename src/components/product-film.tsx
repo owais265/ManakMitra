@@ -56,32 +56,32 @@ const SCENES: Pose[][] = [
 
 const NARROW: Pose[][] = [
   [
-    { x: 4, y: 3, r: -2, s: 1, o: 1, z: 4, w: 92 },
-    { x: 4, y: 58, r: 2, s: 1, o: 1, z: 5, w: 92 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 2, r: -1, s: 1, o: 1, z: 4, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 68, r: 0, s: 1, o: 1, z: 5, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
   ],
   [
-    { x: -70, y: 4, r: -8, s: 0.9, o: 0, z: 1, w: 70 },
-    { x: 6, y: 16, r: 0, s: 1, o: 1, z: 6, w: 88 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 6, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-  ],
-  [
-    { x: -60, y: 0, r: -6, s: 0.85, o: 0, z: 1, w: 50 },
-    { x: 70, y: -20, r: 6, s: 0.85, o: 0, z: 1, w: 50 },
-    { x: 4, y: 4, r: -1, s: 1, o: 1, z: 4, w: 92 },
-    { x: 4, y: 36, r: 0, s: 1, o: 1, z: 5, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 2, r: 0, s: 1, o: 1, z: 6, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
     { x: 4, y: 68, r: 1, s: 1, o: 1, z: 4, w: 92 },
   ],
   [
-    { x: 80, y: -24, r: 6, s: 0.85, o: 0, z: 1, w: 40 },
-    { x: 4, y: 3, r: 0, s: 1, o: 1, z: 4, w: 92 },
-    { x: 4, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 4, y: 130, r: 0, s: 1, o: 0, z: 1, w: 40 },
-    { x: 4, y: 58, r: 1, s: 1, o: 1, z: 5, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 2, r: -1, s: 1, o: 1, z: 4, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 68, r: 1, s: 1, o: 1, z: 5, w: 92 },
+  ],
+  [
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 2, r: 0, s: 1, o: 1, z: 4, w: 92 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 140, r: 0, s: 1, o: 0, z: 1, w: 40 },
+    { x: 4, y: 68, r: 1, s: 1, o: 1, z: 5, w: 92 },
   ],
 ];
 
@@ -170,7 +170,7 @@ function Device({
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-bis-navy">
                     <Icon className="h-4 w-4" strokeWidth={1.9} />
                   </span>
-                  <p className="mt-2 line-clamp-2 text-sm font-semibold text-ink">{cap?.title}</p>
+                  <p className="mt-2 line-clamp-2 break-words text-sm font-semibold text-ink">{cap?.title}</p>
                   <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-600">{cap?.body}</p>
                 </div>
               </Slide>

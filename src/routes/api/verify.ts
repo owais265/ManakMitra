@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { parseAttachment } from "@/lib/attachments";
 import { marksFromLabel } from "@/lib/label-text";
 import { checkBrand, checkLicence, verdictFromPhotoRead, type VerifyMode } from "@/lib/verify-cert";
+import { chatLog } from "@/lib/chat-log";
+import { clientIp, takeLimit } from "@/lib/rate-limit";
 
 function usableKey(key: string): boolean {
   if (key.length < 20) return false;
@@ -63,6 +65,23 @@ export const Route = createFileRoute("/api/verify")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const started = performance.now();
+        const gate = takeLimit(`verify:${clientIp(request)}`);
+        if (!gate.ok) {
+          chatLog({
+            id: crypto.randomUUID(),
+            desk: "verify",
+            path: "-",
+            cache: "skip",
+            limited: "yes",
+            refuse: "rate",
+            ms: Math.round(performance.now() - started),
+          });
+          return Response.json(
+            { error: "Too many requests." },
+            { status: 429, headers: { "Retry-After": String(gate.retryAfter) } },
+          );
+        }
         let body: { mode?: string; query?: string; attachment?: unknown; ocrText?: string } = {};
         try {
           body = (await request.json()) as typeof body;
