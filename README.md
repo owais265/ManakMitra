@@ -19,7 +19,7 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
-**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
+**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Hardening](#operational-hardening) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
 
 ---
 
@@ -383,17 +383,34 @@ One chat turn does not call every index.
 
 ```text
 1. Language lock (header EN / HI / Hinglish)
-2. Intent: product, typed IS, scheme, city / PIN, process, consumer
-3. Policy gate: scope × scheme × source × evidence
-4. Fail → Refuse or Clarify. Retrieval calls = 0
-5. Pass → local TF-IDF on rag-pack.json
-6. Strong lock (score ≥ 0.45) or typed IS on top → freeze. Stop.
-7. Weak lock only → hybrid extras (BM25 + trgm + dense) → RRF k=60 → gated rerank
-8. Official-host filter. Drop anything else.
-9. Ground the reply on the surviving rows. LLM may phrase. It may not source.
+2. Per-IP sliding window (20 / min on chat, labs, verify). Over → 429 + Retry-After. No Gemini, no Supabase.
+3. Intent: product, typed IS, scheme, city / PIN, process, consumer
+4. Policy gate: scope × scheme × source × evidence
+5. Fail → Refuse or Clarify. Retrieval calls = 0
+6. Pass → identical query + desk in the 60 s cache? Return that. Else local TF-IDF on rag-pack.json
+7. Strong lock (score ≥ 0.45) or typed IS on top → freeze. Stop. Cache the row.
+8. Weak lock only → hybrid extras (BM25 + trgm + dense) → RRF k=60 → gated rerank
+9. Official-host filter. Drop anything else.
+10. Ground the reply on the surviving rows. LLM may phrase. It may not source.
 ```
 
-Standalone turns: yesterday’s IS is not injected into today’s product query (M8).
+Standalone turns: yesterday’s IS is not injected into today’s product query (M8). A caller can send `x-cache-bust` to skip the 60 s retrieval cache. A refuse caused by a transient database error is not cached.
+
+### Operational hardening
+
+These sit in front of the gate. They do not change lock order.
+
+| Control | What it does | What it is not |
+| --- | --- | --- |
+| Rate limit | In-process sliding window, 20 requests / 60 s per IP per route on `/api/chat`, `/api/labs`, `/api/verify`. 429 with `Retry-After`. | Not shared across Vercel instances. No Redis. |
+| Retrieval cache | 60 s TTL, key = normalised query + desk. Only after the policy gate passes. | Not a model cache. Bypass with `x-cache-bust`. |
+| Timeouts + one retry | One retry with jitter on 429, 503, or a fast network abort. A slow timeout is not retried. Total wait stays under the chat budget. | Not an unbounded retry loop. |
+| Health | `GET /api/health` → `{ ok: true, pack }`. No Gemini call. Does not 500 if Supabase is slow. | `pack` is a disk check. On Vercel the pack is bundled, so `pack` may be false while answers still come from the bundle. |
+| Structured log | One line: request id, desk, lock-or-extras, cache, limited, refuse reason, latency ms. | Query text that looks like a phone or a key is not logged. |
+| Idempotent embed writes | `PATCH` only where `embedding IS NULL`, and only a 768-d vector. | A row that already has a vector is not rewritten. |
+| Embed key rotation | One Gemini request at a time, round-robin across keys. On Supabase `57014` the fetch retries up to 3 times and the key cursor does not advance. When every key is on a cooldown longer than 10 minutes, the process exits. | Not parallel embedding. |
+| CI | Typecheck + Vite build + `eval:metrics`. | Does not run a red `npm test` suite. |
+| Migrations | Index SQL goes through `scripts/migrate.mjs`. `npm run build` is Vite only; `npm run build:release` also migrates. | No hand-applied SQL outside that path. |
 
 ### Data model — what is stored
 
@@ -419,6 +436,7 @@ Pack snapshot: `src/data/rag-pack.json`. Standards metadata in the extract is id
 | Okapi BM25 | Postgres `search_pack_docs_bm25`, GIN on the rarest term + `is_number` btree, `enable_seqscan=off` | Weak lock only. SQL is in the repo; the live function is applied separately. |
 | pg_trgm | `search_pack_docs_trgm` | Weak lock, typo lane |
 | pgvector HNSW | Gemini `text-embedding-004`, 768-d, same model for query and document | Weak lock, and only if that kind has enough embeddings (standards ≥ 400, labs ≥ 50) |
+| Partial index `pack_docs_null_embedding_id` | `(id) WHERE embedding IS NULL` | Embed fetch of unfilled rows. Migration is in the repo; the live Supabase role is read-only, so apply it on a writer connection. |
 | Rerank | Feature-rerank by default. Cohere `rerank-v3.5` only if a key is set, 2.5 s timeout | Weak lock, top < 0.45, frozen rows excluded |
 
 Embeddings are partial on purpose. A 1-row vector index is not allowed to nearest-neighbour the answer. Dense is skipped until the lane is filled.
@@ -564,11 +582,11 @@ Published BIS stock (~23.3K standards, ~51.5K operative licences) is the **addre
 | Stage | What runs | What you add |
 | --- | --- | --- |
 | Judge laptop | Pack-only Docker / `npm run dev` | Nothing |
-| Live MVP | Vercel + pack + optional LLM phrasing | `XAI_API_KEY` |
+| Live MVP | Vercel + pack + optional LLM phrasing + per-instance rate limit and 60 s retrieval cache | `XAI_API_KEY` |
 | Hybrid | Same app + Supabase `pack_docs` | `SUPABASE_*`, `HYBRID_RAG=1` |
-| Production later | Same Postgres, freshness leases, conflict graph | Pack ops, not a rewrite |
+| Production later | Same Postgres, freshness leases, conflict graph, shared rate limit if traffic spans many instances | Pack ops, not a rewrite |
 
-Horizontal scale is boring on purpose: the gate is CPU-cheap, the pack is a snapshot, dense extras are an index on official rows. Cost stays low because refuse and pack-hit do not need a model. Idea-PPT operating sketch: a few thousand rupees a month at pilot query volume; model tokens only on Allow phrasing.
+Horizontal scale is boring on purpose: the gate is CPU-cheap, the pack is a snapshot, dense extras are an index on official rows. Cost stays low because refuse and pack-hit do not need a model. The 20 / min window and the 60 s cache cut repeat catalogue work on one instance; they are not a global quota. Idea-PPT operating sketch: a few thousand rupees a month at pilot query volume; model tokens only on Allow phrasing.
 
 Kill switch: `HYBRID_RAG=0` → pack-only, still correct.
 
@@ -616,9 +634,10 @@ A judge does not need CUDA, a model cache, or a local FastAPI process.
 | Step | Command or URL | What it proves |
 | --- | --- | --- |
 | 1. Open the product | https://forest-yonder-apex-plum.vercel.app/ | Multi-desk live app |
-| 2. Walk the jury path | Prompts in [UX](#7-user-experience) | Allow, Clarify, Refuse, verify, lab, HUID |
-| 3. Clone and eval | `npm install && npm run eval:all` | M1–M10 without an LLM |
-| 4. Pack-only Docker | `docker compose up --build` | Same product offline from the pack |
+| 2. Health | https://forest-yonder-apex-plum.vercel.app/api/health | `{ ok: true }` with no model call |
+| 3. Walk the jury path | Prompts in [UX](#7-user-experience) | Allow, Clarify, Refuse, verify, lab, HUID |
+| 4. Clone and eval | `npm install && npm run eval:all` | M1–M10 without an LLM |
+| 5. Pack-only Docker | `docker compose up --build` | Same product offline from the pack |
 
 Hybrid extras need `SUPABASE_*` and `HYBRID_RAG=1`. They are optional. The pack path is the rank lock either way.
 
@@ -669,16 +688,22 @@ Same names locally, in Docker, and on Vercel (Production + Preview). Redeploy af
 Do **not** scrape BIS, merge unknown dumps, or store paid clause text. Full document text lives on [Know Your Standard](https://www.bis.gov.in/know-your-standard/?lang=en) and [e-Sale](https://standardsbis.bsbedge.com/).
 
 ```
-src/routes/api/chat.ts          Chat handler
+src/routes/api/chat.ts          Chat handler, rate limit, retrieval cache
+src/routes/api/health.ts        Liveness, no model call
+src/lib/rate-limit.ts           Per-instance sliding window
+src/lib/retrieval-cache.ts      60 s retrieval cache
+src/lib/http-retry.ts           One retry on 429 / 503 / fast abort
 src/lib/rag.ts                  Policy + TF-IDF lock
 src/lib/hybrid.ts               Optional extras + RRF merge
 src/lib/rerank.server.ts        Gated rerank
 supabase/search_pack_docs_hybrid.sql
 supabase/search_pack_docs_bm25.sql
+migrations/0002_pack_docs_null_embedding_idx.sql
 docs/rrf-and-gate.md            Fusion formula + gate trace
 docs/mathematical-framework.md  Gate, RRF, TF-IDF, BM25, faithfulness
 src/data/rag-pack.json          Authorised catalogue snapshot
 scripts/eval-*.mjs              Golden + metrics
+scripts/embed-remaining.py      Null-row embeddings, round-robin keys
 ```
 
 Operator rules: labs are a name/city list — confirm scope on [LIMS](https://lims.bis.gov.in/). Fees in the pack are FAQ figures. Each turn is standalone. QCO / mandatory status can change on the official site.
