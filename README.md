@@ -645,18 +645,22 @@ Hybrid extras need `SUPABASE_*` and `HYBRID_RAG=1`. They are optional. The pack 
 
 ## Docker
 
+Pack-only container. Build uses the Nitro `node-server` preset. Vercel deploys stay on the vercel preset.
+
 ```bash
 cp .env.example .env.local   # optional keys
 docker compose up --build
 ```
 
-App: [http://localhost:8080](http://localhost:8080)
+App: [http://localhost:8080](http://localhost:8080) · Health: [http://localhost:8080/api/health](http://localhost:8080/api/health)
 
 | File | Role |
 | --- | --- |
-| [`Dockerfile`](Dockerfile) | Multi-stage Node 22 build + preview |
-| [`docker-compose.yml`](docker-compose.yml) | Single service, port 8080 |
-| [`.dockerignore`](.dockerignore) | Keeps the image small |
+| [`Dockerfile`](Dockerfile) | Multi-stage Node 22. Build with `NITRO_PRESET=node-server`. Runtime is `.output/server/index.mjs`, non-root, healthcheck on `/api/health`. |
+| [`docker-compose.yml`](docker-compose.yml) | Single service, port 8080, restart, log cap |
+| [`.dockerignore`](.dockerignore) | Drops `.grok`, env files, tests, and the build cache |
+
+Secrets are not baked in. Pass `XAI_API_KEY` or `SUPABASE_*` at run time if you want phrasing or hybrid extras. `HYBRID_RAG=0` is the default inside the image.
 
 ---
 

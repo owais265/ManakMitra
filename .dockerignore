@@ -1,9 +1,12 @@
 node_modules
 dist
+.output
 .git
 .github
 .vscode
 .idea
+.grok
+.vercel
 *.md
 !README.md
 .env
@@ -17,3 +20,7 @@ test-results
 artifacts
 tmp
 .cache
+scripts/stress
+*.test.ts
+*.test.mjs
+*.test.py
