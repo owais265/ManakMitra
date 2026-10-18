@@ -34,7 +34,7 @@ A pure retrieval demo that always returns top-5 from one PDF is not this product
 | Golden gates | M1–M10 pass without an LLM | [Evaluation table](#experimental-evaluation--benchmark) · `npm run eval:all` |
 | Hybrid stress | 100 / 100 fail = 0 on the hybrid retrieve path (2026-10-13) | `scripts/hybrid-stress-100.mjs` |
 | Pack file | 18,995 catalogue rows + 627 curated chunks, 100% official hosts | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
-| Voice + label OCR | Browser STT and Tesseract label read. No invented number | Live chat mic and attach |
+| Voice + label OCR | Browser STT and Tesseract label read. No invented number. Label-photo path is not end-to-end tested yet | Chat mic is in the live app. Photo path is code only |
 | No invented IS / fee / clause | Faithfulness is a pass/fail gate, not a published 0.95 score | M3 and M10 |
 | Official host only | A non-allowlisted URL is dropped | `src/lib/official-hosts.ts` |
 | Pack-only kill switch | `HYBRID_RAG=0` still returns IS + scheme + official URL | Environment table below |
@@ -106,7 +106,7 @@ What is unique (not a bundle of existing tools):
 4. **Hybrid retrieve only after unlock.** Sparse TF-IDF on the pack, then optional Okapi BM25 + `pg_trgm` + pgvector, then RRF.
 5. **Model-down continuity.** If the LLM is offline, the pack still returns IS number, scheme path and official URL.
 6. **Public metadata only.** No paid clause text, no invented fees, no fake confidence score.
-7. **OCR / vision input.** A product-label photo is read in the browser with Tesseract ([`src/lib/label-ocr.ts`](src/lib/label-ocr.ts)). A licence or IS number is kept only if the recognised text contains one. The reader does not invent a number.
+7. **OCR / vision input.** A product-label photo is read in the browser with Tesseract ([`src/lib/label-ocr.ts`](src/lib/label-ocr.ts)). A licence or IS number is kept only if the recognised text contains one. The reader does not invent a number. The label-photo path is implemented, not yet tested end to end.
 8. **Voice (STT).** The chat box uses the browser Speech Recognition API. The spoken language follows the header lock (English, Hindi, or Hinglish), not a guess from the audio.
 9. **Adversarial suite.** `npm run eval:adversarial` runs 102 injection, fake-IS, Hinglish, scheme-mix, and off-topic queries with no model call. Invented IS count is 0.
 10. **Slot memory, no IS carry.** A follow-up may keep the product, the scheme, and a PIN. It never copies an earlier IS number. A new product question drops the old IS (M11).
@@ -247,12 +247,14 @@ Combinatorial questions across TF-IDF, hybrid, and generic phrasing. Each file h
 
 The generic mixed rows were concentrated in the first 573,000, before the 2026-10-17 scorer reload (city-only lab list, and a scheme question treated as a hallmark mix). Rows scored after that reload had 0 mixed. The stored CSV was not rewritten. Off-topic and real scheme-mix still refuse.
 
+The **0** in the last column is invented IS or fee only. Lab ranking is a separate desk. It uses BIS own laboratories and the loaded LIMS extract. NPL, NTH, CIPET and the other non-BIS list are not ranked.
+
 ### Live deployment — checked 2026-10-18
 
 | Check | Result | Where |
 | --- | --- | --- |
 | Home | 200 | [forest-yonder-apex-plum.vercel.app](https://forest-yonder-apex-plum.vercel.app/) |
-| Health | 200, `{"ok":true}` | `/api/health` |
+| Health | 200, `{"ok":true,"pack":false}` | `/api/health` |
 | Contact | 200, published BIS lines | `/contact` |
 | Sourced product | Allow — **IS 10908 : 2023** for LPG rubber tubes | `/api/chat` |
 | Official host on that row | `www.services.bis.gov.in` | Know Your Standard |
@@ -731,7 +733,7 @@ Public catalogue metadata only. No paid clause text.
 | standard | IS number, title, official URL | Full standard text, clause numbers not on the public page |
 | product | Family, scheme, pinned IS when the pack has it | A synthetic SKU or a chat-only-item |
 | process | Steps and portal when the FAQ pack has them | Invented fees or statutory timelines |
-| lab | Name, address, PIN, LIMS link | A test booking or a rating |
+| lab | Name, address, PIN, LIMS link. Ranking is BIS own laboratories plus the loaded LIMS extract | A test booking, a rating, or a non-BIS fallback such as NPL, NTH, or CIPET |
 | hallmark | HUID format and jewellery-only verify path | HUID applied to a fan or helmet |
 | crs | CRS product map when present | A completed registration |
 | faq / consumer | Published contact and complaint path | A ticket number |
@@ -802,7 +804,7 @@ Built desks, not a slide-only assistant.
 | --- | --- |
 | Assistant | Natural-language Q&A with three exits |
 | Verify product | Licence-shaped check against the verify pack |
-| Testing labs | PIN / city → nearest list + live LIMS |
+| Testing labs | PIN / city → nearest BIS own laboratory + live LIMS. NPL, NTH and CIPET are not ranked |
 | HUID / Hallmark finder | Jewellery path only |
 | Indian Standards finder | Product / IS → catalogue row |
 | Certification steps | Scheme process + official portal |
@@ -944,7 +946,7 @@ A judge does not need CUDA, a model cache, or a local FastAPI process.
 | Step | Command or URL | What it proves |
 | --- | --- | --- |
 | 1. Open the product | https://forest-yonder-apex-plum.vercel.app/ | Multi-desk live app |
-| 2. Health | https://forest-yonder-apex-plum.vercel.app/api/health | `{ ok: true }` with no model call |
+| 2. Health | https://forest-yonder-apex-plum.vercel.app/api/health | `{ ok: true, pack: false }` on production. No model call |
 | 3. Walk the jury path | Prompts in [UX](#7-user-experience) | Allow, Clarify, Refuse, verify, lab, HUID |
 | 4. Clone and eval | `npm install && npm run eval:all` | M1–M10 without an LLM |
 | 5. Pack-only Docker | `docker compose up --build` | Same product offline from the pack |

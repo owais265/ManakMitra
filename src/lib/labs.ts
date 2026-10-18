@@ -125,7 +125,7 @@ export const BIS_LABS: Lab[] = [
   },
 ];
 
-/** Real public laboratories. The pin is the city, so confidence stays low. */
+/** Real public laboratories. Not a BIS recommendation. Ranked answers never include this list. */
 export const OTHER_LABS: Lab[] = [
   { id: "NPL", name: "National Physical Laboratory, Delhi", address: "Dr K S Krishnan Marg, New Delhi 110012", city: "Delhi", pin: "110012", phone: "", email: "", lat: 28.637, lng: 77.172, confidence: "low" },
   { id: "NTH-GZB", name: "National Test House, Ghaziabad", address: "Kamla Nehru Nagar, Ghaziabad, Uttar Pradesh", city: "Ghaziabad", pin: "201002", phone: "", email: "", lat: 28.669, lng: 77.454, confidence: "low" },
@@ -167,7 +167,7 @@ export function haversineKm(aLat: number, aLng: number, bLat: number, bLng: numb
 
 export function rankLabs(lat: number, lng: number, product = ""): RankedLab[] {
   const needle = product.trim().toLowerCase();
-  const ranked = [...BIS_LABS, ...OTHER_LABS].map((lab) => ({
+  const ranked = BIS_LABS.map((lab) => ({
     ...lab,
     km: Math.round(haversineKm(lat, lng, lab.lat, lab.lng) * 10) / 10,
     productHit: needle.length > 2 && `${lab.name} ${lab.city}`.toLowerCase().includes(needle),
