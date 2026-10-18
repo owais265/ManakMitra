@@ -252,58 +252,161 @@ The generic mixed rows were concentrated in the first 573,000, before the 2026-1
 
 ---
 
-## Authorised pack — what is actually in the file
+## Authorised pack — exact row counts
 
-The always-on sparse rank reads one file. It is in git. A reader can download it and count the rows.
+Two layers. Do not add them together.
 
-| Field | Value |
-| --- | --- |
-| Path in the repo | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
-| GitHub address | [github.com/owais265/ManakMitra/blob/main/src/data/rag-pack.json](https://github.com/owais265/ManakMitra/blob/main/src/data/rag-pack.json) |
-| Raw file | [raw.githubusercontent.com/.../src/data/rag-pack.json](https://raw.githubusercontent.com/owais265/ManakMitra/main/src/data/rag-pack.json) |
-| Size | 10,367,778 bytes (9.9 MB) |
-| Blob SHA | `309809b959dc0ad09f9bbf2ee6cce81d83036a06` |
-| SHA-256 | `109a028c999ca8a3d018574bedf744a2b0a8d1602627cc045406db94d4e799a8` |
-| Verified stamp inside the file | `2026-09-13` |
-| Last pack commit | `f5b6ab9` (2026-10-11) |
+| Layer | What it is | What it is not |
+| --- | --- | --- |
+| **Runtime pack** | [`src/data/rag-pack.json`](src/data/rag-pack.json). This is what chat, verify, labs and certify search. | Not the 40k corpus extract |
+| **Source files** | Numbered CSVs and the knowledge JSON under [`data/`](data/). They feed a rebuild. | Not a second live index |
 
-### Row composition
+Counts below were read from the files on 2026-10-18. A reader can re-count with the snippet at the end of this section.
 
-| Lane | Rows | What it is |
+### Runtime pack
+
+| Field | Exact value | Source |
 | --- | ---: | --- |
-| Catalogue — standards | 18,995 | Public IS id + title. No paid clause text |
-| Curated chunks | 627 | Labs, CRS notes, FAQ, process, links, consumer, hallmark, product |
-| **Evidence rows** | **19,622** | Catalogue + chunks. This is the local TF-IDF index |
-| Vocab / IDF terms | 7,765 | Local sparse rank. No GPU |
-| ISO/IEC adopted, catalogue-linked | 2,299 | Metadata link. Not extra overlapping retrieve rows |
-| Empty bodies | 0 | Every row has text |
-| Official-host URLs | 19,622 / 19,622 | 100%. A non-allowlisted URL is dropped at retrieve |
+| File | [`src/data/rag-pack.json`](https://github.com/owais265/ManakMitra/blob/main/src/data/rag-pack.json) | git path |
+| Raw download | [raw file](https://raw.githubusercontent.com/owais265/ManakMitra/main/src/data/rag-pack.json) | GitHub raw |
+| Bytes | 10,367,778 | `wc -c` |
+| Blob SHA | `309809b959dc0ad09f9bbf2ee6cce81d83036a06` | `git rev-parse HEAD:src/data/rag-pack.json` |
+| SHA-256 | `109a028c999ca8a3d018574bedf744a2b0a8d1602627cc045406db94d4e799a8` | `sha256sum` |
+| Verified stamp | 2026-09-13 | `verified` / `verifiedAt` inside the file |
+| Last pack commit | `f5b6ab9`, 2026-10-11 | git log |
+| Catalogue standards | **18,995** | `catalogue` array |
+| Curated chunks | **627** | `chunks` array |
+| Evidence rows searched | **19,622** | catalogue + chunks |
+| TF-IDF docs | 627 | `docs` array (chunk index) |
+| Vocab terms | 7,765 | `vocab` |
+| IDF entries | 7,765 | `idf` |
+| Empty bodies | 0 | every row has `body` |
+| Missing URLs | 0 | every row has `url` |
+| Official-host URLs | 19,622 / 19,622 | allowlisted BIS hosts only |
+| Titles with a trailing year | 18,044 | catalogue titles ending `: YYYY` |
+| Titles with no trailing year | 951 | of 18,995 |
+| Year span on dated titles | 1949–2026 | 75 distinct years |
+| Paid clause text stored | 0 | metadata only |
 
-### Chunk kinds
+### Catalogue and chunk kinds
 
-| Kind | Rows | Used for |
+| Kind | Rows | Cite |
 | --- | ---: | --- |
-| Lab | 437 | PIN-to-lab desk. City name is rejected |
-| CRS | 110 | Scheme-II product notes |
-| FAQ | 28 | Process and portal answers |
-| Process | 19 | How to apply / verify |
-| Link | 13 | Official host handoff |
-| Consumer | 10 | Fake mark, CARE, complaint |
-| Hallmark | 6 | HUID / jewellery only |
-| Product | 4 | Family pins that are not a catalogue title |
+| standard (catalogue) | 18,995 | `catalogue[].kind` |
+| lab | 437 | `chunks[].kind` |
+| crs | 110 | `chunks[].kind` |
+| faq | 28 | `chunks[].kind` |
+| process | 19 | `chunks[].kind` |
+| link | 13 | `chunks[].kind` |
+| consumer | 10 | `chunks[].kind` |
+| hallmark | 6 | `chunks[].kind` |
+| product | 4 | `chunks[].kind` |
+| **chunks subtotal** | **627** | |
+| **all evidence rows** | **19,622** | |
 
-### Where the URLs point
+### Scheme tags on those 19,622 rows
 
-| Host | Rows | Role |
+| Scheme tag | Rows |
+| --- | ---: |
+| published | 17,873 |
+| isi | 877 |
+| lab | 429 |
+| crs | 304 |
+| hallmark | 85 |
+| faq | 19 |
+| process | 15 |
+| link | 10 |
+| consumer | 9 |
+| product | 1 |
+| **total** | **19,622** |
+
+### Official hosts on those 19,622 URLs
+
+| Host | Rows | What it is |
 | --- | ---: | --- |
-| www.services.bis.gov.in | 17,399 | Know Your Standard catalogue |
+| www.services.bis.gov.in | 17,399 | Know Your Standard |
 | standards.bis.gov.in | 1,599 | Standards portal |
 | www.bis.gov.in | 495 | BIS site, FAQ, consumer |
-| www.crsbis.in | 121 | CRS registration |
+| www.crsbis.in | 121 | CRS |
 | lims.bis.gov.in | 5 | Laboratory directory |
-| manakonline.in / huid.manakonline.in / standardsbis.bsbedge.com | 3 | Apply and HUID verify |
+| standardsbis.bsbedge.com | 1 | e-Sale host |
+| www.manakonline.in | 1 | Apply |
+| huid.manakonline.in | 1 | HUID verify |
+| **total** | **19,622** | |
 
-A reader can confirm the host split with:
+### Product families
+
+| Item | Exact value | Source |
+| --- | ---: | --- |
+| Named families in the playbook | 59 | [`src/lib/product-playbook.ts`](src/lib/product-playbook.ts) |
+| Distinct `family` tags on pack rows | 39 | pack `family` field, excluding `-` |
+| Pack rows with a family tag | 115 | of 19,622 |
+| Pack rows with no family tag | 19,507 | catalogue titles still retrieve by IS / text |
+
+### Source files that feed a rebuild
+
+These are the human-editable inputs. They are smaller than the runtime catalogue. [`data/README.md`](data/README.md).
+
+| File | Rows | Columns start with | Cite |
+| --- | ---: | --- | --- |
+| [`data/01_standards.csv`](data/01_standards.csv) | 2,291 | standard_id, title | curated standards list |
+| [`data/02_product_requirements.csv`](data/02_product_requirements.csv) | 4 | product_name | product → IS |
+| [`data/03_certification_process.csv`](data/03_certification_process.csv) | 14 | scheme_name, step_number | process steps |
+| [`data/04_testing_labs.csv`](data/04_testing_labs.csv) | 433 | lab_name, city | lab directory |
+| [`data/05_hallmarking.csv`](data/05_hallmarking.csv) | 6 | metal, fineness_code | hallmark grades |
+| [`data/06_crs_products.csv`](data/06_crs_products.csv) | 2 | product_name | CRS seed |
+| [`data/07_consumer_support.csv`](data/07_consumer_support.csv) | 10 | topic | consumer desk |
+| [`data/08_faqs.csv`](data/08_faqs.csv) | 11 | question | FAQ |
+| [`data/09_official_links.csv`](data/09_official_links.csv) | 13 | official_url | portal links |
+| [`data/10_documents_metadata.csv`](data/10_documents_metadata.csv) | 10 | document_title | document cards |
+| **CSV rows** | **2,794** | | not the live index |
+
+### Authorised metadata JSON
+
+[`data/manakmitra_bis_knowledge.json`](data/manakmitra_bis_knowledge.json). Collected 2026-09-08. File note: metadata only, full IS/ISO PDF clauses are not stored. Its own `meta.counts`:
+
+| Record | Exact value |
+| --- | ---: |
+| standards | 17,393 |
+| crs_products | 72 |
+| explore_bis | 7 |
+| crs_scheme | 5 |
+| iso_iec_intro | 3 |
+| iso_iec_catalogue_hits | 2,299 |
+| total_records (file's own sum) | 19,779 |
+| File bytes | 7,779,781 |
+
+The 18,995 catalogue rows in the runtime pack are this standards list plus later catalogue-linked rows. The 2,299 ISO/IEC hits are catalogue links, not extra overlapping retrieve rows. Eval ingestion reports the same 2,299.
+
+### Other on-disk data — not the live rank
+
+These exist in the repo. Chat does not search them as a second index.
+
+| File | Exact value | Note |
+| --- | ---: | --- |
+| [`src/data/bis-index.json`](src/data/bis-index.json) | standards 18,995 · labs 433 · process 14 · crs 120 · faqs 11 · links 13 · consumer 10 · hallmark 6 · products 4 | mirror of the pack inputs. Verified 2026-09-08. 7,212,284 bytes |
+| [`src/data/verified-boost.json`](src/data/verified-boost.json) | 44 rows | pin boost. Eval reports boost 44 |
+| [`src/data/inbox-boost.json`](src/data/inbox-boost.json) | 125 rows | inbox pins |
+| [`src/data/pack-meta.json`](src/data/pack-meta.json) | chunks 627, catalogue 18,995, boost 24 | stamp 2026-09-13 |
+| [`data/recognised-laboratories.json`](data/recognised-laboratories.json) | 430 labs | source list. Pack uses 437 lab chunks |
+| [`data/inbox/bis-20261010-narratives.json`](data/inbox/bis-20261010-narratives.json) | 99 narratives | not auto-merged to main pack |
+| [`data/product-manuals-manifest.json`](data/product-manuals-manifest.json) | 108 files, 1,104 candidate rows | quarantined on edition mismatch. Not in the live pack |
+| [`data/bis-corpus.sqlite`](data/bis-corpus.sqlite) `docs` | 41,777 rows | extract store. Not the chat index |
+| Corpus manifest `docs` | 40,731 | [`data/bis-corpus-manifest.json`](data/bis-corpus-manifest.json), 239 files seen |
+
+Corpus manifest `by_kind` (extract, not live retrieve): standard 25,526 · process 5,807 · hallmark 3,457 · crs 3,219 · product 1,913 · lab 729 · consumer 80.
+
+### Dense extra on Supabase `pack_docs`
+
+Optional. A strong local lock does not call it. Counted 2026-10-18 via `Prefer: count=exact`.
+
+| State | Rows |
+| --- | ---: |
+| Embedding present (768-d) | 35,678 |
+| Embedding null | 26,624 |
+| Total `pack_docs` | 62,302 |
+
+### Re-count the runtime pack
 
 ```bash
 python3 -c "
@@ -311,23 +414,14 @@ import json
 from collections import Counter
 from urllib.parse import urlparse
 d=json.load(open('src/data/rag-pack.json'))
-print('catalogue', len(d['catalogue']), 'chunks', len(d['chunks']))
-print(Counter(c['kind'] for c in d['chunks']))
-print(Counter(urlparse(r['url']).netloc for r in d['chunks']+d['catalogue']))
+rows=d['chunks']+d['catalogue']
+print('catalogue', len(d['catalogue']), 'chunks', len(d['chunks']), 'rows', len(rows))
+print('kinds', Counter(c['kind'] for c in d['chunks']))
+print('schemes', Counter(r.get('scheme') or '-' for r in rows))
+print('hosts', Counter(urlparse(r['url']).netloc for r in rows))
+print('vocab', len(d['vocab']), 'empty', sum(1 for r in rows if not (r.get('body') or '').strip()))
 "
 ```
-
-### Dense lane (optional, not the rank lock)
-
-`pack_docs` on Supabase is the optional dense extra. Local TF-IDF does not wait for it.
-
-| Dense lane | Count | Date |
-| --- | ---: | --- |
-| Rows with a 768-d embedding | 35,678 | 2026-10-18 |
-| Rows still null | 26,624 | 2026-10-18 |
-| Total `pack_docs` | 62,302 | — |
-
-Hybrid extras run only after a weak lock. A strong TF-IDF lock, a typed IS already on top, and a policy pin do not call the dense lane.
 
 ---
 
