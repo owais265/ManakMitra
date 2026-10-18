@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { areaMapUrl, BIS_LABS, haversineKm, pinCentroid, publishedPin, rankLabs } from "../src/lib/labs.ts";
+import { areaMapUrl, BIS_LABS, haversineKm, OTHER_LABS, pinCentroid, publishedPin, rankLabs } from "../src/lib/labs.ts";
 
 let passed = 0;
 function check(fn) {
@@ -52,9 +52,10 @@ for (const [name, lat, lng] of places) {
     check(() => {
       const ranked = rankLabs(lat, lng, product);
       assert.ok(ranked.length > 8);
+      assert.equal(ranked.length, BIS_LABS.length);
       for (let n = 1; n < ranked.length; n += 1) assert.ok(ranked[n].km >= ranked[n - 1].km);
-      assert.equal(ranked.some((lab) => lab.confidence === "high"), true);
-      assert.equal(ranked.some((lab) => lab.confidence === "low"), true);
+      assert.equal(ranked.every((lab) => lab.confidence === "high"), true);
+      assert.equal(ranked.some((lab) => OTHER_LABS.some((other) => other.id === lab.id)), false);
       const url = areaMapUrl(lat, lng, String(name), product);
       assert.match(url, /maps\.google\.com/);
       assert.ok(url.includes(String(lat)));

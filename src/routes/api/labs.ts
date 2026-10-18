@@ -102,7 +102,7 @@ export const Route = createFileRoute("/api/labs")({
               : "Names and PINs are from the BIS LIMS extract already loaded. Distance uses that published PIN, not a surveyed gate. A BIS laboratory with a published address is marked high."
             : kind === "hallmark"
               ? "No hallmarking centre from the loaded extract sits within 80 km of this PIN."
-              : "No laboratory from the loaded LIMS extract sits within 80 km. The list below is the older desk list. The map still shows what Google lists around this PIN.",
+              : "No laboratory from the loaded LIMS extract sits within 80 km. The list below is BIS own laboratories only. NPL, NTH, CIPET and other non-BIS labs are not ranked. The map still shows what Google lists around this PIN.",
         });
       },
     },
