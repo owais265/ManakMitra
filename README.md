@@ -108,6 +108,14 @@ What is unique (not a bundle of existing tools):
 6. **Public metadata only.** No paid clause text, no invented fees, no fake confidence score.
 7. **OCR / vision input.** A product-label photo is read in the browser with Tesseract ([`src/lib/label-ocr.ts`](src/lib/label-ocr.ts)). A licence or IS number is kept only if the recognised text contains one. The reader does not invent a number.
 8. **Voice (STT).** The chat box uses the browser Speech Recognition API. The spoken language follows the header lock (English, Hindi, or Hinglish), not a guess from the audio.
+9. **Adversarial suite.** `npm run eval:adversarial` runs 102 injection, fake-IS, Hinglish, scheme-mix, and off-topic queries with no model call. Invented IS count is 0.
+10. **Slot memory, no IS carry.** A follow-up may keep the product, the scheme, and a PIN. It never copies an earlier IS number. A new product question drops the old IS (M11).
+11. **Report packet.** Thumbs and “Report wrong answer” download a JSON packet: query, locks, evidence titles and official URLs, exit, time, language. The label is “local report, not sent to BIS”. No ticket number.
+12. **Freshness badge.** Every answer shows `Pack verified:` plus the `verifiedAt` stamp from the pack, and a line that QCO status is not in the pack.
+13. **Label to CARE.** A `CM/L-` or `R-` token read from a photo is shown as extracted, not verified, with the BIS complaint page and complaints@bis.gov.in.
+14. **Hindi nudge.** Header English plus Devanagari text shows “हिंदी में जवाब चाहिए?”. The tap switches the header lock. The lock does not auto-switch.
+
+This README does not claim a 5 second latency SLA, an India-region deployment, or an admin analytics dashboard.
 
 **Why this was not already solved:** BIS.gov.in is a library of portals, not a gate. A generic assistant can quote a paragraph and still pick the wrong scheme. The hard product is the gate.
 

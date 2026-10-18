@@ -4,7 +4,7 @@ import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-
 import { searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
-import { isFollowCue, type ChatTurn } from "@/lib/query-context";
+import { isFollowCue, followRetrieval, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 import { buildStops } from "@/lib/work-trace";
@@ -416,19 +416,12 @@ export const Route = createFileRoute("/api/chat")({
               try {
                 let t = performance.now();
                 let followSubject = "";
-                if (!attachment && isFollowCue(query)) {
-                  for (let i = history.length - 1; i >= 0; i -= 1) {
-                    const turn = history[i];
-                    const earlier = typeof turn?.text === "string" ? turn.text : "";
-                    const family = matchProductFamily(earlier);
-                    const isNo = earlier.match(/\bIS[\s/.:-]*\d{3,5}\b/i)?.[0];
-                    const subject = [family?.aliases[0], isNo].filter(Boolean).join(" ");
-                    if (subject) {
-                      followSubject = subject;
-                      break;
-                    }
-                  }
+                const slotted = !attachment && isFollowCue(query) ? followRetrieval(query, history) : query.trim();
+                if (slotted !== query.trim()) {
+                  const cue = query.trim();
+                  followSubject = slotted.endsWith(cue) ? slotted.slice(0, slotted.length - cue.length).trim() : slotted;
                 }
+                const gateQuery = [followSubject, query].filter(Boolean).join(" ");
                 const intent = classifyIntent(query);
                 step(
                   "read",
@@ -438,8 +431,8 @@ export const Route = createFileRoute("/api/chat")({
                 );
                 if (attachment && attachment.kind !== "text" && sentLabel && !labelText && !query.trim()) {
                   t = performance.now();
-                  step("label", "Read the label", "No readable licence or IS number", t);
-                  say("This photo had no readable licence or IS number. Type the number printed with the mark.");
+                  step("label", "Read the label", "The label could not be read", t);
+                  say("The label could not be read. No licence number was extracted. Type the number printed with the mark.");
                   return;
                 }
                 const hard = !attachment ? chatHardCard(query) : null;
@@ -474,6 +467,21 @@ export const Route = createFileRoute("/api/chat")({
                     ms: Math.round(performance.now() - started),
                   });
                   say(offtopicReply(language));
+                  return;
+                }
+                if (!attachment && isHallmarkSchemeMix(gateQuery)) {
+                  t = performance.now();
+                  step("refuse", "Refused", "Hallmark does not apply", t);
+                  chatLog({
+                    id: reqId,
+                    desk: "chat",
+                    path: "refuse",
+                    cache: "skip",
+                    limited: "no",
+                    refuse: "scheme",
+                    ms: Math.round(performance.now() - started),
+                  });
+                  say("Hallmark and HUID do not apply to this product. Use the ISI or CRS desk, not jewellery verification. https://www.bis.gov.in");
                   return;
                 }
                 t = performance.now();
@@ -584,7 +592,8 @@ export const Route = createFileRoute("/api/chat")({
                   image,
                 );
                 step("write", "Wrote the answer", "From the rows above", t);
-                say(spoken);
+                const unreadLabel = Boolean(attachment && attachment.kind !== "text" && sentLabel && !labelText);
+                say(unreadLabel ? `The label could not be read. No licence number was extracted.\n\n${spoken}` : spoken);
               } catch (error) {
                 console.error("[chat] stream failed:", error instanceof Error ? error.message : error);
                 say(UI_DICTIONARY[language].catalogueLoadError);

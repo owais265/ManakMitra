@@ -5,7 +5,7 @@ import {
   FileText, 
   Send, Mic, CheckCircle, 
   AlertTriangle, XCircle, ExternalLink, X,
-  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin
+  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
 import { parseAttachment } from '@/lib/attachments';
@@ -20,7 +20,10 @@ import {
   getLangSnapshot,
   getLangServerSnapshot,
   initLang,
+  setLang,
 } from '@/lib/lang-store';
+import { PACK_VERIFIED } from '@/lib/pack-stamp';
+import { MORE_URL } from '@/lib/more-desk';
 import SiteHeader from '@/components/site-header';
 import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk-route';
 import { deskUi } from '@/lib/desk-ui';
@@ -59,6 +62,9 @@ interface Message {
   locationBusy?: boolean;
   locationError?: string;
   labBoard?: LabBoard;
+  userQuery?: string;
+  vote?: 'up' | 'down';
+  labelLicence?: string;
 }
 
 function createUniqueId(): string {
@@ -653,6 +659,7 @@ export default function ChatBotApp() {
       isStreaming: true,
       animate: true,
       startedAt,
+      userQuery: text,
     }]);
 
     let labelText: string | undefined;
@@ -670,6 +677,7 @@ export default function ChatBotApp() {
               : 'No readable licence or IS number';
         setMessages(prev => prev.map((m) => m.id === aiMsgId ? {
           ...m,
+          labelLicence: read.licence && /^(CM\/L-|R-)/.test(read.licence) ? read.licence : m.labelLicence,
           workSteps: [...(m.workSteps || []), { id: 'ocr', label: 'Read the label', detail, ms: Date.now() - ocrStart }],
         } : m));
       } catch {
@@ -1002,6 +1010,9 @@ export default function ChatBotApp() {
                      msg={msg} 
                      language={language}
                      onFollow={scrollToBottomInstant}
+                    onVote={(vote) => {
+                      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, vote } : m));
+                    }}
                      onRetry={
                        msg.isError && msg.retryQuery 
                          ? () => {
@@ -1102,6 +1113,18 @@ export default function ChatBotApp() {
                 </div>
               );
             })()}
+            {language === 'en' && /[\u0900-\u097F]/.test(inputText) ? (
+              <div className="max-w-4xl mx-auto mb-2">
+                <button
+                  type="button"
+                  data-hindi-nudge=""
+                  onClick={() => setLang('hi')}
+                  className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-sm font-semibold text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                >
+                  हिंदी में जवाब चाहिए?
+                </button>
+              </div>
+            ) : null}
             <form
               className="max-w-4xl mx-auto relative flex items-end gap-1.5 sm:gap-2"
               onSubmit={(e) => {
@@ -1332,7 +1355,7 @@ function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang })
   );
 }
 
-const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation }: { msg: Message, language: AppLang, onFollow?: () => void, onRetry?: () => void, onUseLocation?: () => void }) => {
+const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote }: { msg: Message, language: AppLang, onFollow?: () => void, onRetry?: () => void, onUseLocation?: () => void, onVote?: (vote: 'up' | 'down') => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -1511,6 +1534,60 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation }: { ms
               ))}
             </ol>
           )}
+
+          {isAI && isFinishedTyping && !msg.isError ? (
+            <div className="mt-3 space-y-2">
+              <p data-pack-verified={PACK_VERIFIED} className="text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                Pack verified: {PACK_VERIFIED}
+                <span className="mt-0.5 block">QCO status is not in this pack. Re-check the live BIS portal.</span>
+              </p>
+              {msg.labelLicence ? (
+                <div data-label-route="" className="rounded-xl border border-slate-200 p-3 text-sm dark:border-slate-700">
+                  <p>Extracted {msg.labelLicence} from the photo. Not verified.</p>
+                  <p className="mt-1 text-xs text-slate-500">Route this to BIS CARE. This desk does not check the register.</p>
+                  <p className="mt-2 flex flex-wrap gap-3">
+                    <a className="font-semibold text-blue-700 underline dark:text-blue-300" href={MORE_URL.complaint}>BIS complaint page</a>
+                    <a className="font-semibold text-blue-700 underline dark:text-blue-300" href="mailto:complaints@bis.gov.in">complaints@bis.gov.in</a>
+                  </p>
+                </div>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" aria-pressed={msg.vote === 'up'} onClick={() => onVote?.('up')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600">
+                  <ThumbsUp className="h-3.5 w-3.5" /> Useful
+                </button>
+                <button type="button" aria-pressed={msg.vote === 'down'} onClick={() => onVote?.('down')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600">
+                  <ThumbsDown className="h-3.5 w-3.5" /> Not useful
+                </button>
+                <button
+                  type="button"
+                  data-report-wrong=""
+                  onClick={() => {
+                    const exitStep = (msg.workSteps || []).find((step) => step.id === 'exit' || step.id === 'refuse');
+                    const packet = {
+                      note: "local report, not sent to BIS",
+                      query: msg.userQuery || "",
+                      locks: (msg.workSteps || []).map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
+                      evidence: (msg.sources || []).filter((s) => isOfficialUrl(s.link)).map((s) => ({ title: s.title, url: s.link })),
+                      exit: exitStep?.detail || "unknown",
+                      timestamp: new Date().toISOString(),
+                      language,
+                    };
+                    const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = "manakmitra-report.json";
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="inline-flex min-h-11 items-center rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600"
+                >
+                  Report wrong answer
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400">Local report, not sent to BIS.</p>
+            </div>
+          ) : null}
 
           {/* Source Citations */}
           {isFinishedTyping && msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (

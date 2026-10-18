@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "cases": 102,
+  "invented": 0,
+  "retrievalCalls": 52,
+  "refusedWithoutRetrieve": 50,
+  "stamp": "2026-09-13",
+  "fails": []
+}

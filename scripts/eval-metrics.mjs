@@ -13,7 +13,7 @@ const jiti = createJiti(import.meta.url, { alias: { "@": join(root, "src") } });
 
 const { retrieve, groundedFallback } = jiti(join(root, "src/lib/retrieve.ts"));
 const { classifyIntent, socialReply } = jiti(join(root, "src/lib/intent.ts"));
-const { rewriteQueryDebug, isFollowCue } = jiti(join(root, "src/lib/query-context.ts"));
+const { rewriteQueryDebug, isFollowCue, followRetrieval } = jiti(join(root, "src/lib/query-context.ts"));
 const { listProductFamilies, matchProductFamily, shouldClarify } = jiti(
   join(root, "src/lib/product-playbook.ts"),
 );
@@ -231,6 +231,20 @@ for (const c of follow) {
   add("M8", c.id, reasons.length === 0, reasons.join("; ") || dbg.rewritten.slice(0, 80));
 }
 
+/* M11 no leaked IS — slot may carry product, scheme, PIN; never an IS */
+{
+  const fan = followRetrieval("ceiling fan BIS standard", [{ role: "user", text: "What is IS 14543?" }]);
+  const scheme = followRetrieval("uska scheme kya hai?", [{ role: "user", text: "ceiling fan standard IS 374" }]);
+  const lab = followRetrieval("lab?", [{ role: "user", text: "cement plant 492001" }]);
+  const leakedFan = /\b14543\b/.test(fan);
+  const leakedScheme = /\bIS[\s/.:-]*374\b/i.test(scheme) || /\b374\b/.test(scheme);
+  const keptProduct = /fan/i.test(scheme);
+  const keptPin = /492001/.test(lab) && /cement/i.test(lab);
+  add("M11", "new-product-drops-old-is", !leakedFan && fan.toLowerCase().includes("ceiling fan"), fan);
+  add("M11", "follow-keeps-product-not-is", keptProduct && !leakedScheme, scheme);
+  add("M11", "follow-keeps-pin", keptPin && !/\bIS\b/i.test(lab), lab);
+}
+
 /* M9 multilingual lock */
 for (const l of APP_LANGS) {
   const ui = UI_DICTIONARY[l.id];
@@ -308,6 +322,7 @@ const METRIC_META = {
   M8: { name: "Standalone query (no history fold)", threshold: 100 },
   M9: { name: "Multilingual lock", threshold: 100 },
   M10: { name: "Clause honesty", threshold: 100 },
+  M11: { name: "No leaked IS", threshold: 100 },
 };
 
 const byMetric = Object.keys(METRIC_META).map((k) => {

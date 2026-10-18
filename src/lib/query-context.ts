@@ -77,6 +77,14 @@ const FILLERS = new Set([
   "for",
   "this",
   "that",
+  "kya",
+  "hai",
+  "hain",
+  "ka",
+  "ki",
+  "ke",
+  "pe",
+  "par",
 ]);
 
 export const FOLLOW_CUE = new RegExp(
@@ -163,4 +171,52 @@ export function rewriteQueryDebug(query: string, _history?: ChatTurn[]): Rewrite
 
 export function rewriteQuery(query: string, _history?: ChatTurn[]): string {
   return query.trim();
+}
+
+export type TurnSlot = {
+  product: string | null;
+  scheme: string | null;
+  city: string | null;
+};
+
+const IS_TOKEN = /\bIS[\s/.:-]*\d{3,6}\b/gi;
+
+function withoutIs(text: string): string {
+  return text.replace(IS_TOKEN, " ");
+}
+
+/** Product, scheme, and a PIN. Never an IS number from an earlier turn. */
+export function slotFromHistory(history?: ChatTurn[]): TurnSlot {
+  const empty: TurnSlot = { product: null, scheme: null, city: null };
+  if (!history?.length) return empty;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const raw = typeof history[i]?.text === "string" ? history[i].text : "";
+    if (!raw.trim()) continue;
+    const text = withoutIs(raw);
+    const family = matchProductFamily(text);
+    const city = text.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] ?? null;
+    if (!family && !city) continue;
+    const product = family
+      ? family.aliases.find((alias) => text.toLowerCase().includes(alias.toLowerCase())) || family.id
+      : null;
+    return {
+      product,
+      scheme: family?.scheme ?? null,
+      city,
+    };
+  }
+  return empty;
+}
+
+/**
+ * A cue-only follow-up may reuse product, scheme, and PIN.
+ * A new question is unchanged. An earlier IS number is never copied in.
+ */
+export function followRetrieval(query: string, history?: ChatTurn[]): string {
+  const q = query.trim();
+  if (!q || !isFollowCue(q)) return q;
+  const slot = slotFromHistory(history);
+  const prefix = [slot.product, slot.scheme, slot.city].filter(Boolean).join(" ");
+  if (!prefix) return q;
+  return `${prefix} ${q}`.replace(IS_TOKEN, " ").replace(/\s+/g, " ").trim();
 }

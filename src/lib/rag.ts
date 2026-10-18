@@ -1664,7 +1664,7 @@ export function vectorRetrieve(query: string): Retrieval {
     ]);
   }
 
-  if (isLabCityQuery(q) && pinCode) {
+  if (isLabCityQuery(q)) {
     const city = q.match(CITIES)?.[1]?.toLowerCase();
     if (city) {
       const needles = CITY_EXPAND[city] || [city];
@@ -1695,9 +1695,17 @@ export function vectorRetrieve(query: string): Retrieval {
   }
 
   if (namedLab && !pinCode) {
-    finalHits = finalHits.filter(
-      (h) => h.kind !== "lab" && !/laborator|\blims\b|group-[12]/i.test(h.title),
-    );
+    if (!isLabCityQuery(q)) {
+      finalHits = finalHits.filter(
+        (h) => h.kind !== "lab" && !/laborator|\blims\b|group-[12]/i.test(h.title),
+      );
+    } else {
+      const needles = labCityNeedles(q);
+      finalHits = finalHits.filter((h) => {
+        if (h.kind !== "lab" && !/laborator|\blims\b|group-[12]/i.test(h.title)) return true;
+        return needles.some((n) => `${h.title} ${h.body}`.toLowerCase().includes(n));
+      });
+    }
   }
 
   if (family?.is.length) {
