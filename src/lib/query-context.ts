@@ -190,8 +190,10 @@ export function slotFromHistory(history?: ChatTurn[]): TurnSlot {
   const empty: TurnSlot = { product: null, scheme: null, city: null };
   if (!history?.length) return empty;
   for (let i = history.length - 1; i >= 0; i -= 1) {
-    const raw = typeof history[i]?.text === "string" ? history[i].text : "";
-    if (!raw.trim()) continue;
+    const turn = history[i];
+    if (!turn || typeof turn.text !== "string") continue;
+    const raw = turn.text.trim();
+    if (!raw) continue;
     const text = withoutIs(raw);
     const family = matchProductFamily(text);
     const city = text.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] ?? null;
