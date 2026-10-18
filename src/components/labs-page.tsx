@@ -4,9 +4,10 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { MapPin } from 'lucide-react';
 import SiteFooter from '@/components/site-footer';
 import SiteHeader from '@/components/site-header';
-import { deskUi } from '@/lib/desk-ui';
-import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
+import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
+import { answerPlate, deskField, deskNote, deskSubmit } from '@/components/desk-plate';
+import { deskUi } from '@/lib/desk-ui';
 
 type Result = {
   origin: { lat: number; lng: number; label: string };
@@ -91,7 +92,7 @@ export default function LabsPage() {
 
         <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[360px_1fr]">
           <form
-            className="rounded-[1.75rem] border border-line bg-white p-5 dark:border-slate-700 dark:bg-[#151d30]"
+            className="rounded-[1.75rem] border border-line bg-white p-5 dark:border-slate-500 dark:bg-[#151d30]"
             onSubmit={(event) => {
               event.preventDefault();
               void search();
@@ -104,7 +105,7 @@ export default function LabsPage() {
                 value={pin}
                 onChange={(event) => setPin(event.target.value)}
                 placeholder="492001"
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
+                className={deskField}
               />
             </label>
             <label className="mt-4 block text-sm font-medium">
@@ -113,13 +114,13 @@ export default function LabsPage() {
                 value={product}
                 onChange={(event) => setProduct(event.target.value)}
                 placeholder={t.productPh}
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
+                className={deskField}
               />
             </label>
             <button
               type="submit"
               disabled={busy}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-bis-navy text-sm font-semibold text-white mm-press hover:bg-bis-navy-deep disabled:bg-slate-300"
+              className={`${deskSubmit} mt-5 w-full`}
             >
               {busy ? t.finding : t.find}
             </button>
@@ -132,9 +133,9 @@ export default function LabsPage() {
               <MapPin className="h-4 w-4" />
               {t.useDevice}
             </button>
-            {error ? <p className="mt-4 text-sm text-red-700 dark:text-red-300">{error}</p> : null}
+            {error ? <p className="mt-4 text-sm font-medium text-red-800 dark:text-red-200">{error}</p> : null}
             {result ? (
-              <p className="mt-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <p className={`mt-4 ${deskNote}`}>
                 {t.fromPlace} {result.source === 'device' ? t.thisDevice : result.origin.label}. {result.nearby.length ? t.noteNear : t.noteFar}
               </p>
             ) : null}
@@ -151,7 +152,7 @@ export default function LabsPage() {
                 referrerPolicy="no-referrer-when-downgrade"
               />
             ) : (
-              <div className="flex h-72 items-center justify-center rounded-3xl border border-dashed border-slate-300 px-4 text-center text-sm text-slate-500 sm:h-80 dark:border-slate-600 dark:text-slate-400">
+              <div className={`flex h-72 items-center justify-center rounded-[1.75rem] border border-dashed border-slate-400 px-4 text-center sm:h-80 dark:border-slate-400 ${deskNote}`}>
                 {t.mapEmpty}
               </div>
             )}
@@ -162,9 +163,9 @@ export default function LabsPage() {
             ) : null}
 
             {result ? (
-              <div className="mt-4">
-                <p className="text-xs leading-relaxed text-slate-500">{result.nearby.length ? t.noteNear : t.noteFar}</p>
-                {result.note ? <p className="mt-2 text-sm leading-relaxed text-slate-500">{result.note}</p> : null}
+              <div className={`mt-4 ${answerPlate}`}>
+                <p className={deskNote}>{result.nearby.length ? t.noteNear : t.noteFar}</p>
+                {result.note ? <p className={`mt-2 ${deskNote}`}>{result.note}</p> : null}
                 <LabList title={result.nearby.length ? t.within : t.nearNo} labs={result.nearby} selectedId={selected?.id} onPick={setSelected} bis={t.bisLab} city={t.cityList} maps={t.openMaps} />
                 <LabList title={t.farther} labs={result.farther} selectedId={selected?.id} onPick={setSelected} bis={t.bisLab} city={t.cityList} maps={t.openMaps} />
               </div>
@@ -197,7 +198,7 @@ function LabList({
   if (!labs.length) return null;
   return (
     <section className="mt-4">
-      <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</h2>
+      <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
       <ul className="mt-2 grid gap-2">
         {labs.map((lab) => (
           <li key={lab.id} className={`rounded-[1.25rem] border bg-white px-4 py-3 mm-lift dark:bg-[#151d30] ${selectedId === lab.id ? 'border-bis-navy' : 'border-line dark:border-slate-700'}`}>
@@ -207,7 +208,7 @@ function LabList({
                 <span className="shrink-0 text-sm text-bis-navy dark:text-blue-300">{lab.km} km</span>
               </span>
               <span className="mt-1 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{lab.address}</span>
-              <span className={`mt-2 inline-flex text-xs font-semibold ${lab.tier === 'bis-own' || (lab.confidence === 'high' && lab.tier !== 'national') ? 'text-emerald-700' : lab.tier === 'bis-recognised' ? 'text-bis-navy dark:text-blue-300' : 'text-amber-700'}`}>
+              <span className={`mt-2 inline-flex text-xs font-semibold ${lab.tier === 'bis-own' || (lab.confidence === 'high' && lab.tier !== 'national') ? 'text-emerald-800 dark:text-emerald-200' : lab.tier === 'bis-recognised' ? 'text-bis-navy dark:text-blue-200' : 'text-amber-800 dark:text-amber-200'}`}>
                 {lab.tier === 'national'
                   ? 'National laboratory. Not a BIS laboratory.'
                   : lab.tier === 'bis-own' || lab.confidence === 'high'

@@ -15,7 +15,7 @@ export function PackHitList({ hits, label }: { hits: PackHit[]; label: string })
   if (!hits.length) return null;
   return (
     <section className="mt-6">
-      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</h3>
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</h3>
       <ul className="mt-2 grid gap-2">
         {hits.map((hit) => (
           <li key={hit.title} className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">

@@ -20,6 +20,7 @@ import {
 } from '@/lib/more-desk';
 import { checkBrand } from '@/lib/verify-cert';
 import { fetchPackHits, PackHitList, type PackHit } from '@/components/pack-hit-list';
+import { answerPlate, deskCard, deskField, deskMark, deskNote, deskSubmit, MarkSlots } from '@/components/desk-plate';
 
 function PackPinList({ kind, label }: { kind: "hallmark"; label: string }) {
   const [pin, setPin] = useState("");
@@ -59,8 +60,8 @@ function PackPinList({ kind, label }: { kind: "hallmark"; label: string }) {
       <button type="submit" className={submit}>
         Show centres
       </button>
-      {err ? <p className="mt-3 text-sm text-red-700">{err}</p> : null}
-      {note ? <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{note}</p> : null}
+      {err ? <p className="mt-3 text-sm font-medium text-red-800 dark:text-red-200">{err}</p> : null}
+      {note ? <p className={`mt-3 ${deskNote}`}>{note}</p> : null}
       {rows.length ? (
         <ul className="mt-4 grid gap-2">
           {rows.slice(0, 8).map((row) => (
@@ -125,11 +126,9 @@ function OfficialLink({ href, label, className = 'mt-6' }: { href: string; label
   );
 }
 
-const field =
-  'mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100';
-const card = 'rounded-[1.75rem] border border-line bg-white p-5 sm:p-8 dark:border-slate-700 dark:bg-[#151d30]';
-const submit =
-  'mt-6 inline-flex min-h-12 items-center rounded-full bg-bis-navy px-6 text-sm font-semibold text-white mm-press hover:bg-bis-navy-deep disabled:bg-slate-300 dark:disabled:bg-slate-700';
+const field = deskField;
+const card = deskCard;
+const submit = deskSubmit;
 
 function fill(template: string, code: string): string {
   return template.replaceAll('{code}', code);
@@ -173,17 +172,18 @@ export function HuidPage() {
               autoCorrect="off"
               spellCheck={false}
               maxLength={32}
-              className={`${field} tracking-[0.18em]`}
+              className={`${field} tracking-[0.12em]`}
             />
+            <MarkSlots value={code} />
           </label>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{copy.huidHelp}</p>
+          <p className={`mt-2 ${deskNote}`}>{copy.huidHelp}</p>
           <button type="submit" disabled={!code.trim()} className={submit}>
             {copy.check}
           </button>
         </form>
         {result ? (
-          <article className={`mt-8 ${card} mm-drop`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-bis-saffron">{copy.notLive}</p>
+          <article className={`mt-8 ${answerPlate} mm-drop`}>
+            <p className={deskMark}>{copy.notLive}</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{headline}</h2>
             <Steps lines={copy.huidSteps} />
             <OfficialLink href={MORE_URL.huid} label={copy.openHuid} />
@@ -191,7 +191,7 @@ export function HuidPage() {
         ) : (
           <div className="mt-8">
             <Steps lines={copy.huidSteps} />
-            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{copy.notLive}</p>
+            <p className={`mt-4 ${deskNote}`}>{copy.notLive}</p>
             <OfficialLink href={MORE_URL.huid} label={copy.openHuid} />
           </div>
         )}
@@ -251,7 +251,7 @@ export function HallmarkPage() {
           <div className="mt-5 space-y-4">
             {metals.map((metal) => (
               <div key={metal}>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{metalWord(copy, metal)}</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{metalWord(copy, metal)}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {FINENESS.filter((row) => row.metal === metal).map((row) => {
                     const on = pickedId === row.id;
@@ -279,8 +279,8 @@ export function HallmarkPage() {
           </button>
         </form>
         {asked ? (
-          <article className={`mt-8 ${card} mm-drop`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-bis-saffron">{copy.notLive}</p>
+          <article className={`mt-8 ${answerPlate} mm-drop`}>
+            <p className={deskMark}>{copy.notLive}</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               {picked ? gradeLine(copy, picked) : copy.hmMiss}
             </h2>
@@ -292,7 +292,7 @@ export function HallmarkPage() {
         ) : (
           <div className="mt-8">
             <Steps lines={copy.hmSteps} />
-            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{copy.notLive}</p>
+            <p className={`mt-4 ${deskNote}`}>{copy.notLive}</p>
           </div>
         )}
       </section>
@@ -335,7 +335,7 @@ export function StandardsPage() {
         </form>
         {verdict ? (
           <article className={`mt-8 ${card} mm-drop`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-bis-saffron">{copy.stOpen}</p>
+            <p className={deskMark}>{copy.stOpen}</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               {clarify ? copy.stClarify : verdict.marks.length ? localVerdictTitle(lang, verdict) : copy.stMiss}
             </h2>
@@ -415,7 +415,7 @@ export function CertifyPage() {
         </div>
         {scheme && link ? (
           <article className={`mt-8 ${card} mm-drop`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-bis-saffron">{copy.notLive}</p>
+            <p className={deskMark}>{copy.notLive}</p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
               {scheme === 'isi' ? copy.isi : scheme === 'crs' ? copy.crs : copy.fmcs}
             </h2>

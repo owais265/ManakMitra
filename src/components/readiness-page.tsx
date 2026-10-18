@@ -7,6 +7,7 @@ import SiteHeader from '@/components/site-header';
 import { deskUi, localFactLabel, localOfficial, localVerdictTitle } from '@/lib/desk-ui';
 import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
 import { readinessSheet, type ReadinessSheet } from '@/lib/readiness';
+import { answerPlate, deskField, deskMark, deskNote, deskSubmit } from '@/components/desk-plate';
 import { fetchPackHits, PackHitList, type PackHit } from '@/components/pack-hit-list';
 
 export default function ReadinessPage() {
@@ -65,7 +66,7 @@ export default function ReadinessPage() {
           >
             <div className="flex items-baseline justify-between">
               <h2 className="text-lg font-semibold">{t.product}</h2>
-              <span className="text-xs text-slate-500">{query.length}/400</span>
+              <span className={`text-xs ${deskNote}`}>{query.length}/400</span>
             </div>
             <textarea
               value={query}
@@ -73,7 +74,7 @@ export default function ReadinessPage() {
               rows={5}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t.bulbPh}
-              className="mt-3 w-full resize-none rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base leading-relaxed text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
+              className={deskField}
             />
             <label className="mt-4 block text-sm font-medium">
               {t.licenceLabel}
@@ -81,13 +82,13 @@ export default function ReadinessPage() {
                 value={licence}
                 onChange={(event) => setLicence(event.target.value)}
                 placeholder="CM/L-1234567"
-                className="mt-2 w-full rounded-2xl border border-line bg-slate-50 px-4 py-3 text-base text-ink outline-none focus:border-bis-navy placeholder:text-slate-500 dark:border-slate-600 dark:bg-[#0c1222] dark:text-slate-100"
+                className={deskField}
               />
             </label>
             <button
               type="submit"
               disabled={query.trim().length < 2}
-              className="mt-5 inline-flex min-h-12 items-center rounded-full bg-bis-navy px-6 text-sm font-semibold text-white mm-press hover:bg-bis-navy-deep disabled:bg-slate-300"
+              className={deskSubmit}
             >
               {t.makeSheet}
             </button>
@@ -95,19 +96,19 @@ export default function ReadinessPage() {
 
           <div>
             {!sheet ? (
-              <div className="flex min-h-72 items-center rounded-3xl border border-dashed border-slate-300 px-6 text-sm leading-relaxed text-slate-500">
+              <div className={`flex min-h-72 items-center rounded-[1.75rem] border border-dashed border-slate-400 px-6 dark:border-slate-400 ${deskNote}`}>
                 {t.fileEmpty}
               </div>
             ) : (
-              <article className="rounded-[1.75rem] border border-line bg-white p-5 mm-drop sm:p-6 dark:border-slate-700 dark:bg-[#151d30]">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-bis-navy dark:text-blue-300">{t.pinned}</p>
+              <article className={`${answerPlate} mm-drop`}>
+                <p className={deskMark}>{t.pinned}</p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight">{localVerdictTitle(lang, sheet.verdict)}</h2>
                 {sheet.verdict.scheme ? <p className="mt-1 text-sm font-medium text-bis-navy dark:text-blue-300">{t.scheme}: {sheet.verdict.scheme}</p> : null}
-                <p className="mt-2 text-xs font-semibold text-amber-700">{t.notScore}</p>
+                <p className={`mt-2 ${deskMark}`}>{t.notScore}</p>
 
                 {sheet.related.length ? (
                   <section className="mt-6">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t.family}</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.family}</h3>
                     <ul className="mt-2 flex flex-wrap gap-2">
                       {sheet.related.map((mark) => (
                         <li key={mark} className="rounded-full border border-bis-navy/25 bg-blue-50 px-3 py-1 text-sm font-medium text-bis-navy dark:border-blue-300/40 dark:bg-[#10243f] dark:text-blue-100">{mark}</li>
@@ -118,11 +119,11 @@ export default function ReadinessPage() {
 
                 {sheet.stated.length ? (
                   <section className="mt-6">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t.wrote}</h3>
+                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.wrote}</h3>
                     <ul className="mt-2 grid gap-2 sm:grid-cols-2">
                       {sheet.stated.map((fact) => (
                         <li key={fact.label} className="rounded-2xl border border-line px-3 py-2 text-sm dark:border-slate-700">
-                          <span className="block text-xs text-slate-500">{localFactLabel(lang, fact.label)}</span>
+                          <span className={`block text-xs ${deskNote}`}>{localFactLabel(lang, fact.label)}</span>
                           <span className="font-medium">{fact.value}</span>
                         </li>
                       ))}
@@ -131,7 +132,7 @@ export default function ReadinessPage() {
                 ) : null}
 
                 <section className="mt-6">
-                  <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{t.stillOpen}</h3>
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.stillOpen}</h3>
                   <ul className="mt-2 space-y-2 text-sm leading-relaxed">
                     {!sheet.licence ? <li>• {t.noLicence}</li> : sheet.licence.status === 'format-ok' ? <li>• {sheet.licence.marks[0]} {t.shapeOk}</li> : <li>• {t.shapeBad}</li>}
                     <li>• {t.noPercent}</li>
