@@ -20,7 +20,7 @@ export const JEWELLERY_CUE =
 
 /** Products that never carry Hallmark/HUID — stop jewellery pins on cement/water/electronics. */
 export const NON_JEWELLERY_PRODUCT =
-  /\b(cements?|fans?|laptops?|notebooks?|tablets?|smartphones?|mobile phones?|cell phones?|air[\s-]?conditioners?|\bacs\b|\bac\b|refrigerators?|fridge|helmets?(?:\s+for\s+bikers)?|motorcycle helmets?|toys?\b|plugs?\b|switches?|led\s*bulbs?|electric irons?|pressure cookers?|cookers?\b|bottled waters?|mineral waters?|packaged drinking|milk powders?|infant foods?|footwears?|shoes?\b|steel utensils?|gas cylinders?|lpg|auto parts?|safety glass|led tvs?|cctv|power banks?|printers?|routers?|induction|microwaves?|cementt|siment|plywood|biscuits?|spices?|soaps?|forklifts?|bearings?|gaskets?|incense|detergents?|shampoos?|generators?|electric motors?|washing machines?|water purifiers?|ceramic tiles?|car tires?|tea powder|door locks?|matchboxes?|(?:room\s+)?coolers?|solar panels?|honey|inverters?|drones?|stoves?|sanitary ware|conveyor belts?|compressors?|hoists?|cranes?|flanges?|fittings?|shafts?|gears?|steel pipes?|x-?ray|medical devices?|smart locks?|webcams?|pos machines?|biometric|barcode|coffee beans?|toothpastes?|bicycle tubes?|weigh scales?|electric heaters?|microwave ovens?|lpg rubber|chemical fertilizers?|industrial valves?|elevator cables?|set-top|scanners?|lithium|agricultural pumps?|tmt bars?|transformers?|paint|regulators?|smart speakers?|smart meters?|circuit breakers?|ceiling fans?|cameras?|helmets?|candles?|\bups\b|wireless keyboards?)\b/i;
+  /\b(cements?|fans?|laptops?|notebooks?|tablets?|smartphones?|mobile phones?|cell phones?|air[\s-]?conditioners?|\bacs\b|\bac\b|refrigerators?|fridge|helmets?(?:\s+for\s+bikers)?|motorcycle helmets?|toys?\b|plugs?\b|switches?|led\s*bulbs?|electric irons?|pressure cookers?|cookers?\b|bottled waters?|mineral waters?|packaged drinking|milk powders?|infant foods?|footwears?|shoes?\b|steel utensils?|gas cylinders?|lpg|auto parts?|safety glass|led tvs?|cctv|power banks?|printers?|routers?|induction|microwaves?|cementt|siment|plywood|biscuits?|spices?|soaps?|forklifts?|bearings?|gaskets?|incense|detergents?|shampoos?|generators?|electric motors?|washing machines?|water purifiers?|ceramic tiles?|car tires?|tea powder|door locks?|matchboxes?|(?:room\s+)?coolers?|solar panels?|honey|inverters?|drones?|stoves?|sanitary ware|conveyor belts?|compressors?|hoists?|cranes?|flanges?|fittings?|shafts?|gears?|steel pipes?|x-?ray|medical devices?|smart locks?|webcams?|pos machines?|biometric|barcode|coffee beans?|toothpastes?|bicycle tubes?|weigh scales?|electric heaters?|microwave ovens?|lpg rubber|chemical fertilizers?|industrial valves?|elevator cables?|set-top|scanners?|lithium|heaters?|agricultural pumps?|tmt bars?|transformers?|paint|regulators?|smart speakers?|smart meters?|circuit breakers?|ceiling fans?|cameras?|helmets?|candles?|\bups\b|wireless keyboards?)\b/i;
 
 /** Map Indic / Hinglish tokens onto English so the same pins fire. */
 const INDIC_GLOSS: Record<string, string> = {
@@ -117,7 +117,8 @@ export function isHallmarkSchemeMix(query: string, family?: ProductFamily | null
   const q = glossIndic(query);
   if (!HALLMARK_CUE.test(q)) return false;
   if (family && family.scheme !== "hallmark") return true;
-  if (NON_JEWELLERY_PRODUCT.test(q) && !JEWELLERY_CUE.test(q)) return true;
+  // "Gold switch ka HUID" still names a non-jewellery product. The gold/silver word does not cancel that.
+  if (NON_JEWELLERY_PRODUCT.test(q)) return true;
   return false;
 }
 
@@ -173,6 +174,7 @@ const FAMILIES: ProductFamily[] = [
       "storage type electric water heater",
       "storage water heater",
       "electric geyser",
+      "water heater",
       "geyser",
     ],
     is: ["2082"],
@@ -435,7 +437,7 @@ const FAMILIES: ProductFamily[] = [
   },
   {
     id: "switch",
-    aliases: ["plug socket", "socket outlet", "switch socket", "wall socket", "plugs", "plug", "switches"],
+    aliases: ["plug socket", "socket outlet", "switch socket", "wall socket", "plugs", "plug", "switches", "switch"],
     is: ["1293"],
     scheme: "isi",
   },
@@ -444,6 +446,20 @@ const FAMILIES: ProductFamily[] = [
     aliases: ["lpg stove", "gas stove", "domestic gas stove", "गैस चूल्हा"],
     is: ["17153"],
     scheme: "isi",
+  },
+  {
+    id: "lpg-hose",
+    aliases: ["lpg rubber tubes", "lpg rubber tube", "lpg rubber hose", "lpg hose", "rubber tubing for lpg"],
+    is: ["10908", "9573"],
+    scheme: "isi",
+    preferTitle: { "10908": "Flexible rubber tubing", "9573": "Rubber hose" },
+  },
+  {
+    id: "lpg-regulator",
+    aliases: ["lpg regulator", "gas regulator"],
+    is: ["9798"],
+    scheme: "isi",
+    preferTitle: { "9798": "Low pressure regulators" },
   },
   {
     id: "lpg",
@@ -486,7 +502,7 @@ const FAMILIES: ProductFamily[] = [
   {
     id: "mixer-kitchen",
     aliases: ["mixer grinder", "mixie", "kitchen mixer", "food grinder", "मिक्सी", "मिक्सर ग्राइंडर"],
-    is: ["302", "14366", "14367"],
+    is: ["14366", "14367"],
     scheme: "isi",
     preferTitle: { "302": "kitchen machines" },
     disambiguate:

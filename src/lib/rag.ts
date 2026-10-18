@@ -513,7 +513,7 @@ function injectKeywordExtras(query: string, seen: Set<string>, out: EvidenceHit[
   const wantMsme =
     (/\bmsmes?\b|small industr/.test(ql)) &&
     !HALLMARK_CUE.test(ql);
-  const wantNabl = /\bnabl\b|17025/.test(ql);
+  const wantNabl = /\bnabl\b|(?<!\d)17025(?!\d)/.test(ql);
   const wantWhatIs = /what (is|are) (an |the )?(bis|indian standards?)\b|how many indian standards?/.test(ql);
   const wantPenalty = /\bpenalt|uncertified|fake mark|compensation for fake/.test(ql);
   const wantFoodList = /food products?|iodized salt|name 3 important indian standards/.test(ql);
@@ -792,6 +792,7 @@ function policyEarlyHits(
   const airAsk = /authorized indian representative|\(air\)|air process|can an air for|an air for|air branch|air ka|which air/i.test(q);
   const whatBis = /what is bis\b|बीआईएस क्या है|\bbis kya hai\b/i.test(q);
   const clauseAsk = CLAUSE_ASK.test(q);
+  const unknownScheme = /\bscheme[\s-]*(?:iii|iv|v|vi|3|4|5|6)\b/i.test(q);
   if (
     !(
       mix ||
@@ -803,7 +804,8 @@ function policyEarlyHits(
       typedMismatch ||
       unknownTyped ||
       whatBis ||
-      clauseAsk
+      clauseAsk ||
+      unknownScheme
     )
   )
     return null;
@@ -833,7 +835,7 @@ function policyEarlyHits(
     pins.push(...pinTitle(/fake bis \/ isi mark/i, 0.9));
   }
   if (/eco[\s-]?mark/i.test(q)) pins.push(...pinTitle(/eco mark is a separate bis scheme/i, 0.99));
-  if (sopTable || typedMismatch || unknownTyped || noTableAsk) {
+  if (unknownScheme || sopTable || typedMismatch || unknownTyped || noTableAsk) {
     pins.push(...pinTitle(/hypothetical \/ policy scenario — pack has no sop/i, 0.97));
     pins.push(...pinTitle(/know your standard — look up/i, 0.93));
   }
@@ -845,7 +847,7 @@ function policyEarlyHits(
 }
 
 export function vectorRetrieve(query: string): Retrieval {
-  const q = glossIndic(query.trim());
+  const q = glossIndic(query.trim()).replace(/\(\s*case\s+\d+\s*\)/gi, " ");
   const family = matchProductFamily(q);
   const queryToks = tokens(q);
   const typedIds = queryIsNumbers(q);
@@ -884,7 +886,8 @@ export function vectorRetrieve(query: string): Retrieval {
       unknownTyped ||
       noTableAsk ||
       CLAUSE_ASK.test(q) ||
-      packHasNoTableAsk(q);
+      packHasNoTableAsk(q) ||
+      /\bscheme[\s-]*(?:iii|iv|v|vi|3|4|5|6)\b/i.test(q);
     return {
       query: q,
       hits: uniqueHits([...early, ...extra]).slice(0, 8),
@@ -991,8 +994,8 @@ export function vectorRetrieve(query: string): Retrieval {
     !isHallmarkSchemeMix(q, family) &&
     !/who is the head|head of\b/i.test(q) &&
     (family?.scheme === "hallmark" || (HALLMARK_CUE.test(q) && !family));
-  const labAsk =
-    (CITIES.test(q) || /\blabs?\b|\blaborator(?:y|ies)\b|\blims\b|प्रयोगशाला/i.test(q)) && !hallmarkAsk;
+  const namedLab = LAB_ASK.test(q);
+  const labAsk = (CITIES.test(q) || namedLab) && (!hallmarkAsk || namedLab);
   if (!labAsk) finalHits = finalHits.filter((h) => h.kind !== "lab");
   else {
     finalHits = finalHits.map((h) =>
@@ -1077,8 +1080,20 @@ export function vectorRetrieve(query: string): Retrieval {
   }
 
   const cityMFinal = q.match(CITIES);
-  if (labAsk && cityMFinal) {
-    const city = cityMFinal[1].toLowerCase();
+  const pinCode = q.match(/\b([1-9]\d{5})\b/)?.[1] || "";
+  const PIN_PREFIX_CITY: Record<string, string> = {
+    "400": "mumbai",
+    "401": "mumbai",
+    "410": "mumbai",
+    "421": "mumbai",
+    "700": "kolkata",
+    "711": "howrah",
+    "110": "delhi",
+  };
+  const pinCity = PIN_PREFIX_CITY[pinCode.slice(0, 3)] || "";
+  const labCity = (cityMFinal?.[1] || (namedLab ? pinCity : "")).toLowerCase();
+  if (labAsk && labCity && pinCode) {
+    const city = labCity;
     const needles = CITY_EXPAND[city] || [city];
     const cityLabs = uniqueHits([
       ...rag.chunks
@@ -1126,7 +1141,7 @@ export function vectorRetrieve(query: string): Retrieval {
   }
 
   const wantCrsRFinal =
-    /\br-?number\b|registration number/i.test(q) &&
+    (/\br-?\d{5,}\b|\br-?number\b/i.test(q) || (/\bregistration number\b/i.test(q) && /\bcrs\b/i.test(q))) &&
     family?.scheme !== "hallmark" &&
     !isHallmarkSchemeMix(q, family) &&
     !JEWELLERY_CUE.test(q);
@@ -1134,13 +1149,20 @@ export function vectorRetrieve(query: string): Retrieval {
     const dedicated = rag.chunks
       .filter((c) => /r-number|r number|registration \(r\)/i.test(c.title) && c.kind !== "standard")
       .map((c) => toHit(c, 0.99));
+    const famStd =
+      family?.scheme === "isi"
+        ? finalHits.filter((h) => {
+            const n = isNumbers(h.title)[0];
+            return h.kind === "standard" && Boolean(n && family.is.includes(n));
+          })
+        : [];
     const rest = finalHits.filter(
       (h) =>
         h.kind !== "standard" &&
         !dedicated.some((d) => d.title === h.title) &&
         !/huid|verify huid/i.test(h.title),
     );
-    finalHits = uniqueHits([...dedicated, ...rest]);
+    finalHits = uniqueHits([...famStd, ...dedicated, ...rest]);
   }
 
   const wantAgmarkFinal = /\bagmark\b/i.test(q);
@@ -1226,7 +1248,7 @@ export function vectorRetrieve(query: string): Retrieval {
     finalHits = uniqueHits([...head, ...std, ...tail, ...rest]);
   }
 
-  if (labAsk && !cityMFinal) {
+  if (labAsk && !labCity) {
     const lims = uniqueHits([
       ...pinTitle(/live LIMS list|testing laboratory directory|list of bis recognised laborator/i, 0.99),
       ...pinTitle(/nabl \/ iso\/iec 17025/i, 0.96),
@@ -1345,7 +1367,7 @@ export function vectorRetrieve(query: string): Retrieval {
     }
     const pin = uniqueHits(pins);
     const rest = finalHits.filter(
-      (h) => h.kind !== "crs" && h.kind !== "lab" && !pin.some((x) => x.title === h.title),
+      (h) => h.kind !== "crs" && (namedLab || h.kind !== "lab") && !pin.some((x) => x.title === h.title),
     );
     finalHits = uniqueHits([...pin, ...rest]);
   }
@@ -1426,7 +1448,7 @@ export function vectorRetrieve(query: string): Retrieval {
     finalHits = uniqueHits([...pin, ...rest]);
   }
 
-  if (/\bnabl\b|17025/i.test(q)) {
+  if (/\bnabl\b|(?<!\d)17025(?!\d)/i.test(q)) {
     const pin = uniqueHits([...pinTitle(/nabl \/ iso\/iec 17025/i, 0.99), ...pinTitle(/live LIMS list/i, 0.9)]);
     const rest = finalHits.filter((h) => h.kind !== "standard" && !pin.some((x) => x.title === h.title));
     finalHits = uniqueHits([...pin, ...rest]);
@@ -1521,7 +1543,7 @@ export function vectorRetrieve(query: string): Retrieval {
     finalHits = uniqueHits([...pin, ...rest]);
   }
 
-  if (!family && !ids.length) {
+  if (!family && !ids.length && !(namedLab && pinCode)) {
     const official = finalHits.filter((h) => h.kind !== "standard" && h.kind !== "lab" && h.kind !== "crs");
     if (official.length) finalHits = uniqueHits(official);
     else {
@@ -1642,7 +1664,7 @@ export function vectorRetrieve(query: string): Retrieval {
     ]);
   }
 
-  if (isLabCityQuery(q)) {
+  if (isLabCityQuery(q) && pinCode) {
     const city = q.match(CITIES)?.[1]?.toLowerCase();
     if (city) {
       const needles = CITY_EXPAND[city] || [city];
@@ -1672,6 +1694,12 @@ export function vectorRetrieve(query: string): Retrieval {
     }
   }
 
+  if (namedLab && !pinCode) {
+    finalHits = finalHits.filter(
+      (h) => h.kind !== "lab" && !/laborator|\blims\b|group-[12]/i.test(h.title),
+    );
+  }
+
   if (family?.is.length) {
     const allowed = new Set<string>([
       ...family.is.map((raw) => raw.match(/\d{3,6}/)?.[0] || raw),
@@ -1685,6 +1713,23 @@ export function vectorRetrieve(query: string): Retrieval {
     });
   }
 
+  if (knownTyped.length) {
+    const exact: EvidenceHit[] = [];
+    for (const id of knownTyped) {
+      const ch = exactIsChunk(id);
+      if (ch) exact.push(toHit(ch, 0.98));
+    }
+    if (exact.length) finalHits = uniqueHits([...exact, ...finalHits]);
+  } else if (unknownTyped) {
+    const missing = pinTitle(/is number not in this catalogue snapshot/i, 0.99);
+    const rest = finalHits.filter((h) => h.kind !== "standard");
+    finalHits = uniqueHits([...missing, ...rest]);
+  }
+
+  if (/\bscheme[\s-]*i\b/i.test(q) && !/\bscheme[\s-]*ii\b/i.test(q)) {
+    finalHits = finalHits.filter((h) => !/scheme-ii|scheme ii|compulsory registration scheme crs/i.test(h.title));
+  }
+
   const best = finalHits[0];
   const bestCov = best ? coverage(queryToks, `${best.title} ${best.body}`) : 0;
   const bestScore = best?.score ?? 0;
@@ -1693,9 +1738,13 @@ export function vectorRetrieve(query: string): Retrieval {
   const pinnedOfficial = finalHits.some(
     (h) => h.score >= 0.9 && ["faq", "process", "link", "consumer", "hallmark", "product"].includes(h.kind),
   );
+  const pinLab =
+    namedLab &&
+    Boolean(pinCode) &&
+    finalHits.some((h) => h.kind === "lab" || /laborator|\blims\b|group-[12]/i.test(h.title));
   const hasEvidence = Boolean(
     finalHits.length &&
-      (family || pinnedOfficial || isLabCityQuery(q)
+      (family || pinnedOfficial || isLabCityQuery(q) || pinLab
         ? true
         : ids.length
           ? bestScore >= 0.12
