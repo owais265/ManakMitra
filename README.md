@@ -247,7 +247,7 @@ Combinatorial questions across TF-IDF, hybrid, and generic phrasing. Each file h
 
 The generic mixed rows were concentrated in the first 573,000, before the 2026-10-17 scorer reload (city-only lab list, and a scheme question treated as a hallmark mix). Rows scored after that reload had 0 mixed. The stored CSV was not rewritten. Off-topic and real scheme-mix still refuse.
 
-The **0** in the last column is invented IS or fee only. Lab ranking is a separate desk. A PIN or device location is placed on a city-centre point, then sorted by haversine against BIS own laboratories and the 437 BIS-recognised Group-1 rows in the pack. Each card says **BIS laboratory** or **BIS recognised**. The map is a Google embed of those coordinates, not a Google search for a random laboratory, and not a surveyed gate. A product name does not mean the laboratory is accredited for that IS.
+The **0** in the last column is invented IS or fee only. Lab ranking is a separate desk. A PIN or device location is placed on a city-centre point. The card keeps three sources apart: **BIS laboratory** (BIS own), **BIS recognised** (Group-1 extract), and **national laboratory** (NPL and the other public laboratories). A national laboratory is not a BIS laboratory and not a recommendation. The map is a Google embed of those coordinates, not a surveyed gate. A product name does not mean the laboratory is accredited for that IS.
 
 Hallmark PIN search uses the 10 Oct 2026 cancelled and suspended centre extract only. Those rows are marked not open. HUID on this desk is a 6-character shape check, not the live BIS CARE register. Verify, product file, and standards read the local pack before any database call.
 
@@ -735,7 +735,7 @@ Public catalogue metadata only. No paid clause text.
 | standard | IS number, title, official URL | Full standard text, clause numbers not on the public page |
 | product | Family, scheme, pinned IS when the pack has it | A synthetic SKU or a chat-only-item |
 | process | Steps and portal when the FAQ pack has them | Invented fees or statutory timelines |
-| lab | Name, address, PIN, LIMS link. Ranking is BIS own laboratories plus the loaded LIMS extract | A test booking, a rating, or a non-BIS fallback such as NPL, NTH, or CIPET |
+| lab | Name, address, and city. Three labels stay apart: BIS own laboratory, BIS-recognised Group-1 row, national laboratory such as NPL | A test booking, a rating, or calling NPL a BIS laboratory |
 | hallmark | HUID format and jewellery-only verify path | HUID applied to a fan or helmet |
 | crs | CRS product map when present | A completed registration |
 | faq / consumer | Published contact and complaint path | A ticket number |
@@ -806,7 +806,7 @@ Built desks, not a slide-only assistant.
 | --- | --- |
 | Assistant | Natural-language Q&A with three exits |
 | Verify product | Licence-shaped check against the verify pack |
-| Testing labs | PIN or device location → nearest BIS own laboratory and BIS-recognised Group-1 labs from the pack. City centre, not a surveyed gate. NPL, NTH and CIPET are not ranked |
+| Testing labs | PIN or device location. BIS own laboratories keep a slot. Group-1 rows are BIS recognised. NPL is listed as a national laboratory, not as BIS |
 | HUID / Hallmark finder | Jewellery path only |
 | Indian Standards finder | Product / IS → catalogue row |
 | Certification steps | Scheme process + official portal |

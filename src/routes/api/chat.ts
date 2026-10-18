@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
-import { searchField, rankPublishedPlaces, type PackField } from "@/lib/place-catalogue.server";
+import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
 import { isFollowCue, followRetrieval, type ChatTurn } from "@/lib/query-context";
@@ -563,13 +563,24 @@ export const Route = createFileRoute("/api/chat")({
                   const pin = query.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] || "";
                   const origin = pin ? pinCentroid(pin) : board?.origin || null;
                   if (origin) {
-                    const ranked = await rankPublishedPlaces("lab", origin, pin, "");
-                    const near = ranked.filter((lab) => lab.km <= 80).slice(0, 8);
-                    const rows = near.length ? near : ranked.slice(0, 5);
-                    if (rows.length) {
+                    const placed = await labBoard(origin, "");
+                    const own = placed.nearby.filter((lab) => lab.tier === "bis-own").slice(0, 3);
+                    const recognised = [...placed.nearby, ...placed.farther].filter((lab) => lab.tier === "bis-recognised").slice(0, 6);
+                    const national = placed.nearby.filter((lab) => lab.tier === "national").slice(0, 3);
+                    if (own.length) {
                       evidence +=
-                        "\n\nRECOGNISED LABS from the loaded extract. City centre, not a surveyed gate. Call these BIS recognised, not a BIS laboratory, unless the name says BIS laboratory. Do not claim a test scope.\n" +
-                        rows.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
+                        "\n\nBIS LABORATORIES (BIS own). Do not call a national laboratory a BIS laboratory.\n" +
+                        own.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
+                    }
+                    if (recognised.length) {
+                      evidence +=
+                        "\n\nRECOGNISED LABS from the loaded extract. City centre, not a surveyed gate. Call these BIS recognised. Do not claim a test scope.\n" +
+                        recognised.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
+                    }
+                    if (national.length) {
+                      evidence +=
+                        "\n\nNATIONAL LABORATORIES including NPL. Not a BIS laboratory and not a recommendation.\n" +
+                        national.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
                     }
                   }
                 }

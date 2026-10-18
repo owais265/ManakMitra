@@ -1,6 +1,8 @@
 import { getServiceSupabase } from "@/lib/supabase.server";
 import {
   BIS_LABS,
+  OTHER_LABS,
+  NEAR_KM,
   haversineKm,
   pinCentroid,
   publishedAddress,
@@ -165,6 +167,7 @@ const FIELD_KINDS = {
   verify: ["standard", "product"],
   file: ["product"],
   process: ["process", "crs"],
+  hallmark: ["hallmark"],
 } as const;
 
 export type PackField = keyof typeof FIELD_KINDS;
@@ -225,4 +228,30 @@ export function ownLabsNear(origin: { lat: number; lng: number }, product: strin
     productHit: needle.length > 2 && lab.name.toLowerCase().includes(needle),
     tier: "bis-own" as const,
   })).sort((a, b) => a.km - b.km);
+}
+
+/** NPL and the other national laboratories. Not a BIS laboratory and not a BIS recommendation. */
+export function nationalLabsNear(origin: { lat: number; lng: number }, product: string): RankedLab[] {
+  const needle = product.trim().toLowerCase();
+  return OTHER_LABS.map((lab) => ({
+    ...lab,
+    km: Math.round(haversineKm(origin.lat, origin.lng, lab.lat, lab.lng) * 10) / 10,
+    productHit: needle.length > 2 && lab.name.toLowerCase().includes(needle),
+    tier: "national" as const,
+  })).sort((a, b) => a.km - b.km);
+}
+
+function band(rows: RankedLab[], near: boolean, limit: number): RankedLab[] {
+  return rows.filter((row) => (near ? row.km <= NEAR_KM : row.km > NEAR_KM)).slice(0, limit);
+}
+
+/** BIS own labs keep a slot. Recognised labs come from the pack. NPL stays national, never BIS. */
+export async function labBoard(origin: { lat: number; lng: number }, product = ""): Promise<{ nearby: RankedLab[]; farther: RankedLab[] }> {
+  const own = ownLabsNear(origin, product);
+  const recognised = await rankPublishedPlaces("lab", origin, "", product);
+  const national = nationalLabsNear(origin, product);
+  return {
+    nearby: [...band(own, true, 9), ...band(recognised, true, 12), ...band(national, true, 6)],
+    farther: [...band(own, false, 3), ...band(recognised, false, 4), ...band(national, false, 3)],
+  };
 }

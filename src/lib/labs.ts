@@ -11,7 +11,7 @@ export type Lab = {
   confidence: "high" | "low";
 };
 
-export type RankedLab = Lab & { km: number; productHit?: boolean; url?: string; tier?: "bis-own" | "bis-recognised" | "closed" };
+export type RankedLab = Lab & { km: number; productHit?: boolean; url?: string; tier?: "bis-own" | "bis-recognised" | "national" | "closed" };
 
 /** BIS own laboratories published on LIMS. Pins are the published locality, not a surveyed gate. */
 export const BIS_LABS: Lab[] = [

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const jiti = createJiti(import.meta.url, { alias: { "@": join(root, "src") } });
 const { pinCentroid } = jiti(join(root, "src/lib/labs.ts"));
-const { rankPublishedPlaces, searchField } = jiti(join(root, "src/lib/place-catalogue.server.ts"));
+const { rankPublishedPlaces, searchField, labBoard } = jiti(join(root, "src/lib/place-catalogue.server.ts"));
 const { checkBrand, checkLicence } = jiti(join(root, "src/lib/verify-cert.ts"));
 const { checkHuid } = jiti(join(root, "src/lib/more-desk.ts"));
 
@@ -113,6 +113,20 @@ await check("process crs", async () => {
   assert.ok(hits.length > 0);
 });
 
+await check("delhi keeps BIS own and NPL apart", async () => {
+  const board = await labBoard(pinCentroid("110001"), "");
+  assert.ok(board.nearby.some((row) => row.tier === "bis-own"));
+  const npl = [...board.nearby, ...board.farther].find((row) => row.id === "NPL");
+  assert.ok(npl);
+  assert.equal(npl.tier, "national");
+  assert.equal(board.nearby.some((row) => row.tier === "national" && row.tier === "bis-own"), false);
+});
+
+await check("hallmark pack rows", async () => {
+  const hits = await searchField("hallmark gold", "hallmark");
+  assert.ok(hits.length > 0);
+  assert.ok(hits.every((hit) => /bis\.gov\.in|manakonline\.in/.test(hit.url)));
+});
 await check("standards IS 269", async () => {
   const hits = await searchField("IS 269", "standard");
   assert.ok(hits.some((hit) => hit.title.includes("269")));

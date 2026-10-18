@@ -209,6 +209,7 @@ export function HallmarkPage() {
   const [text, setText] = useState('');
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [asked, setAsked] = useState(false);
+  const [hits, setHits] = useState<PackHit[]>([]);
 
   const found = asked && !pickedId ? findHallmark(text) : null;
   const picked = pickedId ? FINENESS.find((row) => row.id === pickedId) || null : found?.grade || null;
@@ -219,12 +220,15 @@ export function HallmarkPage() {
     event.preventDefault();
     setPickedId(null);
     setAsked(true);
+    const needle = /gold|silver|platinum|hallmark|हॉल/i.test(text) ? text : `hallmark ${text}`;
+    void fetchPackHits('hallmark', needle).then(setHits);
   };
 
   const choose = (row: Fineness) => {
     setText(row.id === 'pt900' ? 'platinum 900' : row.tag);
     setPickedId(row.id);
     setAsked(true);
+    void fetchPackHits('hallmark', row.metal === 'platinum' ? 'platinum hallmark' : `${row.metal} hallmark`).then(setHits);
   };
 
   return (
@@ -283,6 +287,7 @@ export function HallmarkPage() {
             {ambiguous ? <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{copy.both900}</p> : null}
             <Steps lines={copy.hmSteps} />
             <OfficialLink href={MORE_URL.huid} label={copy.openHuid} />
+            <PackHitList hits={hits} label="Hallmark rows from the loaded pack. Not a live centre." />
           </article>
         ) : (
           <div className="mt-8">

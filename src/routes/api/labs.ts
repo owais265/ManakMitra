@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { areaMapUrl, NEAR_KM, pinCentroid, rankLabs } from "@/lib/labs";
-import { ownLabsNear, rankPublishedPlaces, searchField, type PackField } from "@/lib/place-catalogue.server";
+import { areaMapUrl, NEAR_KM, pinCentroid } from "@/lib/labs";
+import { labBoard, rankPublishedPlaces, searchField, type PackField } from "@/lib/place-catalogue.server";
+import { searchPackTitles } from "@/lib/rag";
 import { chatLog } from "@/lib/chat-log";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 
@@ -57,13 +58,19 @@ export const Route = createFileRoute("/api/labs")({
         }
         const product = typeof body.product === "string" ? body.product.slice(0, 80) : "";
         const kind = typeof body.kind === "string" ? body.kind : "lab";
-        if (kind === "standard" || kind === "product" || kind === "verify" || kind === "file" || kind === "process") {
+        const pinDigits = typeof body.pin === "string" ? body.pin.replace(/\D/g, "") : "";
+        const hasPin = /^[1-9][0-9]{5}$/.test(pinDigits);
+        const latIn = typeof body.lat === "number" ? body.lat : Number.NaN;
+        const lngIn = typeof body.lng === "number" ? body.lng : Number.NaN;
+        const hasDevice = Number.isFinite(latIn) && Number.isFinite(lngIn);
+        const fieldKind = kind === "standard" || kind === "product" || kind === "verify" || kind === "file" || kind === "process" || kind === "hallmark";
+        if (fieldKind && !(kind === "hallmark" && (hasPin || hasDevice))) {
           const q = typeof body.q === "string" ? body.q : product;
           const hits = await searchField(q, kind as PackField);
           return Response.json({ hits });
         }
-        const lat = typeof body.lat === "number" ? body.lat : Number.NaN;
-        const lng = typeof body.lng === "number" ? body.lng : Number.NaN;
+        const lat = latIn;
+        const lng = lngIn;
         let origin: { lat: number; lng: number; label: string } | null = null;
         let source: "device" | "pin" = "pin";
         if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
@@ -80,36 +87,34 @@ export const Route = createFileRoute("/api/labs")({
           return Response.json({ error: "Enter a 6-digit PIN code, or use this device's location." }, { status: 400 });
         }
         const placeKind = kind === "hallmark" ? "hallmark" : "lab";
-        const userPin = typeof body.pin === "string" && /^[1-9][0-9]{5}$/.test(body.pin.replace(/\D/g, "")) ? body.pin.replace(/\D/g, "") : "";
-        const published = await rankPublishedPlaces(placeKind, origin, userPin, product);
-        const own = kind === "lab" ? ownLabsNear(origin, product) : [];
-        const seen = new Set<string>();
-        const merged = [...own, ...published].filter((lab) => {
-          const key = lab.name.toLowerCase().slice(0, 80);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        merged.sort((a, b) => a.km - b.km || a.name.localeCompare(b.name));
-        const nearby = merged.filter((lab) => lab.km <= NEAR_KM).slice(0, 20);
-        const farther = merged.filter((lab) => lab.km > NEAR_KM).slice(0, 8);
-        const usedFallback = kind === "lab" && !published.length;
-        const shownNear = usedFallback ? rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km <= NEAR_KM) : nearby;
-        const shownFar = usedFallback ? rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km > NEAR_KM).slice(0, 8) : farther;
+        const userPin = hasPin ? pinDigits : "";
+        if (placeKind === "hallmark") {
+          const published = await rankPublishedPlaces("hallmark", origin, userPin, product);
+          const marks = searchPackTitles("hallmark", "hallmark", 4);
+          return Response.json({
+            origin,
+            source,
+            product,
+            kind,
+            nearby: published.filter((place) => place.km <= NEAR_KM).slice(0, 12),
+            farther: published.filter((place) => place.km > NEAR_KM).slice(0, 8),
+            marks,
+            mapUrl: areaMapUrl(origin.lat, origin.lng, origin.label, product),
+            note: "Closed or suspended centres from the 10 Oct 2026 extract are not open. The hallmark marks below are from the loaded pack. This is not a live HUID check. Confirm on BIS CARE.",
+          });
+        }
+        const board = await labBoard(origin, product);
         return Response.json({
           origin,
           source,
           product,
           kind,
-          nearby: shownNear,
-          farther: shownFar,
+          nearby: board.nearby,
+          farther: board.farther,
           mapUrl: areaMapUrl(origin.lat, origin.lng, origin.label, product),
-          note:
-            kind === "hallmark"
-              ? "This PIN list is the 10 Oct 2026 cancelled and suspended centre extract. It is not an open-centre finder and not a live HUID check. Confirm on BIS CARE."
-              : published.length
-                ? "BIS laboratory means a BIS own laboratory. BIS recognised means a Group-1 laboratory from the loaded extract. Distance is the city centre, not a surveyed gate. A product name does not mean that laboratory is accredited for that IS. Confirm scope on LIMS."
-                : "No laboratory from the loaded extract could be placed. The list below is BIS own laboratories only.",
+          note: board.nearby.some((lab) => lab.tier === "bis-recognised" || lab.tier === "bis-own")
+            ? "BIS laboratory is a BIS own laboratory. BIS recognised is a Group-1 row from the loaded extract. National laboratory, including NPL, is not a BIS laboratory and not a recommendation. Distance is the city centre, not a surveyed gate. A product name is not a test scope."
+            : "No laboratory from the loaded extract could be placed. BIS own laboratories are still listed. National laboratories are not a BIS recommendation.",
         });
       },
     },

@@ -207,14 +207,16 @@ function LabList({
                 <span className="shrink-0 text-sm text-bis-navy dark:text-blue-300">{lab.km} km</span>
               </span>
               <span className="mt-1 block text-sm leading-relaxed text-slate-600 dark:text-slate-300">{lab.address}</span>
-              <span className={`mt-2 inline-flex text-xs font-semibold ${lab.tier === 'bis-own' || lab.confidence === 'high' ? 'text-emerald-700' : lab.tier === 'bis-recognised' ? 'text-bis-navy dark:text-blue-300' : 'text-amber-700'}`}>
-                {lab.tier === 'bis-own' || lab.confidence === 'high'
-                  ? bis
-                  : lab.tier === 'bis-recognised'
-                    ? 'BIS recognised. Scope is not in this pack. Confirm on LIMS.'
-                    : lab.tier === 'closed'
-                      ? 'Not open in this extract.'
-                      : city}
+              <span className={`mt-2 inline-flex text-xs font-semibold ${lab.tier === 'bis-own' || (lab.confidence === 'high' && lab.tier !== 'national') ? 'text-emerald-700' : lab.tier === 'bis-recognised' ? 'text-bis-navy dark:text-blue-300' : 'text-amber-700'}`}>
+                {lab.tier === 'national'
+                  ? 'National laboratory. Not a BIS laboratory.'
+                  : lab.tier === 'bis-own' || lab.confidence === 'high'
+                    ? bis
+                    : lab.tier === 'bis-recognised'
+                      ? 'BIS recognised. Scope is not in this pack. Confirm on LIMS.'
+                      : lab.tier === 'closed'
+                        ? 'Not open in this extract.'
+                        : city}
               </span>
             </button>
             <a href={mapsSearchUrl(lab)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-bis-navy dark:text-blue-300">
