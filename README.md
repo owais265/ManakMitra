@@ -19,7 +19,7 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
-**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Hardening](#operational-hardening) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
+**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Evaluation](#experimental-evaluation--benchmark) · [Corpus](#authorised-pack--what-is-actually-in-the-file) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Hardening](#operational-hardening) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
 
 ---
 
@@ -31,8 +31,10 @@ A pure retrieval demo that always returns top-5 from one PDF is not this product
 | --- | --- | --- |
 | Live multi-desk product | Home, chat, verify, labs, HUID, standards, certify, complaint, contact | [Open the site](https://forest-yonder-apex-plum.vercel.app/) |
 | Three exits | Allow (sourced row) · Clarify (one missing fact) · Refuse (portal handoff, retrieval = 0) | Demo video + chat: IS 14543, unclear helmet, fan + HUID |
-| Golden gates | M1–M10 pass without an LLM | `npm run eval:all` |
+| Golden gates | M1–M10 pass without an LLM | [Evaluation table](#experimental-evaluation--benchmark) · `npm run eval:all` |
 | Hybrid stress | 100 / 100 fail = 0 on the hybrid retrieve path (2026-10-13) | `scripts/hybrid-stress-100.mjs` |
+| Pack file | 18,995 catalogue rows + 627 curated chunks, 100% official hosts | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
+| Voice + label OCR | Browser STT and Tesseract label read. No invented number | Live chat mic and attach |
 | No invented IS / fee / clause | Faithfulness is a pass/fail gate, not a published 0.95 score | M3 and M10 |
 | Official host only | A non-allowlisted URL is dropped | `src/lib/official-hosts.ts` |
 | Pack-only kill switch | `HYBRID_RAG=0` still returns IS + scheme + official URL | Environment table below |
@@ -52,6 +54,7 @@ Judges score understanding, novelty, depth, feasibility, design, a working build
 | Innovation | [2](#2-innovation--why-a-chatbot-was-not-enough) | Fan + HUID **refuse** (retrieval = 0) |
 | Technical complexity | [3](#3-technical-complexity--what-is-actually-hard) | Four locks before search; RRF only after unlock |
 | Feasibility | [4](#4-feasibility--it-already-runs) | [Live MVP](https://forest-yonder-apex-plum.vercel.app/) |
+| Evaluation | [Benchmark](#experimental-evaluation--benchmark) | M1–M10, pack file, live chat |
 | Architecture | [5](#5-architecture--system-design) | [RRF note](docs/rrf-and-gate.md) |
 | Implementation | [6](#6-implementation-quality) | Desks + `npm run eval:all` |
 | UX / UI | [7](#7-user-experience) | First-run path under 30 seconds |
@@ -103,6 +106,8 @@ What is unique (not a bundle of existing tools):
 4. **Hybrid retrieve only after unlock.** Sparse TF-IDF on the pack, then optional Okapi BM25 + `pg_trgm` + pgvector, then RRF.
 5. **Model-down continuity.** If the LLM is offline, the pack still returns IS number, scheme path and official URL.
 6. **Public metadata only.** No paid clause text, no invented fees, no fake confidence score.
+7. **OCR / vision input.** A product-label photo is read in the browser with Tesseract ([`src/lib/label-ocr.ts`](src/lib/label-ocr.ts)). A licence or IS number is kept only if the recognised text contains one. The reader does not invent a number.
+8. **Voice (STT).** The chat box uses the browser Speech Recognition API. The spoken language follows the header lock (English, Hindi, or Hinglish), not a guess from the audio.
 
 **Why this was not already solved:** BIS.gov.in is a library of portals, not a gate. A generic assistant can quote a paragraph and still pick the wrong scheme. The hard product is the gate.
 
@@ -177,6 +182,152 @@ Roadmap after the MVP (from the idea PPT, not vapour):
 5. Gap scanner as a pathway constraint engine
 
 Mature pieces: Postgres FTS + pgvector, serverless Node, optional LLM phrasing. The pack path does not depend on a model vendor.
+
+---
+
+## Experimental evaluation & benchmark
+
+These tables are from this repository and the live deployment. They are not copied from another product's fine-tune sheet. We do not publish Recall@1 / NDCG on a private 100-question set we have not released. A reader can open the pack file and re-run the gates.
+
+### Golden gates — `npm run eval:metrics` (2026-10-18)
+
+No LLM is called. A gate fails the build if it misses its threshold.
+
+| Evaluation metric | Pass | Total | Result | Threshold | What it locks |
+| --- | ---: | ---: | ---: | ---: | --- |
+| M1 Family pin | 56 | 56 | 100% | 100% | Product family stays on its own IS |
+| M2 Retrieval@3 | 55 | 55 | 100% | 95% | Expected row is in the top 3 |
+| M3 Hallucination-0 | 12 | 12 | 100% | 100% | No invented IS, fee, or clause |
+| M4 Official URL 100% | 7 | 7 | 100% | 100% | Every usable row has an allowlisted host |
+| M5 Clarify-first | 5 | 5 | 100% | 100% | One missing fact asks one question |
+| M6 Scheme mix-up 0 | 4 | 4 | 100% | 100% | Fan + HUID does not become jewellery |
+| M7 Off-topic reject | 6 | 6 | 100% | 100% | Cake, cricket, tickets refuse before search |
+| M8 Standalone query | 3 | 3 | 100% | 100% | Yesterday's IS does not leak into today |
+| M9 Multilingual lock | 12 | 12 | 100% | 100% | Header language beats script guessing |
+| M10 Clause honesty | 1 | 1 | 100% | 100% | Paid clause text is not quoted |
+| **M1–M10** | **161** | **161** | **100%** | — | **Failed gates: 0** |
+
+Reproduce: `npm run eval:metrics`. The harness is [`scripts/eval-metrics.mjs`](scripts/eval-metrics.mjs).
+
+### Hybrid retrieve stress — 100 questions (2026-10-13)
+
+Weak-lock path only. Strong locks still freeze. No web.
+
+| Bucket | Questions | Fail | Mean ms |
+| --- | ---: | ---: | ---: |
+| Product | 40 | 0 | 655 |
+| Process | 15 | 0 | 181 |
+| Lab | 12 | 0 | 1,329 |
+| Typed IS | 10 | 0 | 98 |
+| Hindi | 8 | 0 | 112 |
+| Weak lock | 8 | 0 | 73 |
+| Edge | 7 | 0 | 1,851 |
+| **All** | **100** | **0** | p95 **29 ms** (local rank) |
+
+Source: [`artifacts/hybrid-stress-100.json`](artifacts/hybrid-stress-100.json). Script: [`scripts/hybrid-stress-100.mjs`](scripts/hybrid-stress-100.mjs).
+
+### Three-million lock stress — exit verdicts, not a leaderboard
+
+Combinatorial questions across TF-IDF, hybrid, and generic phrasing. Each file has 1,000,000 rows. This is a lock/exit stress, not an expert IR benchmark. **Mixed** means the stored scorer and the expected exit disagreed. It is not a counted invented IS.
+
+| Lane | Rows | Correct exit | Mixed | Hallucinated IS / fee |
+| --- | ---: | ---: | ---: | ---: |
+| TF-IDF (`HYBRID_RAG=0`) | 1,000,000 | 922,789 | 77,211 | 0 |
+| Hybrid extras after a weak lock | 1,000,000 | 997,265 | 2,735 | 0 |
+| Generic product path | 1,000,000 | 952,230 | 47,770 | 0 |
+| **Total** | **3,000,000** | **2,872,284** | **127,716** | **0** |
+
+The generic mixed rows were concentrated in the first 573,000, before the 2026-10-17 scorer reload (city-only lab list, and a scheme question treated as a hallmark mix). Rows scored after that reload had 0 mixed. The stored CSV was not rewritten. Off-topic and real scheme-mix still refuse.
+
+### Live deployment — checked 2026-10-18
+
+| Check | Result | Where |
+| --- | --- | --- |
+| Home | 200 | [forest-yonder-apex-plum.vercel.app](https://forest-yonder-apex-plum.vercel.app/) |
+| Health | 200, `{"ok":true}` | `/api/health` |
+| Contact | 200, published BIS lines | `/contact` |
+| Sourced product | Allow — **IS 10908 : 2023** for LPG rubber tubes | `/api/chat` |
+| Official host on that row | `www.services.bis.gov.in` | Know Your Standard |
+| Production commit | `9f8ad0d` | Vercel project `forest-yonder-apex-plum` |
+
+---
+
+## Authorised pack — what is actually in the file
+
+The always-on sparse rank reads one file. It is in git. A reader can download it and count the rows.
+
+| Field | Value |
+| --- | --- |
+| Path in the repo | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
+| GitHub address | [github.com/owais265/ManakMitra/blob/main/src/data/rag-pack.json](https://github.com/owais265/ManakMitra/blob/main/src/data/rag-pack.json) |
+| Raw file | [raw.githubusercontent.com/.../src/data/rag-pack.json](https://raw.githubusercontent.com/owais265/ManakMitra/main/src/data/rag-pack.json) |
+| Size | 10,367,778 bytes (9.9 MB) |
+| Blob SHA | `309809b959dc0ad09f9bbf2ee6cce81d83036a06` |
+| SHA-256 | `109a028c999ca8a3d018574bedf744a2b0a8d1602627cc045406db94d4e799a8` |
+| Verified stamp inside the file | `2026-09-13` |
+| Last pack commit | `f5b6ab9` (2026-10-11) |
+
+### Row composition
+
+| Lane | Rows | What it is |
+| --- | ---: | --- |
+| Catalogue — standards | 18,995 | Public IS id + title. No paid clause text |
+| Curated chunks | 627 | Labs, CRS notes, FAQ, process, links, consumer, hallmark, product |
+| **Evidence rows** | **19,622** | Catalogue + chunks. This is the local TF-IDF index |
+| Vocab / IDF terms | 7,765 | Local sparse rank. No GPU |
+| ISO/IEC adopted, catalogue-linked | 2,299 | Metadata link. Not extra overlapping retrieve rows |
+| Empty bodies | 0 | Every row has text |
+| Official-host URLs | 19,622 / 19,622 | 100%. A non-allowlisted URL is dropped at retrieve |
+
+### Chunk kinds
+
+| Kind | Rows | Used for |
+| --- | ---: | --- |
+| Lab | 437 | PIN-to-lab desk. City name is rejected |
+| CRS | 110 | Scheme-II product notes |
+| FAQ | 28 | Process and portal answers |
+| Process | 19 | How to apply / verify |
+| Link | 13 | Official host handoff |
+| Consumer | 10 | Fake mark, CARE, complaint |
+| Hallmark | 6 | HUID / jewellery only |
+| Product | 4 | Family pins that are not a catalogue title |
+
+### Where the URLs point
+
+| Host | Rows | Role |
+| --- | ---: | --- |
+| www.services.bis.gov.in | 17,399 | Know Your Standard catalogue |
+| standards.bis.gov.in | 1,599 | Standards portal |
+| www.bis.gov.in | 495 | BIS site, FAQ, consumer |
+| www.crsbis.in | 121 | CRS registration |
+| lims.bis.gov.in | 5 | Laboratory directory |
+| manakonline.in / huid.manakonline.in / standardsbis.bsbedge.com | 3 | Apply and HUID verify |
+
+A reader can confirm the host split with:
+
+```bash
+python3 -c "
+import json
+from collections import Counter
+from urllib.parse import urlparse
+d=json.load(open('src/data/rag-pack.json'))
+print('catalogue', len(d['catalogue']), 'chunks', len(d['chunks']))
+print(Counter(c['kind'] for c in d['chunks']))
+print(Counter(urlparse(r['url']).netloc for r in d['chunks']+d['catalogue']))
+"
+```
+
+### Dense lane (optional, not the rank lock)
+
+`pack_docs` on Supabase is the optional dense extra. Local TF-IDF does not wait for it.
+
+| Dense lane | Count | Date |
+| --- | ---: | --- |
+| Rows with a 768-d embedding | 35,678 | 2026-10-18 |
+| Rows still null | 26,624 | 2026-10-18 |
+| Total `pack_docs` | 62,302 | — |
+
+Hybrid extras run only after a weak lock. A strong TF-IDF lock, a typed IS already on top, and a policy pin do not call the dense lane.
 
 ---
 
@@ -280,7 +431,7 @@ Search is not allowed until the gate unlocks.
 
 ```mermaid
 flowchart TD
-  Q[User question<br/>EN · HI · Hinglish] --> U[Understand<br/>intent · product · IS · scheme · city]
+  Q[User question<br/>EN · HI · Hinglish<br/>voice STT · label OCR] --> U[Understand<br/>intent · product · IS · scheme · city]
   U --> G{Policy gate<br/>scope · scheme · source · evidence}
   G -->|fail| X[Refuse<br/>retrieval = 0<br/>official portal handoff]
   G -->|pass| S[Sparse retrieve<br/>TF-IDF on authorised pack]
