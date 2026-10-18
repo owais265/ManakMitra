@@ -11,7 +11,7 @@ export type Lab = {
   confidence: "high" | "low";
 };
 
-export type RankedLab = Lab & { km: number; productHit?: boolean };
+export type RankedLab = Lab & { km: number; productHit?: boolean; url?: string; tier?: "bis-own" | "bis-recognised" | "closed" };
 
 /** BIS own laboratories published on LIMS. Pins are the published locality, not a surveyed gate. */
 export const BIS_LABS: Lab[] = [
@@ -178,9 +178,8 @@ export function rankLabs(lat: number, lng: number, product = ""): RankedLab[] {
 
 export const NEAR_KM = 80;
 
-export function areaMapUrl(lat: number, lng: number, label: string, product = ""): string {
-  const query = [product.trim(), "testing laboratory near", label].filter(Boolean).join(" ");
-  return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&ll=${lat},${lng}&z=12&output=embed`;
+export function areaMapUrl(lat: number, lng: number, _label: string, _product = ""): string {
+  return `https://maps.google.com/maps?q=${lat},${lng}&ll=${lat},${lng}&z=11&output=embed`;
 }
 
 export function labMapUrl(lab: Lab, origin: { lat: number; lng: number }): string {

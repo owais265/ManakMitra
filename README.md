@@ -247,7 +247,9 @@ Combinatorial questions across TF-IDF, hybrid, and generic phrasing. Each file h
 
 The generic mixed rows were concentrated in the first 573,000, before the 2026-10-17 scorer reload (city-only lab list, and a scheme question treated as a hallmark mix). Rows scored after that reload had 0 mixed. The stored CSV was not rewritten. Off-topic and real scheme-mix still refuse.
 
-The **0** in the last column is invented IS or fee only. Lab ranking is a separate desk. It uses BIS own laboratories and the loaded LIMS extract. NPL, NTH, CIPET and the other non-BIS list are not ranked.
+The **0** in the last column is invented IS or fee only. Lab ranking is a separate desk. A PIN or device location is placed on a city-centre point, then sorted by haversine against BIS own laboratories and the 437 BIS-recognised Group-1 rows in the pack. Each card says **BIS laboratory** or **BIS recognised**. The map is a Google embed of those coordinates, not a Google search for a random laboratory, and not a surveyed gate. A product name does not mean the laboratory is accredited for that IS.
+
+Hallmark PIN search uses the 10 Oct 2026 cancelled and suspended centre extract only. Those rows are marked not open. HUID on this desk is a 6-character shape check, not the live BIS CARE register. Verify, product file, and standards read the local pack before any database call.
 
 ### Live deployment — checked 2026-10-18
 
@@ -804,7 +806,7 @@ Built desks, not a slide-only assistant.
 | --- | --- |
 | Assistant | Natural-language Q&A with three exits |
 | Verify product | Licence-shaped check against the verify pack |
-| Testing labs | PIN / city → nearest BIS own laboratory + live LIMS. NPL, NTH and CIPET are not ranked |
+| Testing labs | PIN or device location → nearest BIS own laboratory and BIS-recognised Group-1 labs from the pack. City centre, not a surveyed gate. NPL, NTH and CIPET are not ranked |
 | HUID / Hallmark finder | Jewellery path only |
 | Indian Standards finder | Product / IS → catalogue row |
 | Certification steps | Scheme process + official portal |

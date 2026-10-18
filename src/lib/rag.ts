@@ -4,6 +4,7 @@ import inboxBoost from "@/data/inbox-boost.json";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { EvidenceHit, Retrieval } from "@/lib/rag-types";
+import { isOfficialHost } from "@/lib/official-hosts";
 import { matchProductFamily, schemeNeedles, CLAUSE_ASK, shouldClarify, type ProductFamily, HALLMARK_CUE, isHallmarkSchemeMix, JEWELLERY_CUE, glossIndic } from "@/lib/product-playbook";
 
 type Chunk = { id: string; kind: EvidenceHit["kind"]; title: string; body: string; url: string };
@@ -391,6 +392,69 @@ function enrichLabBody(title: string, body: string): string {
 
 for (const c of rag.chunks) {
   if (c.kind === "lab") c.body = enrichLabBody(c.title, c.body);
+}
+
+export function recognisedLabRows(): { title: string; body: string; url: string }[] {
+  return rag.chunks
+    .filter((c) => c.kind === "lab")
+    .map((c) => ({ title: c.title, body: c.body, url: c.url }));
+}
+
+const PACK_FIELD_KIND: Record<string, string[]> = {
+  standard: ["standard"],
+  product: ["product", "crs", "standard"],
+  verify: ["standard", "product", "crs"],
+  file: ["product", "crs", "standard", "process"],
+  process: ["process", "crs", "faq"],
+  hallmark: ["hallmark", "product"],
+};
+
+function wordHit(hay: string, word: string): boolean {
+  const safe = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^a-z0-9])${safe}(?:[^a-z0-9]|$)`, "i").test(hay);
+}
+
+/** Title search on the bundled pack. Official hosts only. Not a licence grant. */
+export function searchPackTitles(token: string, field: string, limit = 6): { title: string; url: string }[] {
+  const needle = token.trim().slice(0, 80);
+  if (needle.length < 3) return [];
+  const kinds = new Set(PACK_FIELD_KIND[field] || ["standard"]);
+  const pool: Chunk[] = [];
+  if (kinds.has("standard")) pool.push(...catalogue);
+  for (const row of rag.chunks) {
+    if (kinds.has(row.kind) && row.kind !== "standard") pool.push(row);
+  }
+  const digits = /^\d{2,6}$/.test(needle) ? needle : "";
+  const words = digits ? [] : needle.toLowerCase().split(/\s+/).filter((word) => word.length >= 3);
+  const scored: { row: Chunk; score: number }[] = [];
+  for (const row of pool) {
+    if (!isOfficialHost(row.url)) continue;
+    const hay = `${row.title} ${row.body}`;
+    let score = 0;
+    if (digits) {
+      if (!wordHit(hay, digits)) continue;
+      score = wordHit(row.title, digits) ? 5 : 2;
+    } else {
+      if (!words.length) continue;
+      const hits = words.filter((word) => wordHit(hay, word));
+      if (!hits.length) continue;
+      if (words.length > 1 && hits.length === 1 && hits[0].length < 5) continue;
+      score = hits.length + (hits.some((word) => wordHit(row.title, word)) ? 2 : 0);
+    }
+    scored.push({ row, score });
+  }
+  scored.sort((a, b) => b.score - a.score || a.row.title.localeCompare(b.row.title));
+  const seen = new Set<string>();
+  const hits: { title: string; url: string }[] = [];
+  for (const { row } of scored) {
+    const blurb = (row.body || "").replace(/\s+/g, " ").trim().slice(0, 90);
+    const title = (row.kind === "standard" && blurb ? `${row.title} — ${blurb}` : row.title).slice(0, 180);
+    if (seen.has(title)) continue;
+    seen.add(title);
+    hits.push({ title, url: row.url });
+    if (hits.length >= limit) break;
+  }
+  return hits;
 }
 
 function exactIsChunk(id: string, prefer?: string): Chunk | undefined {

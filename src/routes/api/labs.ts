@@ -82,27 +82,34 @@ export const Route = createFileRoute("/api/labs")({
         const placeKind = kind === "hallmark" ? "hallmark" : "lab";
         const userPin = typeof body.pin === "string" && /^[1-9][0-9]{5}$/.test(body.pin.replace(/\D/g, "")) ? body.pin.replace(/\D/g, "") : "";
         const published = await rankPublishedPlaces(placeKind, origin, userPin, product);
-        const nearPublished = published.filter((place) => place.km <= NEAR_KM).slice(0, 12);
-        const own = kind === "lab" ? ownLabsNear(origin, product).filter((lab) => lab.km <= NEAR_KM) : [];
-        const nearby = nearPublished.length ? [...own, ...nearPublished] : rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km <= NEAR_KM);
-        const farther = nearPublished.length
-          ? published.filter((place) => place.km > NEAR_KM).slice(0, 4)
-          : rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km > NEAR_KM).slice(0, 4);
+        const own = kind === "lab" ? ownLabsNear(origin, product) : [];
+        const seen = new Set<string>();
+        const merged = [...own, ...published].filter((lab) => {
+          const key = lab.name.toLowerCase().slice(0, 80);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        merged.sort((a, b) => a.km - b.km || a.name.localeCompare(b.name));
+        const nearby = merged.filter((lab) => lab.km <= NEAR_KM).slice(0, 20);
+        const farther = merged.filter((lab) => lab.km > NEAR_KM).slice(0, 8);
+        const usedFallback = kind === "lab" && !published.length;
+        const shownNear = usedFallback ? rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km <= NEAR_KM) : nearby;
+        const shownFar = usedFallback ? rankLabs(origin.lat, origin.lng, product).filter((lab) => lab.km > NEAR_KM).slice(0, 8) : farther;
         return Response.json({
           origin,
           source,
           product,
           kind,
-          nearby,
-          farther,
+          nearby: shownNear,
+          farther: shownFar,
           mapUrl: areaMapUrl(origin.lat, origin.lng, origin.label, product),
-          note: nearPublished.length
-            ? kind === "hallmark"
-              ? "Hallmarking centres are from the BIS extract already loaded. Distance uses the published PIN, not a surveyed gate. This list is not a live HUID check."
-              : "Names and PINs are from the BIS LIMS extract already loaded. Distance uses that published PIN, not a surveyed gate. A BIS laboratory with a published address is marked high."
-            : kind === "hallmark"
-              ? "No hallmarking centre from the loaded extract sits within 80 km of this PIN."
-              : "No laboratory from the loaded LIMS extract sits within 80 km. The list below is BIS own laboratories only. NPL, NTH, CIPET and other non-BIS labs are not ranked. The map still shows what Google lists around this PIN.",
+          note:
+            kind === "hallmark"
+              ? "This PIN list is the 10 Oct 2026 cancelled and suspended centre extract. It is not an open-centre finder and not a live HUID check. Confirm on BIS CARE."
+              : published.length
+                ? "BIS laboratory means a BIS own laboratory. BIS recognised means a Group-1 laboratory from the loaded extract. Distance is the city centre, not a surveyed gate. A product name does not mean that laboratory is accredited for that IS. Confirm scope on LIMS."
+                : "No laboratory from the loaded extract could be placed. The list below is BIS own laboratories only.",
         });
       },
     },

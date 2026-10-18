@@ -197,7 +197,7 @@ export function HuidPage() {
         )}
       </section>
       <section className="mx-auto max-w-3xl px-4 pb-12 sm:px-6">
-        <PackPinList kind="hallmark" label="Hallmarking centres for a PIN. The 6-character check above is only the shape. This extract is not the live BIS CARE register." />
+        <PackPinList kind="hallmark" label="PIN check against the cancelled and suspended centre extract. Not an open-centre list, and not a live HUID check." />
       </section>
     </DeskShell>
   );
@@ -291,7 +291,7 @@ export function HallmarkPage() {
           </div>
         )}
       </section>
-      <PackPinList kind="hallmark" label="Hallmarking centres for a PIN" />
+      <PackPinList kind="hallmark" label="PIN check against the cancelled and suspended centre extract. Not an open centre." />
     </DeskShell>
   );
 }

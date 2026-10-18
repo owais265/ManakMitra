@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
-import { searchField, type PackField } from "@/lib/place-catalogue.server";
+import { pinCentroid } from "@/lib/labs";
+import { searchField, rankPublishedPlaces, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
 import { isFollowCue, followRetrieval, type ChatTurn } from "@/lib/query-context";
@@ -559,6 +560,18 @@ export const Route = createFileRoute("/api/chat")({
                   const board = labsFinderResult(query);
                   const facts = deskReply(query, language) || "";
                   evidence += `\n\nLAB BOARD (names and kilometres only from here; do not invent a closer lab): ${board ? "map will show beside this reply." : "no pin yet."}\n${facts}`;
+                  const pin = query.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] || "";
+                  const origin = pin ? pinCentroid(pin) : board?.origin || null;
+                  if (origin) {
+                    const ranked = await rankPublishedPlaces("lab", origin, pin, "");
+                    const near = ranked.filter((lab) => lab.km <= 80).slice(0, 8);
+                    const rows = near.length ? near : ranked.slice(0, 5);
+                    if (rows.length) {
+                      evidence +=
+                        "\n\nRECOGNISED LABS from the loaded extract. City centre, not a surveyed gate. Call these BIS recognised, not a BIS laboratory, unless the name says BIS laboratory. Do not claim a test scope.\n" +
+                        rows.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
+                    }
+                  }
                 }
                 const field: PackField | null =
                   guidedKind === "standards" ? "standard" : guidedKind === "certify" ? "process" : desk === "verify" ? "verify" : null;
