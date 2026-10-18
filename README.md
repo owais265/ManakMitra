@@ -252,7 +252,7 @@ The generic mixed rows were concentrated in the first 573,000, before the 2026-1
 
 ---
 
-## Authorised pack — exact row counts
+## Authorised pack — exact volume, not just rows
 
 Two layers. Do not add them together.
 
@@ -261,9 +261,63 @@ Two layers. Do not add them together.
 | **Runtime pack** | [`src/data/rag-pack.json`](src/data/rag-pack.json). This is what chat, verify, labs and certify search. | Not the 40k corpus extract |
 | **Source files** | Numbered CSVs and the knowledge JSON under [`data/`](data/). They feed a rebuild. | Not a second live index |
 
-Counts below were read from the files on 2026-10-18. A reader can re-count with the snippet at the end of this section.
+Counts and sizes below were read from the files on 2026-10-18. A reader can re-count with the snippet at the end of this section.
 
-### Runtime pack
+### How much text the live pack actually holds
+
+A row count hides this. These are the characters and words inside the 19,622 evidence rows.
+
+| Measure | Catalogue (18,995) | Chunks (627) | All evidence rows (19,622) |
+| --- | ---: | ---: | ---: |
+| Body characters | 4,112,459 | 156,577 | **4,269,036** |
+| Body words | 359,025 | 23,484 | **382,509** |
+| Title characters | 384,341 | 22,449 | **406,790** |
+| Title words | 105,121 | 3,227 | **108,348** |
+| URL characters | 1,978,869 | 40,071 | **2,018,940** |
+| ID characters | 254,820 | 5,828 | **260,648** |
+| Unique IDs | 18,995 | 627 | **19,622** |
+| Unique titles | 18,995 | 587 | **19,582** |
+| Unique URLs | 17,393 | 27 | **17,419** |
+| Shortest body | 34 chars | 73 chars | 34 chars |
+| Longest body | 489 chars | 862 chars | 862 chars |
+| Mean body | 216.5 chars | 249.7 chars | 217.6 chars |
+
+The live file on disk is **10,367,778 bytes** (9.89 MB). That includes the 7,765-term vocab and IDF tables, not only the row text.
+
+Text the model is allowed to phrase: the body + title above. About **4.68 million characters** and **490,857 words**. No paid clause text is in that total.
+
+### Body volume by chunk kind
+
+| Kind | Rows | Body characters | Body words | Mean body |
+| --- | ---: | ---: | ---: | ---: |
+| lab | 437 | 110,248 | 17,181 | 252 chars |
+| crs | 110 | 24,591 | 3,094 | 224 chars |
+| faq | 28 | 8,123 | 1,228 | 290 chars |
+| process | 19 | 5,635 | 849 | 297 chars |
+| hallmark | 6 | 3,215 | 477 | 536 chars |
+| consumer | 10 | 1,705 | 231 | 171 chars |
+| product | 4 | 1,623 | 224 | 406 chars |
+| link | 13 | 1,437 | 200 | 111 chars |
+| **chunks** | **627** | **156,577** | **23,484** | **250 chars** |
+
+### File sizes on disk
+
+| File | Bytes | What the bytes are |
+| --- | ---: | --- |
+| [`src/data/rag-pack.json`](src/data/rag-pack.json) | **10,367,778** | Live retrieve file. 19,622 rows + vocab |
+| [`src/data/bis-index.json`](src/data/bis-index.json) | 7,212,284 | Pack-input mirror. Not a second chat index |
+| [`data/manakmitra_bis_knowledge.json`](data/manakmitra_bis_knowledge.json) | 7,779,781 | Authorised metadata JSON, collected 2026-09-08 |
+| [`data/bis_chatbot_knowledge_base.json`](data/bis_chatbot_knowledge_base.json) | 675,817 | Early 2,291-standard notes. Not the live pack |
+| [`data/01_standards.csv`](data/01_standards.csv) … [`10_documents_metadata.csv`](data/10_documents_metadata.csv) | 1,147,024 | Ten source CSVs together |
+| [`data/recognised-laboratories.json`](data/recognised-laboratories.json) | 167,624 | 430-lab source list |
+| [`src/data/inbox-boost.json`](src/data/inbox-boost.json) | 87,054 | 125 inbox pins |
+| [`data/inbox/bis-20261010-narratives.json`](data/inbox/bis-20261010-narratives.json) | 43,059 | 99 narratives, not auto-merged |
+| [`data/product-manuals-manifest.json`](data/product-manuals-manifest.json) | 29,695 | 108 files / 1,104 candidate rows, quarantined |
+| [`src/data/verified-boost.json`](src/data/verified-boost.json) | 27,424 | 44 pin rows |
+| [`data/bis-corpus.sqlite`](data/bis-corpus.sqlite) | **61,853,696** | Extract store, 41,777 docs. Chat does not search this |
+| **Listed files** | **89,396,147** | About 85.2 MB. Do not treat the SQLite as live RAG |
+
+### Runtime pack identity
 
 | Field | Exact value | Source |
 | --- | ---: | --- |
@@ -347,19 +401,19 @@ Counts below were read from the files on 2026-10-18. A reader can re-count with 
 
 These are the human-editable inputs. They are smaller than the runtime catalogue. [`data/README.md`](data/README.md).
 
-| File | Rows | Columns start with | Cite |
-| --- | ---: | --- | --- |
-| [`data/01_standards.csv`](data/01_standards.csv) | 2,291 | standard_id, title | curated standards list |
-| [`data/02_product_requirements.csv`](data/02_product_requirements.csv) | 4 | product_name | product → IS |
-| [`data/03_certification_process.csv`](data/03_certification_process.csv) | 14 | scheme_name, step_number | process steps |
-| [`data/04_testing_labs.csv`](data/04_testing_labs.csv) | 433 | lab_name, city | lab directory |
-| [`data/05_hallmarking.csv`](data/05_hallmarking.csv) | 6 | metal, fineness_code | hallmark grades |
-| [`data/06_crs_products.csv`](data/06_crs_products.csv) | 2 | product_name | CRS seed |
-| [`data/07_consumer_support.csv`](data/07_consumer_support.csv) | 10 | topic | consumer desk |
-| [`data/08_faqs.csv`](data/08_faqs.csv) | 11 | question | FAQ |
-| [`data/09_official_links.csv`](data/09_official_links.csv) | 13 | official_url | portal links |
-| [`data/10_documents_metadata.csv`](data/10_documents_metadata.csv) | 10 | document_title | document cards |
-| **CSV rows** | **2,794** | | not the live index |
+| File | Rows | Bytes | Columns start with | Cite |
+| --- | ---: | ---: | --- | --- |
+| [`data/01_standards.csv`](data/01_standards.csv) | 2,291 | 943,939 | standard_id, title | curated standards list |
+| [`data/02_product_requirements.csv`](data/02_product_requirements.csv) | 4 | 3,709 | product_name | product → IS |
+| [`data/03_certification_process.csv`](data/03_certification_process.csv) | 14 | 9,568 | scheme_name, step_number | process steps |
+| [`data/04_testing_labs.csv`](data/04_testing_labs.csv) | 433 | 160,759 | lab_name, city | lab directory |
+| [`data/05_hallmarking.csv`](data/05_hallmarking.csv) | 6 | 4,753 | metal, fineness_code | hallmark grades |
+| [`data/06_crs_products.csv`](data/06_crs_products.csv) | 2 | 1,730 | product_name | CRS seed |
+| [`data/07_consumer_support.csv`](data/07_consumer_support.csv) | 10 | 5,146 | topic | consumer desk |
+| [`data/08_faqs.csv`](data/08_faqs.csv) | 11 | 7,034 | question | FAQ |
+| [`data/09_official_links.csv`](data/09_official_links.csv) | 13 | 5,626 | official_url | portal links |
+| [`data/10_documents_metadata.csv`](data/10_documents_metadata.csv) | 10 | 4,760 | document_title | document cards |
+| **CSV total** | **2,794** | **1,147,024** | | not the live index |
 
 ### Authorised metadata JSON
 
@@ -419,7 +473,10 @@ print('catalogue', len(d['catalogue']), 'chunks', len(d['chunks']), 'rows', len(
 print('kinds', Counter(c['kind'] for c in d['chunks']))
 print('schemes', Counter(r.get('scheme') or '-' for r in rows))
 print('hosts', Counter(urlparse(r['url']).netloc for r in rows))
-print('vocab', len(d['vocab']), 'empty', sum(1 for r in rows if not (r.get('body') or '').strip()))
+print('body_chars', sum(len(r.get('body') or '') for r in rows))
+print('body_words', sum(len((r.get('body') or '').split()) for r in rows))
+print('title_chars', sum(len(r.get('title') or '') for r in rows))
+print('unique_url', len({r['url'] for r in rows}))
 "
 ```
 
