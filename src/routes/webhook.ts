@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { env } from "@/lib/env.server";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import {
   checkSignature,
@@ -51,7 +52,7 @@ async function answerOne(request: Request, message: WaInbound, token: string): P
     await sendWhatsApp(message, photoReply(), token);
     return;
   }
-  const verify = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
+  const verify = env("WHATSAPP_VERIFY_TOKEN");
   const origin = new URL(request.url).origin;
   const chat = await fetch(`${origin}/api/chat`, {
     method: "POST",
@@ -72,7 +73,7 @@ export const Route = createFileRoute("/webhook")({
     handlers: {
       GET: async ({ request }) => {
         const params = subscribeParams(request.url, (name) => request.headers.get(name));
-        const challenge = verifySubscribe(params, expectedVerifyToken(process.env.WHATSAPP_VERIFY_TOKEN));
+        const challenge = verifySubscribe(params, expectedVerifyToken(env("WHATSAPP_VERIFY_TOKEN")));
         if (challenge) {
           return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } });
         }
@@ -85,7 +86,7 @@ export const Route = createFileRoute("/webhook")({
       POST: async ({ request }) => {
         const raw = await request.text();
         if (raw.length > 200_000) return new Response("ok", { status: 200 });
-        const secret = process.env.WHATSAPP_APP_SECRET;
+        const secret = env("WHATSAPP_APP_SECRET");
         if (!checkSignature(raw, request.headers.get("x-hub-signature-256"), secret)) {
           return new Response("forbidden", { status: 403 });
         }
@@ -95,7 +96,7 @@ export const Route = createFileRoute("/webhook")({
         } catch {
           return new Response("ok", { status: 200 });
         }
-        const token = process.env.WHATSAPP_TOKEN?.trim();
+        const token = env("WHATSAPP_TOKEN");
         if (!token) {
           console.error("[wa] WHATSAPP_TOKEN missing");
           return new Response("ok", { status: 200 });

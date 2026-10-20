@@ -11,6 +11,7 @@ import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } fro
 import { buildStops } from "@/lib/work-trace";
 import { chatLog } from "@/lib/chat-log";
 import { fetchOnceRetry } from "@/lib/http-retry";
+import { env } from "@/lib/env.server";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
 
@@ -351,7 +352,7 @@ export const Route = createFileRoute("/api/chat")({
         const reqId = crypto.randomUUID();
         const started = performance.now();
         const waHeader = request.headers.get("x-manak-wa");
-        const waPass = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
+        const waPass = env("WHATSAPP_VERIFY_TOKEN");
         const fromWa = Boolean(waPass && waHeader === waPass);
         const gate = fromWa ? { ok: true as const } : takeLimit(`chat:${clientIp(request)}`);
         if (!gate.ok) {
