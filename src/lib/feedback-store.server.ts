@@ -28,7 +28,7 @@ async function applyDdl(url: string): Promise<void> {
   const pool = new pg.Pool({
     connectionString: url,
     max: 1,
-    connectionTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 1_500,
     ssl: /localhost|127\.0\.0\.1/.test(url) ? undefined : { rejectUnauthorized: false },
   });
   const client = await pool.connect();
@@ -93,6 +93,39 @@ export async function saveFeedback(packet: FeedbackPacket): Promise<{ ok: true }
   }
   if (!inserted.error) return { ok: true };
   const missing = /does not exist|schema cache|PGRST205|42P01/i.test(`${inserted.error.code} ${inserted.error.message}`);
+  if (missing) {
+    const bridged = await saveFeedbackBridge(sb, packet);
+    if (bridged) return { ok: true };
+  }
   console.error("[feedback] insert", (inserted.error.message || "").slice(0, 180));
   return { ok: false, status: missing ? 503 : 500 };
+}
+
+/** Same 24-hour packet, on the service-role table that already exists. */
+async function saveFeedbackBridge(
+  sb: NonNullable<ReturnType<typeof getServiceSupabase>>,
+  packet: FeedbackPacket,
+): Promise<boolean> {
+  const cutoff = new Date(Date.now() - FEEDBACK_HOURS * 60 * 60 * 1000).toISOString();
+  const purged = await sb.from("query_logs").delete().lt("created_at", cutoff).like("intent", "mmfb:%");
+  if (purged.error && !/does not exist|schema cache/i.test(purged.error.message)) {
+    console.error("[feedback] bridge purge", purged.error.message.slice(0, 180));
+  }
+  const intent = `mmfb:${JSON.stringify({
+    kind: packet.kind,
+    exit: packet.exit,
+    language: packet.language,
+    locks: packet.locks,
+    evidence: packet.evidence,
+  })}`.slice(0, 4000);
+  const inserted = await sb.from("query_logs").insert({
+    query: packet.query || "(no question)",
+    intent,
+    refused: packet.kind !== "up",
+  });
+  if (inserted.error) {
+    console.error("[feedback] bridge", inserted.error.message.slice(0, 180));
+    return false;
+  }
+  return true;
 }
