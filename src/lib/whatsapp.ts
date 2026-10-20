@@ -11,13 +11,88 @@ export type WaInbound = {
 
 const SITE = "https://forest-yonder-apex-plum.vercel.app/chat";
 
+/** Issued for this callback. Env wins when Vercel actually has the variable. */
+const ISSUED_VERIFY_TOKEN = "4763218ba1d534efa7897ce2a818d2fc448c5dd1e07b1559";
+
+export function expectedVerifyToken(envValue: string | undefined): string {
+  const fromEnv = envValue?.trim();
+  if (fromEnv && fromEnv.length >= 8) return fromEnv;
+  return ISSUED_VERIFY_TOKEN;
+}
+
+function hubValue(params: URLSearchParams, dotted: string, underscored: string): string | null {
+  return params.get(dotted) || params.get(underscored);
+}
+
+function hasHub(params: URLSearchParams): boolean {
+  return Boolean(
+    hubValue(params, "hub.mode", "hub_mode") ||
+      hubValue(params, "hub.verify_token", "hub_verify_token") ||
+      hubValue(params, "hub.challenge", "hub_challenge"),
+  );
+}
+
+function addPair(params: URLSearchParams, key: string, value: unknown): void {
+  const text = Array.isArray(value) ? value[0] : value;
+  if (typeof text === "string" || typeof text === "number") params.set(key, String(text));
+}
+
+function paramsFromJson(raw: string): URLSearchParams | null {
+  if (!raw.trim().startsWith("{")) return null;
+  try {
+    const data = JSON.parse(raw) as unknown;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+    const record = data as Record<string, unknown>;
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(record)) addPair(params, key, value);
+    const hub = record.hub;
+    if (hub && typeof hub === "object" && !Array.isArray(hub)) {
+      const nested = hub as Record<string, unknown>;
+      if (nested.mode != null) addPair(params, "hub.mode", nested.mode);
+      if (nested.verify_token != null) addPair(params, "hub.verify_token", nested.verify_token);
+      if (nested.challenge != null) addPair(params, "hub.challenge", nested.challenge);
+    }
+    return params;
+  } catch {
+    return null;
+  }
+}
+
+function paramsFrom(raw: string | null | undefined): URLSearchParams {
+  if (!raw) return new URLSearchParams();
+  const text = raw.trim();
+  if (text.startsWith("{")) return paramsFromJson(text) || new URLSearchParams();
+  try {
+    if (text.includes("://")) return new URL(text).searchParams;
+    if (text.startsWith("/")) return new URL(text, "https://manakmitra.local").searchParams;
+  } catch {
+    return new URLSearchParams();
+  }
+  const query = text.includes("?") ? text.slice(text.indexOf("?") + 1) : text.replace(/^\?/, "");
+  return new URLSearchParams(query);
+}
+
+/** Meta's query, plus the headers Vercel keeps when the function URL drops it. */
+export function subscribeParams(url: string, headerGet: (name: string) => string | null): URLSearchParams {
+  const direct = paramsFrom(url);
+  if (hasHub(direct)) return direct;
+  const names = ["x-invoke-query", "x-forwarded-uri", "x-vercel-original-url", "x-original-url", "x-forwarded-url"];
+  for (const name of names) {
+    const parsed = paramsFrom(headerGet(name));
+    if (hasHub(parsed)) return parsed;
+  }
+  return direct;
+}
+
 export function verifySubscribe(params: URLSearchParams, expected: string | undefined): string | null {
   const token = expected?.trim();
   if (!token) return null;
-  const mode = params.get("hub.mode");
-  const given = params.get("hub.verify_token");
-  const challenge = params.get("hub.challenge");
-  if (mode === "subscribe" && given === token && challenge && challenge.length < 256) return challenge;
+  const mode = hubValue(params, "hub.mode", "hub_mode");
+  const given = hubValue(params, "hub.verify_token", "hub_verify_token");
+  const challenge = hubValue(params, "hub.challenge", "hub_challenge");
+  if (mode === "subscribe" && given === token && challenge && challenge.length < 256 && !/[\r\n]/.test(challenge)) {
+    return challenge;
+  }
   return null;
 }
 

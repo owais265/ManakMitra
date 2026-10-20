@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
   checkSignature,
+  expectedVerifyToken,
   photoReply,
   readInbounds,
   replyFromChat,
+  subscribeParams,
   verifySubscribe,
   waLanguage,
 } from "../src/lib/whatsapp.ts";
@@ -18,6 +20,29 @@ assert.equal(
   verifySubscribe(new URLSearchParams("hub.mode=subscribe&hub.verify_token=nope&hub.challenge=1"), "desk-token"),
   null,
 );
+assert.equal(
+  verifySubscribe(new URLSearchParams("hub_mode=subscribe&hub_verify_token=desk-token&hub_challenge=77"), "desk-token"),
+  "77",
+);
+assert.equal(
+  verifySubscribe(new URLSearchParams("hub.mode=subscribe&hub.verify_token=desk-token&hub.challenge=bad\nline"), "desk-token"),
+  null,
+);
+const issued = expectedVerifyToken(undefined);
+assert.equal(expectedVerifyToken("from-env-token"), "from-env-token");
+assert.equal(expectedVerifyToken("  "), issued);
+const issuedParams = new URLSearchParams(`hub.mode=subscribe&hub.verify_token=${issued}&hub.challenge=998877`);
+assert.equal(verifySubscribe(issuedParams, expectedVerifyToken("")), "998877");
+const fromHeader = subscribeParams("https://manakmitra.local/webhook", (name) =>
+  name === "x-invoke-query" ? "hub.mode=subscribe&hub.verify_token=desk-token&hub.challenge=42" : null,
+);
+assert.equal(verifySubscribe(fromHeader, "desk-token"), "42");
+const fromJson = subscribeParams("https://manakmitra.local/webhook", (name) =>
+  name === "x-vercel-original-url"
+    ? JSON.stringify({ hub: { mode: "subscribe", verify_token: "desk-token", challenge: "9" } })
+    : null,
+);
+assert.equal(verifySubscribe(fromJson, "desk-token"), "9");
 
 const raw = JSON.stringify({
   object: "whatsapp_business_account",

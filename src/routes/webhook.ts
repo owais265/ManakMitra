@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import {
   checkSignature,
+  expectedVerifyToken,
   photoReply,
   readInbounds,
   replyFromChat,
+  subscribeParams,
   verifySubscribe,
   waLanguage,
   type WaInbound,
@@ -69,9 +71,16 @@ export const Route = createFileRoute("/webhook")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const challenge = verifySubscribe(new URL(request.url).searchParams, process.env.WHATSAPP_VERIFY_TOKEN);
-        if (!challenge) return new Response("forbidden", { status: 403 });
-        return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+        const params = subscribeParams(request.url, (name) => request.headers.get(name));
+        const challenge = verifySubscribe(params, expectedVerifyToken(process.env.WHATSAPP_VERIFY_TOKEN));
+        if (challenge) {
+          return new Response(challenge, { status: 200, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+        }
+        const saw = params.get("hub.mode") || params.get("hub_mode") || params.get("hub.verify_token") || params.get("hub_verify_token");
+        return new Response(saw ? "bad-token" : "no-query", {
+          status: 403,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
       },
       POST: async ({ request }) => {
         const raw = await request.text();
