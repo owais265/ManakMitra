@@ -23,6 +23,7 @@ import { Route as ReadinessRouteImport } from './routes/readiness'
 import { Route as StandardsRouteImport } from './routes/standards'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyRouteImport } from './routes/verify'
+import { Route as WebhookRouteImport } from './routes/webhook'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
@@ -99,6 +100,11 @@ const VerifyRoute = VerifyRouteImport.update({
   path: '/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WebhookRoute = WebhookRouteImport.update({
+  id: '/webhook',
+  path: '/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiChatRoute = ApiChatRouteImport.update({
   id: '/api/chat',
   path: '/api/chat',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/standards': typeof StandardsRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
+  '/webhook': typeof WebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/standards': typeof StandardsRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
+  '/webhook': typeof WebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/standards': typeof StandardsRoute
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
+  '/webhook': typeof WebhookRoute
   '/api/chat': typeof ApiChatRoute
   '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
@@ -206,6 +215,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/terms'
     | '/verify'
+    | '/webhook'
     | '/api/chat'
     | '/api/feedback'
     | '/api/health'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/terms'
     | '/verify'
+    | '/webhook'
     | '/api/chat'
     | '/api/feedback'
     | '/api/health'
@@ -248,6 +259,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/terms'
     | '/verify'
+    | '/webhook'
     | '/api/chat'
     | '/api/feedback'
     | '/api/health'
@@ -270,6 +282,7 @@ export interface RootRouteChildren {
   StandardsRoute: typeof StandardsRoute
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
+  WebhookRoute: typeof WebhookRoute
   ApiChatRoute: typeof ApiChatRoute
   ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -377,6 +390,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/webhook': {
+      id: '/webhook'
+      path: '/webhook'
+      fullPath: '/webhook'
+      preLoaderRoute: typeof WebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/chat': {
       id: '/api/chat'
       path: '/api/chat'
@@ -430,6 +450,7 @@ const rootRouteChildren: RootRouteChildren = {
   StandardsRoute: StandardsRoute,
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,
+  WebhookRoute: WebhookRoute,
   ApiChatRoute: ApiChatRoute,
   ApiFeedbackRoute: ApiFeedbackRoute,
   ApiHealthRoute: ApiHealthRoute,

@@ -114,6 +114,7 @@ What is unique (not a bundle of existing tools):
 12. **Freshness badge.** Every answer shows `Pack verified:` plus the `verifiedAt` stamp from the pack, and a line that QCO status is not in the pack.
 13. **Label to CARE.** A `CM/L-` or `R-` token read from a photo is shown as extracted, not verified, with the BIS complaint page and complaints@bis.gov.in.
 14. **Hindi nudge.** Header English plus Devanagari text shows “हिंदी में जवाब चाहिए?”. The tap switches the header lock. The lock does not auto-switch.
+15. **WhatsApp desk.** Meta calls `GET/POST /webhook`. A text message uses the same `/api/chat` gate. The reply is the spoken answer plus one official link. Photos are sent to the website. No invented IS number. Tokens stay in `WHATSAPP_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, and optional `WHATSAPP_APP_SECRET`. Callback: `https://forest-yonder-apex-plum.vercel.app/webhook`.
 
 This README does not claim a 5 second latency SLA, an India-region deployment, or an admin analytics dashboard.
 

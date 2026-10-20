@@ -350,7 +350,10 @@ export const Route = createFileRoute("/api/chat")({
       POST: async ({ request }) => {
         const reqId = crypto.randomUUID();
         const started = performance.now();
-        const gate = takeLimit(`chat:${clientIp(request)}`);
+        const waHeader = request.headers.get("x-manak-wa");
+        const waPass = process.env.WHATSAPP_VERIFY_TOKEN?.trim();
+        const fromWa = Boolean(waPass && waHeader === waPass);
+        const gate = fromWa ? { ok: true as const } : takeLimit(`chat:${clientIp(request)}`);
         if (!gate.ok) {
           chatLog({
             id: reqId,
