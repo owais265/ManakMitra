@@ -14,7 +14,15 @@ function postgresUrls(): string[] {
   const out: string[] = [];
   for (const key of keys) {
     const url = process.env[key]?.trim();
-    if (url && !out.includes(url)) out.push(url);
+    if (!url || out.includes(url)) continue;
+    try {
+      const host = new URL(url).hostname;
+      // Direct Supabase host is IPv6-only and stalls the click from this app.
+      if (host.startsWith("db.") && host.endsWith(".supabase.co")) continue;
+    } catch {
+      continue;
+    }
+    out.push(url);
   }
   return out;
 }
@@ -79,15 +87,20 @@ const ROW = (packet: FeedbackPacket) => ({
 });
 
 export async function saveFeedback(packet: FeedbackPacket): Promise<{ ok: true } | { ok: false; status: number }> {
-  await ensureFeedbackTable();
+  const ready = await Promise.race([
+    ensureFeedbackTable(),
+    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 800)),
+  ]);
   const sb = getServiceSupabase();
   if (!sb) return { ok: false, status: 503 };
-  const purged = await sb.rpc("purge_answer_feedback");
-  if (purged.error && !/does not exist|schema cache|PGRST202|PGRST205/i.test(purged.error.message)) {
-    console.error("[feedback] purge", purged.error.message.slice(0, 180));
+  if (ready) {
+    const purged = await sb.rpc("purge_answer_feedback");
+    if (purged.error && !/does not exist|schema cache|PGRST202|PGRST205/i.test(purged.error.message)) {
+      console.error("[feedback] purge", purged.error.message.slice(0, 180));
+    }
   }
   let inserted = await sb.from("answer_feedback").insert(ROW(packet));
-  if (inserted.error && /schema cache|PGRST205/i.test(`${inserted.error.code} ${inserted.error.message}`)) {
+  if (inserted.error && ready && /schema cache|PGRST205/i.test(`${inserted.error.code} ${inserted.error.message}`)) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     inserted = await sb.from("answer_feedback").insert(ROW(packet));
   }
