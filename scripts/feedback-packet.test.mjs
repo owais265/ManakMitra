@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { splitSql } from "../src/lib/sql-split.ts";
 import { sanitizeFeedback } from "../src/lib/feedback-packet.ts";
 
 const packet = sanitizeFeedback({
@@ -56,5 +57,14 @@ const chat = readFileSync(new URL("../src/components/manakmitra-chat.tsx", impor
 assert.doesNotMatch(chat, /manakmitra-report\.json/);
 assert.doesNotMatch(chat, /createObjectURL/);
 assert.match(chat, /\/api\/feedback/);
+
+const parts = splitSql(sql);
+assert.ok(parts.some((stmt) => /create table if not exists public\.answer_feedback/i.test(stmt)));
+const fn = parts.find((stmt) => /purge_answer_feedback\(\)/.test(stmt) && /security definer/i.test(stmt));
+assert.ok(fn);
+assert.match(fn, /delete from public\.answer_feedback/);
+const cron = parts.find((stmt) => stmt.includes("purge-answer-feedback"));
+assert.ok(cron);
+assert.match(cron, /cron\.schedule/);
 
 console.log("feedback packet checks ok");
