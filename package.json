@@ -15,7 +15,7 @@
   },
   "scripts": {
     "dev": "node scripts/with-app-env.mjs vite dev --host 0.0.0.0 --port 8080",
-    "build": "node scripts/with-app-env.mjs vite build",
+    "build": "node scripts/with-app-env.mjs vite build && (node scripts/migrate.mjs || echo '[migrate] table step failed; the feedback route will retry on the first save')",
     "build:release": "node scripts/with-app-env.mjs vite build && npm run db:migrate",
     "db:migrate": "node scripts/migrate.mjs",
     "build:dev": "node scripts/with-app-env.mjs vite build --mode development",

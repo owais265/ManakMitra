@@ -24,6 +24,7 @@ import { Route as StandardsRouteImport } from './routes/standards'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as VerifyRouteImport } from './routes/verify'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as ApiFeedbackRouteImport } from './routes/api/feedback'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiLabsRouteImport } from './routes/api/labs'
 import { Route as ApiVerifyRouteImport } from './routes/api/verify'
@@ -103,6 +104,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiFeedbackRoute = ApiFeedbackRouteImport.update({
+  id: '/api/feedback',
+  path: '/api/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/verify': typeof VerifyRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/feedback': typeof ApiFeedbackRoute
   '/api/health': typeof ApiHealthRoute
   '/api/labs': typeof ApiLabsRoute
   '/api/verify': typeof ApiVerifyRoute
@@ -198,6 +207,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/feedback'
     | '/api/health'
     | '/api/labs'
     | '/api/verify'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/feedback'
     | '/api/health'
     | '/api/labs'
     | '/api/verify'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/verify'
     | '/api/chat'
+    | '/api/feedback'
     | '/api/health'
     | '/api/labs'
     | '/api/verify'
@@ -259,6 +271,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   VerifyRoute: typeof VerifyRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiFeedbackRoute: typeof ApiFeedbackRoute
   ApiHealthRoute: typeof ApiHealthRoute
   ApiLabsRoute: typeof ApiLabsRoute
   ApiVerifyRoute: typeof ApiVerifyRoute
@@ -371,6 +384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/feedback': {
+      id: '/api/feedback'
+      path: '/api/feedback'
+      fullPath: '/api/feedback'
+      preLoaderRoute: typeof ApiFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -411,6 +431,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   VerifyRoute: VerifyRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiFeedbackRoute: ApiFeedbackRoute,
   ApiHealthRoute: ApiHealthRoute,
   ApiLabsRoute: ApiLabsRoute,
   ApiVerifyRoute: ApiVerifyRoute,

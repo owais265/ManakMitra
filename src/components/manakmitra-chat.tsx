@@ -1358,6 +1358,43 @@ function ChatLabMap({ board, language }: { board: LabBoard; language: AppLang })
 const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote }: { msg: Message, language: AppLang, onFollow?: () => void, onRetry?: () => void, onUseLocation?: () => void, onVote?: (vote: 'up' | 'down') => void }) => {
   const isAI = msg.role === 'ai';
   const [copied, setCopied] = useState(false);
+  const [feedbackNote, setFeedbackNote] = useState('');
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [reported, setReported] = useState(false);
+
+  async function sendDeskFeedback(kind: 'up' | 'down' | 'report') {
+    if (feedbackBusy) return;
+    if (kind === 'up' || kind === 'down') onVote?.(kind);
+    if (kind === 'report') setReported(true);
+    const exitStep = (msg.workSteps || []).find((step) => step.id === 'exit' || step.id === 'refuse');
+    setFeedbackBusy(true);
+    setFeedbackNote('Saving for 24 hours…');
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind,
+          query: msg.userQuery || '',
+          locks: (msg.workSteps || []).slice(0, 8).map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
+          evidence: (msg.sources || [])
+            .filter((s) => isOfficialUrl(s.link))
+            .slice(0, 6)
+            .map((s) => ({ title: s.title, url: s.link })),
+          exit: exitStep?.detail || '',
+          language,
+        }),
+      });
+      if (res.ok) setFeedbackNote('Saved for 24 hours. Not sent to BIS.');
+      else if (res.status === 429) setFeedbackNote('Too many clicks. Wait a minute.');
+      else setFeedbackNote('Not saved. Try again.');
+    } catch {
+      setFeedbackNote('Not saved. Try again.');
+    } finally {
+      setFeedbackBusy(false);
+    }
+  }
+
   const rootRef = useRef<HTMLDivElement>(null);
   const shouldType = isAI && !msg.isError && (msg.animate || msg.isStreaming);
   const [shown, setShown] = useState(() => (shouldType ? '' : msg.text));
@@ -1552,40 +1589,26 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
                 </div>
               ) : null}
               <div className="flex flex-wrap items-center gap-2">
-                <button type="button" aria-pressed={msg.vote === 'up'} onClick={() => onVote?.('up')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600">
+                <button type="button" aria-pressed={msg.vote === 'up'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('up')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100">
                   <ThumbsUp className="h-3.5 w-3.5" /> Useful
                 </button>
-                <button type="button" aria-pressed={msg.vote === 'down'} onClick={() => onVote?.('down')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600">
+                <button type="button" aria-pressed={msg.vote === 'down'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('down')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100">
                   <ThumbsDown className="h-3.5 w-3.5" /> Not useful
                 </button>
                 <button
                   type="button"
                   data-report-wrong=""
-                  onClick={() => {
-                    const exitStep = (msg.workSteps || []).find((step) => step.id === 'exit' || step.id === 'refuse');
-                    const packet = {
-                      note: "local report, not sent to BIS",
-                      query: msg.userQuery || "",
-                      locks: (msg.workSteps || []).map((step) => ({ id: step.id, label: step.label, detail: step.detail })),
-                      evidence: (msg.sources || []).filter((s) => isOfficialUrl(s.link)).map((s) => ({ title: s.title, url: s.link })),
-                      exit: exitStep?.detail || "unknown",
-                      timestamp: new Date().toISOString(),
-                      language,
-                    };
-                    const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "manakmitra-report.json";
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="inline-flex min-h-11 items-center rounded-full border border-slate-300 px-3 text-xs font-semibold dark:border-slate-600"
+                  aria-pressed={reported}
+                  disabled={feedbackBusy}
+                  onClick={() => void sendDeskFeedback('report')}
+                  className="inline-flex min-h-11 items-center rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100"
                 >
                   Report wrong answer
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400">Local report, not sent to BIS.</p>
+              <p data-feedback-note="" className="text-[10px] text-slate-500 dark:text-slate-400">
+                {feedbackNote || 'A click is saved on this desk for 24 hours, then deleted. Not a BIS complaint.'}
+              </p>
             </div>
           ) : null}
 

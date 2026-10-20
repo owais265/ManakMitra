@@ -35,6 +35,7 @@ const EN: LegalPack = {
           'When you send a message, the text of that message goes to this app’s server so an answer can be written from the authorised catalogue. If you attach a picture or a text file, that file is sent with the message and is read only to answer that turn.',
           'Verify product sends the licence number, brand name, or photograph you submit for that check. Labs sends the PIN code and product area you type. Device location is sent only if you allow the browser location prompt.',
           'The reply language follows the language selected in the header.',
+          'Useful, Not useful, and Report wrong answer save a short note for 24 hours: the question, the lock steps, and official source links. The full answer is not saved. The note is deleted after 24 hours. It is not a complaint filed with BIS.',
         ],
       },
       {
