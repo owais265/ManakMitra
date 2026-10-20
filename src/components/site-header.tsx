@@ -25,7 +25,7 @@ const PORTAL_HREFS = [
   'https://www.crsbis.in/BIS/about-crs.do',
   'https://www.bis.gov.in/product-certification/products-under-compulsory-certification/?lang=en',
   'https://www.bis.gov.in/bis-apps/?lang=en',
-  'https://huid.manakonline.in/MANAK/HallmarkingHomePage',
+  'https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en',
   'https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en',
   'https://lims.bis.gov.in/home/search_is_number/',
 ] as const;

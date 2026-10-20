@@ -81,7 +81,7 @@ function closedHallmarkPlaces(): Place[] {
         name: row.name,
         address: `${spot.label} ${row.pin} · ${status} in the 10 Oct 2026 extract. Not an open centre.`,
         pin: row.pin,
-        url: "https://huid.manakonline.in/MANAK/HallmarkingHomePage",
+        url: "https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en",
         lat: spot.lat,
         lng: spot.lng,
         city: spot.label,

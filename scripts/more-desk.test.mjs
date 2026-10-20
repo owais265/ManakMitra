@@ -10,7 +10,7 @@ import {
 } from "../src/lib/more-desk.ts";
 
 const BANNED = /I refuse|as an AI|verified genuine|licence granted|complaint has been filed|we have received your complaint/i;
-const HUID_URL = "https://huid.manakonline.in/MANAK/HallmarkingHomePage";
+const HUID_URL = "https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en";
 const CRS_URL = "https://www.crsbis.in/BIS/about-crs.do";
 const BIS_URL = "https://www.bis.gov.in";
 const COMPLAINT_URL = "https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en";

@@ -18,7 +18,7 @@ export type VerifyVerdict = {
 const KYS = "https://standards.bis.gov.in/website/know-your-standards";
 const MANAK = "https://www.manakonline.in";
 const CRS = "https://www.crsbis.in/BIS/about-crs.do";
-const HUID = "https://huid.manakonline.in/MANAK/HallmarkingHomePage";
+const HUID = "https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en";
 
 const HINDI_DIGITS = "०१२३४५६७८९";
 

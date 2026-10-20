@@ -33,7 +33,7 @@ export default function SiteFooter() {
     { href: 'https://standards.bis.gov.in/website/know-your-standards', label: copy.links[0]?.title ?? 'Know Your Standard' },
     { href: 'https://www.manakonline.in', label: copy.links[1]?.title ?? 'MANAK Online' },
     { href: 'https://www.crsbis.in/BIS/about-crs.do', label: copy.links[2]?.title ?? 'CRS' },
-    { href: 'https://huid.manakonline.in/MANAK/HallmarkingHomePage', label: copy.links[5]?.title ?? 'HUID' },
+    { href: 'https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en', label: copy.links[5]?.title ?? 'HUID' },
     { href: 'https://lims.bis.gov.in/home/search_is_number/', label: chrome.labSearch },
     { href: 'https://www.bis.gov.in/consumer-overview/online-complaint-registration/?lang=en', label: chrome.complaint },
   ];

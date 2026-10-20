@@ -25,6 +25,8 @@ import {
   renderWebManifest,
 } from "../../scripts/preview-pwa-shared.mjs";
 
+const TOUCH_ICON = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAABSUlEQVR42u3SMQ0AAAgEsVeCECSiGgOsbE2q4HKpHjhFAsyBOTAH5sAcmANzYA7MgTnAHJgDc2AOzIE5MAfmwByYA8yBOTAH5sAcmANzYA7MgTnAHJgDc2AOzIE5MAfmwByYA3OAOTAH5sAcmANzYA7MgTkwB5gDc2AOzIE5MAfmwByYA3OAOTAH5sAcmANzYA7MgTkwB+YAc2AOzIE5MAfmwByYA3NgDjAH5sAcmANzYA7MgTkwB+YAc2AOzIE5MAfmwByYA3NgDswB5sAcmANzYA7MgTkwB+bAHGAOzIE5MAfmwByYA3NgDswB5sAcmANzYA7MgTkwB+bAHJgDzIE5MAfmwByYA3NgDsyBOcAcmANzYA7MgTkwB+bAHJgDzIE5MAfmwByYA3NgDsyBOTAHmANzYA7MgTkwB+bAHJgDc4A5MAfm4MsC0lfBovoYThAAAAAASUVORK5CYII="), (c) => c.charCodeAt(0));
+
 interface GrokPwaEvent {
   url: URL;
   req: { method: string; headers: Headers };
@@ -69,6 +71,15 @@ export default async function grokPwaMiddleware(
 
   const path = event.url.pathname;
   const urlWithQuery = path + event.url.search;
+
+  if (path === "/__grok/icon-180.png") {
+    return new Response(TOUCH_ICON, {
+      headers: {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=86400",
+      },
+    });
+  }
 
   if (path === "/__grok/manifest.webmanifest" || path === "/__grok/manifest.json") {
     return new Response(renderWebManifest(requestHost(event)), {

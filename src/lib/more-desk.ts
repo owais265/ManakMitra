@@ -4,7 +4,7 @@ import type { AppLang } from "./language.ts";
 import { checkBrand, normalizeLicence } from "./verify-cert.ts";
 import { deskUi, localVerdictTitle } from "./desk-ui.ts";
 
-const HUID_URL = "https://huid.manakonline.in/MANAK/HallmarkingHomePage";
+const HUID_URL = "https://www.bis.gov.in/hallmarking/hallmarking-overview/?lang=en";
 const KYS = "https://standards.bis.gov.in/website/know-your-standards";
 const MANAK = "https://www.manakonline.in";
 const CRS = "https://www.crsbis.in/BIS/about-crs.do";
