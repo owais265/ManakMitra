@@ -14,6 +14,7 @@ import { fetchOnceRetry } from "@/lib/http-retry";
 import { env } from "@/lib/env.server";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
+import { guardSpoken } from "@/lib/answer-guard";
 
 type ChatBody = {
   query?: string;
@@ -240,14 +241,17 @@ async function tryGeminiText(
   let lastDetail = "";
   for (const apiKey of keys) {
     for (const model of geminiModels()) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
       let res: Response;
       try {
         res = await fetchOnceRetry(
           (ms) =>
             fetch(url, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": apiKey,
+              },
               body: JSON.stringify({
                 system_instruction: { parts: [{ text: system }] },
                 contents: [{ role: "user", parts }],
@@ -590,9 +594,13 @@ export const Route = createFileRoute("/api/chat")({
                 }
                 const field: PackField | null =
                   guidedKind === "standards" ? "standard" : guidedKind === "certify" ? "process" : desk === "verify" ? "verify" : null;
+                const trusted: string[] = retrieved.hits.map(
+                  (hit) => `${hit.title}\n${hit.body}\n${hit.url}`,
+                );
                 if (field) {
                   const hits = await searchField(query, field);
                   if (hits.length) {
+                    trusted.push(...hits.map((hit) => `${hit.title}\n${hit.url ?? ""}`));
                     evidence +=
                       "\n\nFIELD ROWS from the loaded extract for this desk only. Quote a title only if it is listed. Do not treat a title match as a licence.\n" +
                       hits.map((hit) => `- ${hit.title}${hit.url ? ` | ${hit.url}` : ""}`).join("\n");
@@ -610,14 +618,18 @@ export const Route = createFileRoute("/api/chat")({
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
                   : modelPrompt(query, attachment);
                 t = performance.now();
-                const spoken = await answerText(
-                  userPrompt,
-                  language,
-                  SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
+                const spoken = guardSpoken(
+                  await answerText(
+                    userPrompt,
+                    language,
+                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
+                    pack,
+                    0.25,
+                    1600,
+                    image,
+                  ),
+                  trusted.join("\n"),
                   pack,
-                  0.25,
-                  1600,
-                  image,
                 );
                 step("write", "Wrote the answer", "From the rows above", t);
                 const unreadLabel = Boolean(attachment && attachment.kind !== "text" && sentLabel && !labelText);

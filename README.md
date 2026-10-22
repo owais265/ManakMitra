@@ -707,6 +707,7 @@ One chat turn does not call every index.
 8. Weak lock only → hybrid extras (BM25 + trgm + dense) → RRF k=60 → gated rerank
 9. Official-host filter. Drop anything else.
 10. Ground the reply on the surviving rows. LLM may phrase. It may not source.
+11. Output lock. Drop a reply that names an IS or a URL the trusted rows do not support. Send the pack fallback.
 ```
 
 Standalone turns: yesterday’s IS is not injected into today’s product query (M8). A caller can send `x-cache-bust` to skip the 60 s retrieval cache. A refuse caused by a transient database error is not cached.
@@ -785,7 +786,7 @@ Kill switch: `HYBRID_RAG=0` skips BM25, trigram, pgvector, and rerank. The pack 
 
 A whitelist extracted from one PDF guarantees the code exists in that PDF. It does not guarantee the code is the right door, the current title, or an official host.
 
-ManakMitra stacks four independent refusals:
+ManakMitra stacks these refusals:
 
 | Guard | What it stops |
 | --- | --- |
@@ -794,6 +795,7 @@ ManakMitra stacks four independent refusals:
 | Faithfulness M3 / M10 | An IS number or clause that is not in the retrieved rows |
 | Policy pin | Scheme mix-up, unknown IS, fake portal — extras are not called |
 | Typed-IS freeze | A user-typed IS already on top cannot be replaced by a neighbour |
+| Output lock | An IS number in the model reply must already be in the trusted pack or desk rows. A URL must be an official host or already on those rows. Otherwise the pack fallback is sent. |
 
 The system can still be wrong when the pack is stale. It cannot invent an IS that is not in the retrieved rows, and it will not answer a scheme mix-up with a retrieved neighbour.
 
@@ -1012,6 +1014,7 @@ src/routes/api/health.ts        Liveness, no model call
 src/lib/rate-limit.ts           Per-instance sliding window
 src/lib/retrieval-cache.ts      60 s retrieval cache
 src/lib/http-retry.ts           One retry on 429 / 503 / fast abort
+src/lib/answer-guard.ts         Post-answer IS and URL lock
 src/lib/rag.ts                  Policy + TF-IDF lock
 src/lib/hybrid.ts               Optional extras + RRF merge
 src/lib/rerank.server.ts        Gated rerank
