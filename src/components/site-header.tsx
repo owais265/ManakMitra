@@ -143,7 +143,7 @@ export default function SiteHeader({
   const bar =
     variant === 'landing'
       ? blend
-        ? 'mx-auto flex min-h-14 max-w-5xl items-center gap-2 px-8 py-1 sm:gap-3 sm:px-12 lg:gap-5 lg:px-16'
+        ? 'mx-auto flex min-h-14 max-w-6xl items-center gap-2 px-4 py-1 sm:px-6 lg:gap-4'
         : 'mx-auto flex min-h-16 max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-6'
       : 'flex min-h-14 items-center gap-2 px-3 sm:gap-3 sm:px-5';
 
@@ -151,7 +151,7 @@ export default function SiteHeader({
   const secondary = copy.links.slice(5);
   const item =
     blend
-      ? 'inline-flex h-9 items-center whitespace-nowrap rounded-lg px-2.5 text-[13px] mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white'
+      ? 'inline-flex h-8 items-center whitespace-nowrap rounded-md px-1.5 text-xs mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white'
       : 'inline-flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white';
 
   return (
@@ -185,7 +185,7 @@ export default function SiteHeader({
           </span>
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center gap-4 overflow-x-auto xl:flex xl:gap-6" aria-label={chrome.portals}>
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-visible xl:flex xl:gap-2" aria-label={chrome.portals}>
           <button
             type="button"
             aria-expanded={portalsOpen}
