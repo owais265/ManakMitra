@@ -959,7 +959,7 @@ export default function ChatBotApp() {
       {/* Main Layout */}
       <div className="flex flex-1 min-h-0 overflow-hidden w-full min-w-0 relative">
         {/* Chat Area */}
-        <div className="flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden mm-theme-fade dark:bg-[#0c1222]">
+        <div className={`flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden mm-theme-fade dark:bg-[#0c1222] ${messages.length === 0 ? 'justify-center' : ''}`}>
           
           {/* Offline / Limited Connectivity Banner */}
           {!isOnline && (
@@ -996,7 +996,9 @@ export default function ChatBotApp() {
             onWheel={onChatWheel}
             onTouchStart={onChatTouchStart}
             onTouchMove={onChatTouchMove}
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-clip px-2.5 py-2.5 sm:p-6 lg:p-8 relative overscroll-y-contain touch-pan-y [overflow-anchor:none] [scroll-behavior:auto]"
+            className={messages.length === 0
+              ? "flex flex-col items-center justify-center px-3 py-6 sm:px-6"
+              : "flex-1 min-h-0 overflow-y-auto overflow-x-clip px-2.5 py-2.5 sm:p-6 lg:p-8 relative overscroll-y-contain touch-pan-y [overflow-anchor:none] [scroll-behavior:auto]"}
           >
               {messages.length === 0 ? (
                <WelcomeState language={language} />
@@ -1096,7 +1098,9 @@ export default function ChatBotApp() {
           </div>
           
           {/* Input Area (Fixed Bottom) */}
-          <div className="w-full min-w-0 px-2.5 pt-2 sm:p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)] z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))] mm-theme-fade dark:bg-[#0c1222] dark:border-slate-700 dark:shadow-none">
+          <div className={messages.length === 0
+            ? "mx-auto w-full max-w-3xl px-3 pb-8"
+            : "w-full min-w-0 px-2.5 pt-2 sm:p-4 bg-white shrink-0 z-20 pb-[max(0.5rem,env(safe-area-inset-bottom))] mm-theme-fade dark:bg-[#0c1222]"}>
             {(() => {
               const lastAi = [...messages].reverse().find((m) => m.role === 'ai');
               const chips = isTyping ? [] : suggestionChips(lastAi, language);
@@ -1129,7 +1133,7 @@ export default function ChatBotApp() {
               </div>
             ) : null}
             <form
-              className="max-w-4xl mx-auto relative flex items-end gap-1.5 sm:gap-2"
+              className="relative mx-auto w-full max-w-3xl"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSend(inputTextRef.current);
@@ -1179,7 +1183,7 @@ export default function ChatBotApp() {
                   });
                 }}
               />
-              <div className={`relative flex-1 min-w-0 overflow-hidden bg-slate-50 border border-slate-300 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all flex flex-col dark:bg-[#151d30] dark:border-slate-600 ${isTyping ? 'animate-pulse opacity-80 border-blue-300' : ''} ${isListening ? 'border-red-400 ring-2 ring-red-200' : ''}`}>
+              <div className={`relative overflow-hidden rounded-3xl border bg-slate-50 transition-colors dark:bg-[#201f1d] ${isTyping ? 'border-blue-300 opacity-80' : 'border-slate-200 dark:border-white/10'} ${isListening ? 'border-red-400' : ''}`}>
                 {isWaitingForMic && (
                   <div className="absolute -top-8 left-0 right-0 flex justify-center">
                     <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow-sm animate-pulse">
@@ -1216,7 +1220,6 @@ export default function ChatBotApp() {
                     </span>
                   </div>
                 )}
-                <div className="relative">
                 <textarea 
                   ref={inputRef}
                   aria-label={UI_DICTIONARY[language].composerPlaceholder}
@@ -1232,53 +1235,54 @@ export default function ChatBotApp() {
                     }
                   }}
                   placeholder={isListening ? UI_DICTIONARY[language].listeningPlaceholder : UI_DICTIONARY[language].composerPlaceholder}
-                  className={`w-full bg-transparent py-2.5 pl-11 pr-11 sm:py-4 sm:pl-12 sm:pr-14 focus:outline-none resize-none max-h-24 sm:max-h-32 min-h-[44px] sm:min-h-[56px] text-base leading-snug text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${language === 'hi' ? 'font-sans' : ''}`}
+                  className="w-full bg-transparent px-4 pt-3.5 pb-14 focus:outline-none resize-none max-h-40 min-h-[88px] text-base leading-7 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                   rows={1}
                   dir="auto"
                 />
-                <button
-                  type="button"
-                  aria-label={UI_DICTIONARY[language].attach}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute left-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-white hover:text-ink sm:left-2 dark:text-slate-300 dark:hover:bg-[#1c2640] dark:hover:text-white"
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-                <button 
-                  type="button"
-                  aria-label={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}
-                  onClick={toggleListening}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  disabled={isWaitingForMic}
-                  className={`absolute right-1.5 top-1/2 z-10 -translate-y-1/2 h-8 w-8 sm:h-11 sm:w-11 sm:right-2 p-0 rounded-lg sm:rounded-xl shadow-sm border flex items-center justify-center transition-all duration-200 overflow-hidden ${
-                    isListening ? 'bg-red-600 text-white border-red-700 sm:ring-4 sm:ring-red-200 shadow-md' : 
-                    isWaitingForMic ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700' :
-                    'bg-white text-slate-500 hover:text-blue-600 hover:border-blue-300 border-slate-200 active:scale-95 dark:bg-[#1c2640] dark:text-slate-300 dark:border-slate-600 dark:hover:text-blue-300 dark:hover:border-blue-400'
-                  }`}
-                  title={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}
-                >
-                  {isListening ? (
-                    <div className="flex items-center justify-center gap-[2.5px] w-5 h-5">
-                      <span className="w-[3px] bg-white h-2 animate-[bounce_1s_infinite_0ms] rounded-full"></span>
-                      <span className="w-[3px] bg-white h-4.5 animate-[bounce_1s_infinite_200ms] rounded-full"></span>
-                      <span className="w-[3px] bg-white h-3 animate-[bounce_1s_infinite_400ms] rounded-full"></span>
-                      <span className="w-[3px] bg-white h-5 animate-[bounce_1s_infinite_600ms] rounded-full"></span>
-                      <span className="w-[3px] bg-white h-2.5 animate-[bounce_1s_infinite_800ms] rounded-full"></span>
-                    </div>
-                  ) : (
-                    <Mic className="w-4 h-4 sm:w-5 sm:h-5" />
-                  )}
-                </button>
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-2">
+                  <button
+                    type="button"
+                    aria-label={UI_DICTIONARY[language].attach}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200/80 dark:text-slate-300 dark:hover:bg-white/10"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      type="button"
+                      aria-label={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}
+                      onClick={toggleListening}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      disabled={isWaitingForMic}
+                      className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors ${
+                        isListening ? 'bg-red-600 text-white' : 
+                        isWaitingForMic ? 'text-slate-300 cursor-not-allowed dark:text-slate-600' :
+                        'text-slate-500 hover:bg-slate-200/80 dark:text-slate-300 dark:hover:bg-white/10'
+                      }`}
+                      title={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}
+                    >
+                      {isListening ? (
+                        <span className="flex items-end justify-center gap-[2px] h-4">
+                          <span className="w-[3px] bg-white h-2 animate-[bounce_1s_infinite_0ms] rounded-full"></span>
+                          <span className="w-[3px] bg-white h-4 animate-[bounce_1s_infinite_200ms] rounded-full"></span>
+                          <span className="w-[3px] bg-white h-3 animate-[bounce_1s_infinite_400ms] rounded-full"></span>
+                        </span>
+                      ) : (
+                        <Mic className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button 
+                      type="submit"
+                      aria-label={UI_DICTIONARY[language].sendLabel}
+                      disabled={!inputText.trim() && !draftFile}
+                      className={`inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors ${inputText.trim() || draftFile ? 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900' : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-white/10 dark:text-slate-500'}`}
+                    >
+                      <Send className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button 
-                type="submit"
-                aria-label={UI_DICTIONARY[language].sendLabel}
-                disabled={!inputText.trim() && !draftFile}
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 sm:p-3.5 shrink-0 transition-colors mb-0 ${inputText.trim() || draftFile ? 'bg-bis-saffron text-white hover:brightness-95' : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'}`}
-              >
-                <Send className={`w-5 h-5 ${inputText.trim() || draftFile ? 'text-white' : 'text-slate-400'}`} />
-              </button>
             </form>
             <p className="mx-auto mt-2 max-w-4xl text-center text-xs text-slate-500 dark:text-slate-400">
               {UI_DICTIONARY[language].privacyHint}
@@ -1293,22 +1297,16 @@ export default function ChatBotApp() {
 // --- Sub Components ---
 
 const WelcomeState = ({ language }: { language: AppLang }) => (
-  <div className="max-w-4xl mx-auto w-full min-w-0 flex flex-col items-center justify-center py-5 sm:py-8 animate-in fade-in zoom-in-95 duration-500 px-1">
-    <div className="mb-3 flex h-16 w-16 items-center justify-center sm:mb-6 sm:h-20 sm:w-20">
-      <ManakMark className="h-16 w-16 rounded-full shadow-md sm:h-20 sm:w-20" />
+  <div className="mx-auto mb-6 flex w-full max-w-3xl flex-col items-center px-1">
+    <div className="mb-4 flex h-14 w-14 items-center justify-center">
+      <ManakMark className="h-14 w-14 rounded-full shadow-md" />
     </div>
-    <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-slate-50 mb-1.5 sm:mb-3 text-center tracking-tight">
+    <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-50">
       {UI_DICTIONARY[language].welcomeTitle}
     </h1>
-    <p className="text-xs sm:text-lg text-slate-600 dark:text-slate-300 mb-5 sm:mb-8 text-center max-w-2xl px-2">
+    <p className="mt-2 max-w-xl text-center text-sm text-slate-600 sm:text-base dark:text-slate-300">
       {UI_DICTIONARY[language].welcomeDesc}
     </p>
-    
-    <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-12 text-[10px] sm:text-xs font-semibold text-slate-600 dark:text-slate-300">
-      <span className="flex items-center bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800">
-        <FileText className="w-4 h-4 mr-1.5"/> {UI_DICTIONARY[language].sourceBacked}
-      </span>
-    </div>
   </div>
 );
 
