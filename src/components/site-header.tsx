@@ -143,7 +143,7 @@ export default function SiteHeader({
   const bar =
     variant === 'landing'
       ? blend
-        ? 'mx-auto flex min-h-14 max-w-6xl items-center gap-2 px-4 py-1 sm:px-6 lg:gap-4'
+        ? 'mx-auto flex min-h-14 max-w-6xl items-center gap-2 px-4 py-1 sm:px-6 xl:px-40 lg:gap-4'
         : 'mx-auto flex min-h-16 max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-6'
       : 'flex min-h-14 items-center gap-2 px-3 sm:gap-3 sm:px-5';
 
