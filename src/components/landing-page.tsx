@@ -169,8 +169,9 @@ export default function LandingPage() {
       <SiteHeader variant="landing" />
 
       <main id="mm-main">
-        <section className="relative">
+        <div className="relative">
           <ThemeFilms />
+          <section className="relative z-10">
           <SideField t={t} onPick={(query) => go(query)} />
           <div className="relative z-10 mx-auto max-w-3xl px-4 pt-16 pb-16 text-center sm:px-6 sm:pt-24 sm:pb-20">
           <p className="mm-rise mm-d1 text-[11px] font-semibold tracking-[0.14em] text-balance text-bis-navy uppercase sm:text-xs sm:tracking-[0.18em] dark:text-blue-300">
@@ -194,9 +195,12 @@ export default function LandingPage() {
             </button>
           </div>
           </div>
-        </section>
+          </section>
 
-        <ProductFilm t={t} />
+          <div className="relative z-10">
+            <ProductFilm t={t} />
+          </div>
+        </div>
 
         <DeskStage lang={lang} />
 

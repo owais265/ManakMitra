@@ -554,7 +554,7 @@
   }
 }
 
-/* Theme films sit behind the opening only. No colour grade. The other video fades in on the existing theme switch. */
+/* Theme films cover the opening through the assistant film, and stop above the real-screens desk. No colour grade. */
 .mm-theme-film {
   position: absolute;
   inset: 0;
