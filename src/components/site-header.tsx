@@ -142,13 +142,17 @@ export default function SiteHeader({
 
   const bar =
     variant === 'landing'
-      ? 'mx-auto flex min-h-16 max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-6'
+      ? blend
+        ? 'mx-auto flex min-h-14 max-w-5xl items-center gap-2 px-8 py-1 sm:gap-3 sm:px-12 lg:gap-5 lg:px-16'
+        : 'mx-auto flex min-h-16 max-w-6xl items-center gap-2 px-4 py-2 sm:gap-3 sm:px-6 lg:gap-6'
       : 'flex min-h-14 items-center gap-2 px-3 sm:gap-3 sm:px-5';
 
   const primary = copy.links.slice(0, 5);
   const secondary = copy.links.slice(5);
   const item =
-    'inline-flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white';
+    blend
+      ? 'inline-flex h-9 items-center whitespace-nowrap rounded-lg px-2.5 text-[13px] mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white'
+      : 'inline-flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white';
 
   return (
     <header ref={headerRef} className={blend
@@ -255,7 +259,7 @@ export default function SiteHeader({
         <div className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5 ${blend ? '' : 'bg-white dark:bg-[#0c1222]'}`}>
           <button
             type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded border border-line text-ink xl:hidden dark:border-slate-600 dark:text-slate-200"
+            className={`inline-flex items-center justify-center rounded border border-line text-ink xl:hidden dark:border-slate-600 dark:text-slate-200 ${blend ? 'h-9 w-9' : 'h-11 w-11'}`}
             aria-expanded={sheetOpen}
             aria-controls="mm-sheet"
             onClick={() => {
@@ -279,7 +283,7 @@ export default function SiteHeader({
             aria-label={copy.langLabel}
             value={language}
             onChange={(e) => setLang(e.target.value as AppLang)}
-            className="h-11 max-w-[4.6rem] shrink truncate rounded border border-line bg-white px-1.5 text-xs text-ink sm:max-w-[10rem] sm:px-2 sm:text-sm dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100"
+            className={`h-9 max-w-[4.6rem] shrink truncate rounded border border-line bg-white px-1.5 text-xs text-ink sm:max-w-[9rem] sm:px-2 dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100 ${blend ? '' : 'sm:h-11 sm:text-sm'}`}
           >
             {APP_LANGS.map((l) => (
               <option key={l.id} value={l.id}>
@@ -292,7 +296,7 @@ export default function SiteHeader({
             onClick={() => toggleTheme()}
             aria-label={dark ? chrome.lightMode : chrome.darkMode}
             aria-pressed={dark}
-            className="inline-flex h-11 w-11 items-center justify-center rounded border border-line text-ink hover:bg-paper dark:border-slate-600 dark:text-slate-200 dark:hover:bg-[#151d30]"
+            className={`inline-flex items-center justify-center rounded border border-line text-ink hover:bg-paper dark:border-slate-600 dark:text-slate-200 dark:hover:bg-[#151d30] ${blend ? 'h-9 w-9' : 'h-11 w-11'}`}
           >
             {dark ? <Sun className="h-4 w-4" strokeWidth={1.75} /> : <Moon className="h-4 w-4" strokeWidth={1.75} />}
           </button>
