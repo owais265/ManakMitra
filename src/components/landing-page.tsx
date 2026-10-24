@@ -125,10 +125,40 @@ function ArcCard({
   );
 }
 
+const DARK_FILM =
+  "https://stream.mux.com/Jwr2RhmsNrd6GEspBNgm02vJsRZAGlaoQIh4AucGdASw.m3u8";
+
 function ThemeFilms() {
   const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
   const lightRef = useRef<HTMLVideoElement>(null);
   const darkRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = darkRef.current;
+    if (!video) return;
+    let dead = false;
+    let player: { destroy: () => void } | null = null;
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = DARK_FILM;
+    } else {
+      void import("hls.js").then(({ default: Hls }) => {
+        if (dead || !Hls.isSupported() || !darkRef.current) return;
+        const hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 12 });
+        player = hls;
+        hls.loadSource(DARK_FILM);
+        hls.attachMedia(darkRef.current);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (document.documentElement.classList.contains("dark")) {
+            darkRef.current?.play().catch(() => {});
+          }
+        });
+      });
+    }
+    return () => {
+      dead = true;
+      player?.destroy();
+    };
+  }, []);
 
   useEffect(() => {
     const show = dark ? darkRef.current : lightRef.current;
@@ -144,12 +174,7 @@ function ThemeFilms() {
       <video ref={lightRef} className="mm-theme-film-light" autoPlay muted loop playsInline preload="auto">
         <source src="/theme-light.mp4" type="video/mp4" />
       </video>
-      <video ref={darkRef} className="mm-theme-film-dark" muted loop playsInline preload="metadata">
-        <source
-          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260702_051048_5ef213b5-26db-4da8-b604-7ef823760b6b.mp4"
-          type="video/mp4"
-        />
-      </video>
+      <video ref={darkRef} className="mm-theme-film-dark" muted loop playsInline preload="none" />
     </div>
   );
 }
