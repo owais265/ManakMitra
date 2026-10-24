@@ -133,8 +133,12 @@ function ThemeFilms() {
   useEffect(() => {
     const show = dark ? darkRef.current : lightRef.current;
     const hide = dark ? lightRef.current : darkRef.current;
-    hide?.pause();
+    if (hide) {
+      hide.pause();
+      hide.preload = "none";
+    }
     if (!show) return;
+    show.preload = "auto";
     show.muted = true;
     const pending = show.play();
     if (pending) pending.catch(() => {});
@@ -142,17 +146,26 @@ function ThemeFilms() {
 
   return (
     <div className="mm-theme-film" aria-hidden="true">
-      <video ref={lightRef} className="mm-theme-film-light" autoPlay muted loop playsInline preload="auto">
-        <source src="/theme-light.mp4" type="video/mp4" />
-      </video>
       <video
-        ref={darkRef}
-        className="mm-theme-film-dark"
+        ref={lightRef}
+        className="mm-theme-film-light"
+        poster="/theme-light-poster.jpg"
         autoPlay
         muted
         loop
         playsInline
         preload="auto"
+      >
+        <source src="/theme-light.mp4" type="video/mp4" />
+      </video>
+      <video
+        ref={darkRef}
+        className="mm-theme-film-dark"
+        poster="/theme-dark-poster.jpg"
+        muted
+        loop
+        playsInline
+        preload="none"
         style={{ opacity: dark ? 1 : 0 }}
       >
         <source src="/theme-dark.mp4" type="video/mp4" />
