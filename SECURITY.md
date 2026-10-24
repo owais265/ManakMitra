@@ -10,7 +10,8 @@ If you find a vulnerability, email the maintainers privately. Do **not** open a 
 - Chat LLM uses **server-only** `XAI_API_KEY` first, then `XAI_API_KEY_2`.
 - Hybrid RAG uses **server-only** `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`.
 - `GEMINI_API_KEY` is server-only (phrasing fallback if xAI fails, plus embeddings ingest).
-- Do not expose the Supabase service role in browser / `VITE_` / `NEXT_PUBLIC_` variables.
+- Chat history is capped at the last 6 turns and 400 characters each before follow-up retrieval. A question is capped at 2,000 characters.
+- The chat rate limit prefers the platform `x-real-ip`. It is still per server instance, not a global quota.
 
 ## Data policy
 

@@ -711,7 +711,7 @@ One chat turn does not call every index.
 12. Shape. One question stays short. Several numbered points each get an answer. A [SOURCE] line only when a row was used.
 ```
 
-Standalone turns: yesterday’s IS is not injected into today’s product query (M8). A caller can send `x-cache-bust` to skip the 60 s retrieval cache. A refuse caused by a transient database error is not cached.
+Standalone turns: yesterday’s IS is not injected into today’s product query (M8). Follow-up history is the last 6 turns, 400 characters each. A question is capped at 2,000 characters. A caller can send `x-cache-bust` to skip the 60 s retrieval cache. A refuse caused by a transient database error is not cached. The rate limit uses the platform IP and drops stale buckets.
 
 ### Operational hardening
 
@@ -720,7 +720,7 @@ These sit in front of the gate. They do not change lock order.
 | Control | What it does | What it is not |
 | --- | --- | --- |
 | Rate limit | In-process sliding window, 20 requests / 60 s per IP per route on `/api/chat`, `/api/labs`, `/api/verify`. 429 with `Retry-After`. | Not shared across Vercel instances. No Redis. |
-| Retrieval cache | 60 s TTL, key = normalised query + desk. Only after the policy gate passes. | Not a model cache. Bypass with `x-cache-bust`. |
+| Retrieval cache | 60 s TTL, key = normalised query + desk, capped at 200 keys. Only after the policy gate passes. | Not a model cache. Bypass with `x-cache-bust`. |
 | Timeouts + one retry | One retry with jitter on 429, 503, or a fast network abort. A slow timeout is not retried. Total wait stays under the chat budget. | Not an unbounded retry loop. |
 | Health | `GET /api/health` → `{ ok: true, pack }`. No Gemini call. Does not 500 if Supabase is slow. | `pack` is a disk check. On Vercel the pack is bundled, so `pack` may be false while answers still come from the bundle. |
 | Structured log | One line: request id, desk, lock-or-extras, cache, limited, refuse reason, latency ms. | Query text that looks like a phone or a key is not logged. |

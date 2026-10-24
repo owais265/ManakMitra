@@ -185,6 +185,21 @@ function withoutIs(text: string): string {
   return text.replace(IS_TOKEN, " ");
 }
 
+/** Last few turns only. A huge body cannot steer follow-up retrieval. */
+export function boundHistory(history: unknown): ChatTurn[] {
+  if (!Array.isArray(history)) return [];
+  const out: ChatTurn[] = [];
+  for (const turn of history.slice(-6)) {
+    if (!turn || typeof turn !== "object") continue;
+    const raw = (turn as ChatTurn).text;
+    const text = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim().slice(0, 400) : "";
+    if (!text) continue;
+    const role = (turn as ChatTurn).role === "assistant" ? "assistant" : "user";
+    out.push({ role, text });
+  }
+  return out;
+}
+
 /** Product, scheme, and a PIN. Never an IS number from an earlier turn. */
 export function slotFromHistory(history?: ChatTurn[]): TurnSlot {
   const empty: TurnSlot = { product: null, scheme: null, city: null };

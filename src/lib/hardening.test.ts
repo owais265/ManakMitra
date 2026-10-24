@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resetLimits, takeLimit } from "./rate-limit.ts";
+import { resetLimits, takeLimit, clientIp } from "./rate-limit.ts";
 import { retryDecision, retryJitterMs } from "./http-retry.ts";
 import { cacheGet, cacheSet, resetRetrievalCache } from "./retrieval-cache.ts";
 import type { Retrieval } from "./retrieve.ts";
@@ -44,4 +44,18 @@ test("retrieval cache expires and busts by key", () => {
   assert.equal(cacheGet("chat:is 14543", 1_000)?.query, "is 14543");
   assert.equal(cacheGet("chat:other", 1_000), null);
   assert.equal(cacheGet("chat:is 14543", 1_000 + 60_001), null);
+});
+
+test("retrieval cache drops the oldest row past 200", () => {
+  resetRetrievalCache();
+  for (let i = 0; i < 205; i += 1) cacheSet(`chat:q${i}`, { ...row, query: `q${i}` }, 1_000 + i);
+  assert.equal(cacheGet("chat:q0", 2_000), null);
+  assert.equal(cacheGet("chat:q204", 2_000)?.query, "q204");
+});
+
+test("platform ip wins over a spoofed forwarded header", () => {
+  const request = new Request("https://example.test", {
+    headers: { "x-real-ip": "203.0.113.9", "x-forwarded-for": "198.51.100.4" },
+  });
+  assert.equal(clientIp(request), "203.0.113.9");
 });

@@ -6,7 +6,7 @@ import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
-import { isFollowCue, followRetrieval, type ChatTurn } from "@/lib/query-context";
+import { isFollowCue, followRetrieval, boundHistory, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 import { buildStops } from "@/lib/work-trace";
@@ -383,7 +383,7 @@ export const Route = createFileRoute("/api/chat")({
         let language: AppLang = "en";
         try {
           const body = (await request.json()) as ChatBody;
-          query = typeof body.query === "string" ? body.query : "";
+          query = typeof body.query === "string" ? body.query.replace(/\u0000/g, "").slice(0, 2000) : "";
           language = isAppLang(body.language) ? body.language : "en";
           const parsed = parseAttachment(body.attachment);
           if (!parsed.ok) {
@@ -401,7 +401,7 @@ export const Route = createFileRoute("/api/chat")({
           }
           const labelText = typeof body.labelText === "string" ? body.labelText.replace(/\s+/g, " ").trim().slice(0, 500) : "";
           const sentLabel = Object.prototype.hasOwnProperty.call(body, "labelText");
-          const history = Array.isArray(body.history) ? body.history : [];
+          const history = boundHistory(body.history);
           const headers = {
             "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "no-cache, no-transform",
