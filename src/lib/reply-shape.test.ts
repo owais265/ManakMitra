@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { APP_LANGS } from "./language.ts";
-import { pickVoice, spokenSlice, voiceTag } from "./read-aloud.ts";
+import { pickVoice, speechChunks, spokenSlice, voiceTag } from "./read-aloud.ts";
 import { askCount, shapeNote, sourcesBelong, wantsList } from "./reply-shape.ts";
 
 const PRODUCTS = ["ceiling fan", "cement", "helmet", "laptop", "gold jewellery", "packaged water", "toy", "electric switch"];
@@ -82,4 +82,10 @@ test("reading uses the selected language, and the highlight stays inside the tex
   assert.deepEqual(spokenSlice(text, 0, 6), { start: 0, end: 6 });
   assert.deepEqual(spokenSlice(text, 6, 0), { start: 6, end: 11 });
   assert.deepEqual(spokenSlice(text, 99, 4), { start: text.length, end: text.length });
+  const tamil = "சிமெண்ட் தரநிலை. இது ஒரு நீண்ட பதில் ஆகும், அதை குரல் படிக்க வேண்டும்.";
+  const parts = speechChunks(tamil, 40);
+  assert.ok(parts.length >= 2);
+  assert.equal(parts[0]?.start, 0);
+  assert.equal(tamil.slice(parts[0]!.start, parts[0]!.end).length > 0, true);
+  assert.equal(parts[parts.length - 1]?.end, tamil.length);
 });

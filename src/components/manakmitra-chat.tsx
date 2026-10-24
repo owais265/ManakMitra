@@ -8,7 +8,7 @@ import {
   Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
-import { pickVoice, readAloudLabel, spokenSlice, voiceTag } from '@/lib/read-aloud';
+import { loadVoices, pickVoice, readAloudLabel, speechChunks, spokenSlice, voiceTag } from '@/lib/read-aloud';
 import { sourcesBelong } from '@/lib/reply-shape';
 import { parseAttachment } from '@/lib/attachments';
 import { initTheme } from '@/lib/theme';
@@ -1441,43 +1441,113 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
   const [spoken, setSpoken] = useState<{ start: number; end: number } | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const stopSpeak = useRef<(() => void) | null>(null);
+  const speakBusy = useRef(false);
 
   useEffect(() => () => stopSpeak.current?.(), []);
 
   function toggleSpeak() {
-    if (speaking) {
+    if (speakBusy.current) {
       stopSpeak.current?.();
       return;
     }
+    const text = msg.text;
+    if (!text.trim()) return;
     const synth = window.speechSynthesis;
-    if (!synth || !msg.text.trim()) return;
-    synth.cancel();
-    const utter = new SpeechSynthesisUtterance(msg.text);
     const tag = voiceTag(language);
-    utter.lang = tag;
-    utter.rate = 0.96;
-    const voice = pickVoice(synth.getVoices(), tag);
-    if (voice) utter.voice = voice;
-    utter.onboundary = (event) => {
-      if (event.name && event.name !== "word") return;
-      setSpoken(spokenSlice(msg.text, event.charIndex || 0, event.charLength || 0));
-    };
+    let cancelled = false;
+    const audioBox: { current: HTMLAudioElement | null } = { current: null };
     const stop = () => {
-      setSpeaking(false);
-      setSpoken(null);
-      if (synth.speaking) synth.cancel();
-    };
-    utter.onend = () => {
-      setSpeaking(false);
-      setSpoken(null);
-    };
-    utter.onerror = () => {
+      cancelled = true;
+      speakBusy.current = false;
+      audioBox.current?.pause();
+      if (synth?.speaking) synth.cancel();
       setSpeaking(false);
       setSpoken(null);
     };
     stopSpeak.current = stop;
+    speakBusy.current = true;
     setSpeaking(true);
-    synth.speak(utter);
+
+    const finish = () => {
+      if (cancelled) return;
+      speakBusy.current = false;
+      setSpeaking(false);
+      setSpoken(null);
+    };
+
+    const speakLocal = (voice: SpeechSynthesisVoice | null) => {
+      if (!synth) {
+        finish();
+        return;
+      }
+      synth.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = tag;
+      utter.rate = 0.96;
+      if (voice) utter.voice = voice;
+      utter.onboundary = (event) => {
+        if (cancelled) return;
+        if (event.name && event.name !== "word") return;
+        setSpoken(spokenSlice(text, event.charIndex || 0, event.charLength || 0));
+      };
+      utter.onend = finish;
+      utter.onerror = finish;
+      synth.speak(utter);
+    };
+
+    const speakRemote = async () => {
+      for (const chunk of speechChunks(text)) {
+        if (cancelled) return;
+        const piece = text.slice(chunk.start, chunk.end).trim();
+        if (!piece) continue;
+        setSpoken(chunk);
+        const res = await fetch("/api/speak", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ lang: language, text: piece }),
+        });
+        if (!res.ok) throw new Error("voice");
+        const url = URL.createObjectURL(await res.blob());
+        if (cancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        await new Promise<void>((resolve, reject) => {
+          const audio = new Audio(url);
+          audioBox.current = audio;
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("audio"));
+          };
+          audio.ontimeupdate = () => {
+            if (cancelled || !audio.duration) return;
+            const at = chunk.start + Math.floor((chunk.end - chunk.start) * (audio.currentTime / audio.duration));
+            setSpoken(spokenSlice(text, at, 1));
+          };
+          audio.play().catch(reject);
+        });
+      }
+      finish();
+    };
+
+    void (async () => {
+      const voices = await loadVoices();
+      if (cancelled) return;
+      const voice = pickVoice(voices, tag);
+      if (voice && synth) {
+        speakLocal(voice);
+        return;
+      }
+      try {
+        await speakRemote();
+      } catch {
+        finish();
+      }
+    })();
   }
 
   const handleCopy = () => {
