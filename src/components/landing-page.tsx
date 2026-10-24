@@ -186,7 +186,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-[100dvh] overflow-x-visible mm-theme-fade bg-paper text-ink dark:bg-[#0c1222] dark:text-slate-100">
-      <SiteHeader variant="landing" />
+      <SiteHeader variant="landing" blend />
 
       <main id="mm-main">
         <div className="relative">

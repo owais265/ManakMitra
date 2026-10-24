@@ -33,9 +33,11 @@ const PORTAL_HREFS = [
 export default function SiteHeader({
   variant = 'landing',
   trailing,
+  blend = false,
 }: {
   variant?: 'landing' | 'chat';
   trailing?: ReactNode;
+  blend?: boolean;
 }) {
   const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
   const language = useSyncExternalStore(subscribeLang, getLangSnapshot, getLangServerSnapshot);
@@ -149,7 +151,9 @@ export default function SiteHeader({
     'inline-flex h-11 items-center whitespace-nowrap rounded-lg px-3 text-sm mm-press hover:bg-slate-200/90 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white';
 
   return (
-    <header ref={headerRef} className="sticky top-0 z-50 shrink-0 border-b border-slate-200 bg-white mm-theme-fade dark:border-slate-700 dark:bg-[#0c1222]">
+    <header ref={headerRef} className={blend
+      ? 'sticky top-0 z-50 shrink-0 border-0 bg-transparent'
+      : 'sticky top-0 z-50 shrink-0 border-b border-slate-200 bg-white mm-theme-fade dark:border-slate-700 dark:bg-[#0c1222]'}>
       <a
         href="#mm-main"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] focus:rounded-lg focus:bg-bis-navy focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -248,7 +252,7 @@ export default function SiteHeader({
           </button>
         </nav>
 
-        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-1.5 bg-white sm:gap-2.5 dark:bg-[#0c1222]">
+        <div className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5 ${blend ? '' : 'bg-white dark:bg-[#0c1222]'}`}>
           <button
             type="button"
             className="inline-flex h-11 w-11 items-center justify-center rounded border border-line text-ink xl:hidden dark:border-slate-600 dark:text-slate-200"

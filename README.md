@@ -862,7 +862,7 @@ A first-time user should not need a manual.
 
 - One header language lock across every desk. Twelve reply languages. Each script has a webfont, so Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, Gurmukhi, Odia, and Urdu draw, not only English and Devanagari.
 - Under a finished answer: copy, useful, not useful, report, and read-aloud. Read-aloud uses the browser voice for the selected language and marks the word being spoken. A greeting does not get a source card.
-- The opening film runs behind the headline and the assistant device, and stops above the real-screens desk. Both themes use a short local clip with a still poster, so the first frame is there before the file finishes. Only the visible film downloads.
+- The opening film runs behind the header, the headline, and the assistant device, and stops above the real-screens desk. The home header has no solid bar, so the film and the side cards show through. Both themes use a short local clip with a still poster. Only the visible film downloads.
 - Suggested prompts on the landing page, same queries the assistant accepts
 - Status the user can read: sourced answer, one clarifying question, or official handoff
 - Official URL on an Allow — not a screenshot of a PDF
