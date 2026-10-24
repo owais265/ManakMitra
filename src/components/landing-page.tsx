@@ -125,65 +125,10 @@ function ArcCard({
   );
 }
 
-const DARK_FILM =
-  "https://stream.mux.com/Jwr2RhmsNrd6GEspBNgm02vJsRZAGlaoQIh4AucGdASw.m3u8";
-
 function ThemeFilms() {
   const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
   const lightRef = useRef<HTMLVideoElement>(null);
   const darkRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = darkRef.current;
-    if (!video) return;
-    let dead = false;
-    let hls: { destroy: () => void; startLoad: (pos?: number) => void; recoverMediaError: () => void } | null = null;
-
-    const play = () => {
-      if (dead || !document.documentElement.classList.contains("dark")) return;
-      video.muted = true;
-      const pending = video.play();
-      if (pending) pending.catch(() => {});
-    };
-    const replay = () => {
-      video.currentTime = 0;
-      play();
-    };
-    video.addEventListener("ended", replay);
-
-    const armNative = () => {
-      video.src = DARK_FILM;
-      video.addEventListener("loadeddata", play, { once: true });
-    };
-
-    void import("hls.js").then(({ default: Hls }) => {
-      if (dead) return;
-      if (!Hls.isSupported()) {
-        if (video.canPlayType("application/vnd.apple.mpegurl")) armNative();
-        return;
-      }
-      const player = new Hls({
-        enableWorker: true,
-        capLevelToPlayerSize: false,
-        maxBufferLength: 20,
-      });
-      hls = player;
-      player.on(Hls.Events.MANIFEST_PARSED, play);
-      player.on(Hls.Events.ERROR, (_event, data) => {
-        if (!data.fatal) return;
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) player.startLoad();
-        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) player.recoverMediaError();
-      });
-      player.loadSource(DARK_FILM);
-      player.attachMedia(video);
-    });
-
-    return () => {
-      dead = true;
-      video.removeEventListener("ended", replay);
-      hls?.destroy();
-    };
-  }, []);
 
   useEffect(() => {
     const show = dark ? darkRef.current : lightRef.current;
@@ -203,13 +148,15 @@ function ThemeFilms() {
       <video
         ref={darkRef}
         className="mm-theme-film-dark"
-        poster="/theme-dark-poster.jpg"
+        autoPlay
         muted
         loop
         playsInline
         preload="auto"
         style={{ opacity: dark ? 1 : 0 }}
-      />
+      >
+        <source src="/theme-dark.mp4" type="video/mp4" />
+      </video>
     </div>
   );
 }
