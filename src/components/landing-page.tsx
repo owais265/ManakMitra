@@ -137,26 +137,51 @@ function ThemeFilms() {
     const video = darkRef.current;
     if (!video) return;
     let dead = false;
-    let player: { destroy: () => void } | null = null;
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    let hls: { destroy: () => void; startLoad: (pos?: number) => void; recoverMediaError: () => void } | null = null;
+
+    const play = () => {
+      if (dead || !document.documentElement.classList.contains("dark")) return;
+      video.muted = true;
+      const pending = video.play();
+      if (pending) pending.catch(() => {});
+    };
+    const replay = () => {
+      video.currentTime = 0;
+      play();
+    };
+    video.addEventListener("ended", replay);
+
+    const armNative = () => {
       video.src = DARK_FILM;
-    } else {
-      void import("hls.js").then(({ default: Hls }) => {
-        if (dead || !Hls.isSupported() || !darkRef.current) return;
-        const hls = new Hls({ capLevelToPlayerSize: true, maxBufferLength: 12 });
-        player = hls;
-        hls.loadSource(DARK_FILM);
-        hls.attachMedia(darkRef.current);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (document.documentElement.classList.contains("dark")) {
-            darkRef.current?.play().catch(() => {});
-          }
-        });
+      video.addEventListener("loadeddata", play, { once: true });
+    };
+
+    void import("hls.js").then(({ default: Hls }) => {
+      if (dead) return;
+      if (!Hls.isSupported()) {
+        if (video.canPlayType("application/vnd.apple.mpegurl")) armNative();
+        return;
+      }
+      const player = new Hls({
+        enableWorker: true,
+        capLevelToPlayerSize: false,
+        maxBufferLength: 20,
       });
-    }
+      hls = player;
+      player.on(Hls.Events.MANIFEST_PARSED, play);
+      player.on(Hls.Events.ERROR, (_event, data) => {
+        if (!data.fatal) return;
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) player.startLoad();
+        else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) player.recoverMediaError();
+      });
+      player.loadSource(DARK_FILM);
+      player.attachMedia(video);
+    });
+
     return () => {
       dead = true;
-      player?.destroy();
+      video.removeEventListener("ended", replay);
+      hls?.destroy();
     };
   }, []);
 
@@ -165,8 +190,9 @@ function ThemeFilms() {
     const hide = dark ? lightRef.current : darkRef.current;
     hide?.pause();
     if (!show) return;
-    const play = show.play();
-    if (play) play.catch(() => {});
+    show.muted = true;
+    const pending = show.play();
+    if (pending) pending.catch(() => {});
   }, [dark]);
 
   return (
@@ -174,7 +200,16 @@ function ThemeFilms() {
       <video ref={lightRef} className="mm-theme-film-light" autoPlay muted loop playsInline preload="auto">
         <source src="/theme-light.mp4" type="video/mp4" />
       </video>
-      <video ref={darkRef} className="mm-theme-film-dark" muted loop playsInline preload="none" />
+      <video
+        ref={darkRef}
+        className="mm-theme-film-dark"
+        poster="/theme-dark-poster.jpg"
+        muted
+        loop
+        playsInline
+        preload="auto"
+        style={{ opacity: dark ? 1 : 0 }}
+      />
     </div>
   );
 }
