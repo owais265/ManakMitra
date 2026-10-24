@@ -554,6 +554,43 @@
   }
 }
 
+/* Theme films sit behind the opening only. No colour grade. The other video fades in on the existing theme switch. */
+.mm-theme-film {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mm-theme-film video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.mm-theme-film-dark {
+  opacity: 0;
+}
+
+html.dark .mm-theme-film-light {
+  opacity: 0;
+}
+
+html.dark .mm-theme-film-dark {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mm-theme-film {
+    display: none;
+  }
+}
+
 /* Landing — one-shot enter only. Interactive states use transitions. */
 @keyframes mm-rise {
   from {

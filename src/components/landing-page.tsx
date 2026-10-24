@@ -1,6 +1,6 @@
 'use client';
 
-import { useSyncExternalStore, type ComponentType } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ComponentType } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -24,6 +24,7 @@ import DeskStage from '@/components/desk-stage';
 import DeckReel from '@/components/deck-reel';
 import { landingCopy, type LandingCopy } from '@/lib/landing-copy';
 import { getLangServerSnapshot, getLangSnapshot, subscribeLang } from '@/lib/lang-store';
+import { getThemeServerSnapshot, getThemeSnapshot, subscribeTheme } from '@/lib/theme';
 
 const CAP_ICONS = [FileSearch, Award, Scale, Gem, Microscope, Globe] as const;
 
@@ -124,6 +125,35 @@ function ArcCard({
   );
 }
 
+function ThemeFilms() {
+  const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
+  const lightRef = useRef<HTMLVideoElement>(null);
+  const darkRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const show = dark ? darkRef.current : lightRef.current;
+    const hide = dark ? lightRef.current : darkRef.current;
+    hide?.pause();
+    if (!show) return;
+    const play = show.play();
+    if (play) play.catch(() => {});
+  }, [dark]);
+
+  return (
+    <div className="mm-theme-film" aria-hidden="true">
+      <video ref={lightRef} className="mm-theme-film-light" autoPlay muted loop playsInline preload="auto">
+        <source src="/theme-light.mp4" type="video/mp4" />
+      </video>
+      <video ref={darkRef} className="mm-theme-film-dark" muted loop playsInline preload="metadata">
+        <source
+          src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260613_180732_a54afbf6-b30d-470e-861f-669871f09f67.mp4"
+          type="video/mp4"
+        />
+      </video>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const lang = useSyncExternalStore(subscribeLang, getLangSnapshot, getLangServerSnapshot);
@@ -140,6 +170,7 @@ export default function LandingPage() {
 
       <main id="mm-main">
         <section className="relative">
+          <ThemeFilms />
           <SideField t={t} onPick={(query) => go(query)} />
           <div className="relative z-10 mx-auto max-w-3xl px-4 pt-16 pb-16 text-center sm:px-6 sm:pt-24 sm:pb-20">
           <p className="mm-rise mm-d1 text-[11px] font-semibold tracking-[0.14em] text-balance text-bis-navy uppercase sm:text-xs sm:tracking-[0.18em] dark:text-blue-300">
