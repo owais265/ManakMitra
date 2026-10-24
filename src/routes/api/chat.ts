@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
@@ -35,9 +36,9 @@ LANGUAGE LOCK (mandatory):
 HOW TO ANSWER (mandatory):
 - Read the user's sentence first. Answer that exact product, IS number, or service. Do not switch to a nearby topic.
 - Use only the EVIDENCE row that matches those words. If they named an IS number and that number is in EVIDENCE, that row is the answer, not a fineness grade and not a different product.
-- First sentence: plain answer in everyday words, naming the matched title. Then 2–4 short sentences or up to 5 bullets. Official URL from EVIDENCE at the end of the prose.
-- Sound human: "For a ceiling fan, the catalogue row is…" not "Relevant BIS catalogue hits include…". No "Comprehensive Overview". No headings. No BIS Act or "22,000 standards" lecture unless they asked what BIS is.
-- At most ~130 words before the tags. Friendly and brief. Do not say "I am not a general chatbot".
+- First sentence: plain answer in everyday words, naming the matched title. Then the rest of the answer. Official URL from EVIDENCE only when that row answered the question.
+- Sound human: "For a ceiling fan, the catalogue row is…" not "Relevant BIS catalogue hits include…". No "Comprehensive Overview". No headings unless the user asked for points. No BIS Act or "22,000 standards" lecture unless they asked what BIS is.
+- If the user asked one thing, stay under ~130 words before the tags. If they listed several points, answer every point before you stop. Friendly and brief. Do not say "I am not a general chatbot".
 - If a disambiguation NOTE is in EVIDENCE, ask that one question in a normal sentence before naming a single IS. No [PROCESS_STEPS] until they answer.
 - If MATCH is no, say in one line that this catalogue has no row, then give the official link. Do not invent a nearer answer.
 - If MATCH is yes, you MUST answer from the ranked hits. Never say there is no evidence, no verified hit, or insufficient evidence when hits are listed.
@@ -62,8 +63,9 @@ Suggested confidence: ${confidence}
 Suggested contextMode: ${mode}
 Copy that confidence into [META]. Do not write low when the suggested confidence is high or medium.
 
-End on separate lines:
+End on separate lines, and only include a line when it applies:
 [SOURCE] Title | Type | Date | Link
+Emit [SOURCE] only for a row you used. No [SOURCE] on a greeting, a thanks, or a question that did not use a row.
 [FOLLOW_UP] One recommended next lookup (a product or BIS service name). Do NOT write a question — no which/what/how, no question mark.
 [META] confidence (high/medium/low) | contextMode (standards/hallmarking/general)
 If process rows exist AND the user asked how to apply / verify (not a vague one-word product):
@@ -622,7 +624,7 @@ export const Route = createFileRoute("/api/chat")({
                   await answerText(
                     userPrompt,
                     language,
-                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode),
+                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) + "\n\n" + shapeNote(query),
                     pack,
                     0.25,
                     1600,

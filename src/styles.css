@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Inter", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Oriya", "Noto Nastaliq Urdu", ui-sans-serif, system-ui, sans-serif;
   --color-bis-navy: #0b1f3a;
   --color-bis-navy-deep: #081628;
   --color-bis-saffron: #dc8026;

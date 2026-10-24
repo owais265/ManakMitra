@@ -5,9 +5,11 @@ import {
   FileText, 
   Send, Mic, CheckCircle, 
   AlertTriangle, XCircle, ExternalLink, X,
-  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown
+  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
+import { pickVoice, readAloudLabel, spokenSlice, voiceTag } from '@/lib/read-aloud';
+import { sourcesBelong } from '@/lib/reply-shape';
 import { parseAttachment } from '@/lib/attachments';
 import { initTheme } from '@/lib/theme';
 import { buildDocx, downloadBytes, transcriptPdf, transcriptPng, type ExportTurn } from '@/lib/export-chat';
@@ -787,7 +789,8 @@ export default function ChatBotApp() {
               const prior = (msg.workSteps || []).filter((step) => step.id === 'ocr');
               msg.text = pureText.trim();
               msg.isStreaming = !done;
-              if (sources.length > 0) msg.sources = sources;
+              if (!sourcesBelong(text)) msg.sources = undefined;
+              else if (sources.length > 0) msg.sources = sources;
               if (followUps.length > 0) msg.followUpQuestions = followUps;
               if (processSteps.length > 0) msg.processSteps = processSteps;
               if (serverSteps.length) msg.workSteps = [...prior, ...serverSteps];
@@ -1437,6 +1440,48 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
   const isFinishedTyping = !msg.isStreaming && caughtUp;
   const displayedText = shouldType ? shown : msg.text;
 
+  const [spoken, setSpoken] = useState<{ start: number; end: number } | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const stopSpeak = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => stopSpeak.current?.(), []);
+
+  function toggleSpeak() {
+    if (speaking) {
+      stopSpeak.current?.();
+      return;
+    }
+    const synth = window.speechSynthesis;
+    if (!synth || !msg.text.trim()) return;
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(msg.text);
+    const tag = voiceTag(language);
+    utter.lang = tag;
+    utter.rate = 0.96;
+    const voice = pickVoice(synth.getVoices(), tag);
+    if (voice) utter.voice = voice;
+    utter.onboundary = (event) => {
+      if (event.name && event.name !== "word") return;
+      setSpoken(spokenSlice(msg.text, event.charIndex || 0, event.charLength || 0));
+    };
+    const stop = () => {
+      setSpeaking(false);
+      setSpoken(null);
+      if (synth.speaking) synth.cancel();
+    };
+    utter.onend = () => {
+      setSpeaking(false);
+      setSpoken(null);
+    };
+    utter.onerror = () => {
+      setSpeaking(false);
+      setSpoken(null);
+    };
+    stopSpeak.current = stop;
+    setSpeaking(true);
+    synth.speak(utter);
+  }
+
   const handleCopy = () => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(msg.text).catch(err => {
@@ -1465,18 +1510,8 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
             ? 'bg-bis-navy text-white rounded-tr-sm border border-bis-navy-deep' 
             : msg.isError
             ? 'bg-red-50 text-red-800 rounded-tl-sm border border-red-200 dark:bg-red-950/40 dark:text-red-200 dark:border-red-800'
-            : 'bg-slate-50 text-slate-800 rounded-tl-sm border border-slate-200 pr-10 dark:bg-[#151d30] dark:text-slate-100 dark:border-slate-700'
+            : 'bg-slate-50 text-slate-800 rounded-tl-sm border border-slate-200 dark:bg-[#151d30] dark:text-slate-100 dark:border-slate-700'
         }`}>
-          {isAI && !msg.isError && (
-            <button
-              onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 text-slate-400 opacity-100 hover:text-slate-600 hover:bg-slate-200 rounded-md transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100 dark:hover:text-slate-200 dark:hover:bg-slate-700"
-              aria-label={UI_DICTIONARY[language].copyLabel}
-              title={UI_DICTIONARY[language].copyLabel}
-            >
-              {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-            </button>
-          )}
           {isAI && !msg.isError && msg.startedAt ? (
             <WorkPanel
               startedAt={msg.startedAt}
@@ -1499,7 +1534,17 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
             </div>
           ) : (
             <div className="whitespace-pre-wrap leading-snug sm:leading-relaxed text-[13px] sm:text-[15px] mm-break">
-              {renderInline(displayedText, msg.sources, isAI)}
+              {speaking && spoken ? (
+                <>
+                  {renderInline(displayedText.slice(0, spoken.start), msg.sources, isAI)}
+                  <mark data-reading="" className="rounded-sm bg-amber-200/90 text-inherit dark:bg-amber-400/30">
+                    {displayedText.slice(spoken.start, spoken.end)}
+                  </mark>
+                  {renderInline(displayedText.slice(spoken.end), msg.sources, isAI)}
+                </>
+              ) : (
+                renderInline(displayedText, msg.sources, isAI)
+              )}
               {/* Natural glowing typing cursor while streaming */}
               {isActivelyTyping && !isFinishedTyping && displayedText.length > 0 && (
                 <span
@@ -1588,32 +1633,11 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
                   </p>
                 </div>
               ) : null}
-              <div className="flex flex-wrap items-center gap-2">
-                <button type="button" aria-pressed={msg.vote === 'up'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('up')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100">
-                  <ThumbsUp className="h-3.5 w-3.5" /> Useful
-                </button>
-                <button type="button" aria-pressed={msg.vote === 'down'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('down')} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100">
-                  <ThumbsDown className="h-3.5 w-3.5" /> Not useful
-                </button>
-                <button
-                  type="button"
-                  data-report-wrong=""
-                  aria-pressed={reported}
-                  disabled={feedbackBusy}
-                  onClick={() => void sendDeskFeedback('report')}
-                  className="inline-flex min-h-11 items-center rounded-full border border-slate-300 px-3 text-xs font-semibold text-slate-800 disabled:opacity-60 dark:border-slate-600 dark:text-slate-100"
-                >
-                  Report wrong answer
-                </button>
-              </div>
-              <p data-feedback-note="" className="text-[10px] text-slate-500 dark:text-slate-400">
-                {feedbackNote || 'A click is saved on this desk for 24 hours, then deleted. Not a BIS complaint.'}
-              </p>
             </div>
           ) : null}
 
-          {/* Source Citations */}
-          {isFinishedTyping && msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (
+          {/* Source card only when this question is a BIS fact. */}
+          {isFinishedTyping && sourcesBelong(msg.userQuery || "") && msg.sources && msg.sources.filter((s) => isOfficialUrl(s.link) && !/google\.com\/search/i.test(s.link)).length > 0 && (
             <div className="mt-4 sm:mt-5 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm min-w-0 dark:bg-[#10182a] dark:border-slate-700">
               <h4 className="flex items-center gap-2 mb-3 text-sm font-bold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-700 pb-2">
                 <FileText className="w-4 h-4 text-blue-600 dark:text-blue-300" />
@@ -1636,6 +1660,28 @@ const MessageBubble = ({ msg, language, onFollow, onRetry, onUseLocation, onVote
             </div>
           )}
         </div>
+        {isAI && isFinishedTyping && !msg.isError ? (
+          <div data-answer-actions="" className="mt-1 flex items-center gap-0.5">
+            <button type="button" onClick={handleCopy} aria-label={UI_DICTIONARY[language].copyLabel} title={UI_DICTIONARY[language].copyLabel} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">
+              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </button>
+            <button type="button" aria-pressed={msg.vote === 'up'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('up')} aria-label="Useful" title="Useful" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 disabled:opacity-40 aria-pressed:text-bis-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:aria-pressed:text-slate-100">
+              <ThumbsUp className="h-4 w-4" />
+            </button>
+            <button type="button" aria-pressed={msg.vote === 'down'} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('down')} aria-label="Not useful" title="Not useful" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 disabled:opacity-40 aria-pressed:text-bis-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:aria-pressed:text-slate-100">
+              <ThumbsDown className="h-4 w-4" />
+            </button>
+            <button type="button" data-report-wrong="" aria-pressed={reported} disabled={feedbackBusy} onClick={() => void sendDeskFeedback('report')} aria-label="Report wrong answer" title="Report wrong answer" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 disabled:opacity-40 aria-pressed:text-red-700 dark:text-slate-400 dark:hover:bg-slate-800">
+              <Flag className="h-4 w-4" />
+            </button>
+            <button type="button" data-read-aloud="" aria-pressed={speaking} onClick={toggleSpeak} aria-label={readAloudLabel(language)} title={readAloudLabel(language)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 hover:text-slate-800 aria-pressed:text-bis-navy dark:text-slate-400 dark:hover:bg-slate-800 dark:aria-pressed:text-amber-200">
+              {speaking ? <Square className="h-3.5 w-3.5" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+            {feedbackNote ? (
+              <p data-feedback-note="" className="ml-1 text-[10px] text-slate-500 dark:text-slate-400">{feedbackNote}</p>
+            ) : null}
+          </div>
+        ) : null}
         <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 mx-1 font-medium">{msg.timestamp}</span>
       </div>
     </div>

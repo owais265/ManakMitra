@@ -697,7 +697,7 @@ Rerank runs only when extras exist and the local top is below 0.45, and never on
 One chat turn does not call every index.
 
 ```text
-1. Language lock (header EN / HI / Hinglish)
+1. Language lock (the header language, not the typed script)
 2. Per-IP sliding window (20 / min on chat, labs, verify). Over → 429 + Retry-After. No Gemini, no Supabase.
 3. Intent: product, typed IS, scheme, city / PIN, process, consumer
 4. Policy gate: scope × scheme × source × evidence
@@ -708,6 +708,7 @@ One chat turn does not call every index.
 9. Official-host filter. Drop anything else.
 10. Ground the reply on the surviving rows. LLM may phrase. It may not source.
 11. Output lock. Drop a reply that names an IS or a URL the trusted rows do not support. Send the pack fallback.
+12. Shape. One question stays short. Several numbered points each get an answer. A [SOURCE] line only when a row was used.
 ```
 
 Standalone turns: yesterday’s IS is not injected into today’s product query (M8). A caller can send `x-cache-bust` to skip the 60 s retrieval cache. A refuse caused by a transient database error is not cached.
@@ -859,7 +860,8 @@ Safety eval (`npm run eval:all`, no LLM required):
 
 A first-time user should not need a manual.
 
-- One header language lock (English · Hindi · Hinglish) across every desk
+- One header language lock across every desk. Twelve reply languages. Each script has a webfont, so Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, Gurmukhi, Odia, and Urdu draw, not only English and Devanagari.
+- Under a finished answer: copy, useful, not useful, report, and read-aloud. Read-aloud uses the browser voice for the selected language and marks the word being spoken. A greeting does not get a source card.
 - Suggested prompts on the landing page, same queries the assistant accepts
 - Status the user can read: sourced answer, one clarifying question, or official handoff
 - Official URL on an Allow — not a screenshot of a PDF
@@ -1015,6 +1017,8 @@ src/lib/rate-limit.ts           Per-instance sliding window
 src/lib/retrieval-cache.ts      60 s retrieval cache
 src/lib/http-retry.ts           One retry on 429 / 503 / fast abort
 src/lib/answer-guard.ts         Post-answer IS and URL lock
+src/lib/reply-shape.ts          Multi-point shape and when a source card belongs
+src/lib/read-aloud.ts           Browser voice tag for the selected language
 src/lib/rag.ts                  Policy + TF-IDF lock
 src/lib/hybrid.ts               Optional extras + RRF merge
 src/lib/rerank.server.ts        Gated rerank
