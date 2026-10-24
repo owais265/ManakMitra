@@ -129,32 +129,49 @@ function ThemeFilms() {
   const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
   const lightRef = useRef<HTMLVideoElement>(null);
   const darkRef = useRef<HTMLVideoElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const onScreen = useRef(true);
 
   useEffect(() => {
-    const show = dark ? darkRef.current : lightRef.current;
-    const hide = dark ? lightRef.current : darkRef.current;
-    if (hide) {
-      hide.pause();
-      hide.preload = "none";
-    }
-    if (!show) return;
-    show.preload = "auto";
-    show.muted = true;
-    const pending = show.play();
-    if (pending) pending.catch(() => {});
+    const box = boxRef.current;
+    const apply = () => {
+      const show = dark ? darkRef.current : lightRef.current;
+      const hide = dark ? lightRef.current : darkRef.current;
+      if (hide) {
+        hide.pause();
+        hide.preload = 'none';
+      }
+      if (!show) return;
+      if (!onScreen.current) {
+        show.pause();
+        return;
+      }
+      show.preload = 'auto';
+      show.muted = true;
+      const pending = show.play();
+      if (pending) pending.catch(() => {});
+    };
+    apply();
+    if (!box) return;
+    const watch = new IntersectionObserver(([entry]) => {
+      onScreen.current = entry.isIntersecting;
+      apply();
+    }, { rootMargin: '120px 0px', threshold: 0 });
+    watch.observe(box);
+    return () => watch.disconnect();
   }, [dark]);
 
   return (
-    <div className="mm-theme-film" aria-hidden="true">
+    <div ref={boxRef} className="mm-theme-film" aria-hidden="true">
       <video
         ref={lightRef}
         className="mm-theme-film-light"
         poster="/theme-light-poster.jpg"
-        autoPlay
         muted
         loop
         playsInline
-        preload="auto"
+        preload="none"
+        style={{ opacity: dark ? 0 : 1 }}
       >
         <source src="/theme-light.mp4" type="video/mp4" />
       </video>
@@ -224,7 +241,7 @@ export default function LandingPage() {
 
         <DeskStage lang={lang} />
 
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+        <section className="mm-skip mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-semibold tracking-tight text-balance text-slate-900 dark:text-slate-50">
               {t.capHeading}
@@ -252,7 +269,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="border-y border-slate-200 bg-paper dark:border-slate-800 dark:bg-[#10182a]">
+        <section className="mm-skip border-y border-slate-200 bg-paper dark:border-slate-800 dark:bg-[#10182a]">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-3">
             <div className="lg:col-span-1">
               <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">{t.howHeading}</h2>
@@ -274,7 +291,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+        <section className="mm-skip mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-3xl bg-bis-navy p-7 text-white sm:p-9 dark:bg-[#1a2f78]">
               <Landmark className="h-7 w-7 text-bis-saffron" />
@@ -326,7 +343,9 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <DeckReel t={t} />
+        <div className="mm-skip">
+          <DeckReel t={t} />
+        </div>
       </main>
 
       <SiteFooter />
