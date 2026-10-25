@@ -12,7 +12,10 @@ function readEnv(name: string): string | undefined {
 
 function withSsl(url: string): string {
   if (!/supabase/i.test(url)) return url;
-  const [base, query = ""] = url.split("?");
+  // Transaction pooler (6543) rejects the prepared statements Better Auth sends.
+  // Session pooler is the same host on 5432.
+  const session = url.replace(/(pooler\.supabase\.com:)6543\b/i, "$15432");
+  const [base, query = ""] = session.split("?");
   const params = new URLSearchParams(query);
   params.set("sslmode", "no-verify");
   return `${base}?${params.toString()}`;

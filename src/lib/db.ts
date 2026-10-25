@@ -10,7 +10,8 @@ export type DbSource = "neon" | "pglite";
 function openDatabaseUrl(url: string | undefined): string | undefined {
   if (!url) return undefined;
   if (!/supabase/i.test(url)) return url;
-  const [base, query = ""] = url.split("?");
+  const session = url.replace(/(pooler\.supabase\.com:)6543\b/i, "$15432");
+  const [base, query = ""] = session.split("?");
   const params = new URLSearchParams(query);
   params.set("sslmode", "no-verify");
   return `${base}?${params.toString()}`;
