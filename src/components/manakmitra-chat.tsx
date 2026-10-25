@@ -5,7 +5,7 @@ import {
   FileText, 
   Send, Mic, CheckCircle, 
   AlertTriangle, XCircle, ExternalLink, X,
-  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag
+  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag, PanelLeft, ChevronLeft
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
 import { loadVoices, pickVoice, readAloudLabel, speechChunks, spokenSlice, voiceTag } from '@/lib/read-aloud';
@@ -263,6 +263,8 @@ export default function ChatBotApp() {
   const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
   const [guestLocked, setGuestLocked] = useState(false);
   const [mobileRail, setMobileRail] = useState(false);
+  const [railOpen, setRailOpen] = useState(true);
+  const [railReady, setRailReady] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const [inputText, setInputText] = useState('');
   const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text'; text?: string; dataUrl?: string } | null>(null);
@@ -293,7 +295,22 @@ export default function ChatBotApp() {
   useLayoutEffect(() => {
     initTheme();
     initLang();
+    try {
+      if (window.localStorage.getItem('mm-history-open') === '0') setRailOpen(false);
+    } catch {
+      /* private mode */
+    }
+    setRailReady(true);
   }, []);
+
+  const setRail = (open: boolean) => {
+    setRailOpen(open);
+    try {
+      window.localStorage.setItem('mm-history-open', open ? '1' : '0');
+    } catch {
+      /* private mode */
+    }
+  };
 
   useEffect(() => {
     setSessionId(createUniqueId());
@@ -1057,15 +1074,48 @@ export default function ChatBotApp() {
 
       {/* Main Layout */}
       <div className="flex flex-1 min-h-0 overflow-hidden w-full min-w-0 relative">
-        <div className="hidden h-full md:flex">
-          <HistoryRail
-            threads={threads}
-            activeId={activeId}
-            user={user}
-            onOpen={(id) => void openThread(id)}
-            onNew={startNewChat}
-          />
+        <div
+          inert={railOpen ? undefined : true}
+          aria-hidden={railOpen ? undefined : true}
+          className={`hidden h-full shrink-0 overflow-hidden md:block ${railReady ? 'transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none' : ''} ${railOpen ? 'w-[17rem]' : 'w-0'}`}
+        >
+          <div className={`h-full w-[17rem] ${railReady ? 'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none' : ''} ${railOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <HistoryRail
+              threads={threads}
+              activeId={activeId}
+              user={user}
+              onOpen={(id) => void openThread(id)}
+              onNew={startNewChat}
+              onCollapse={() => setRail(false)}
+              railId="mm-history"
+            />
+          </div>
         </div>
+        <button
+          type="button"
+          aria-expanded={railOpen}
+          aria-controls="mm-history"
+          aria-label={railOpen ? 'Close history' : 'Open history'}
+          title={railOpen ? 'Close history' : 'Open history'}
+          onClick={() => setRail(!railOpen)}
+          className={`absolute top-1/2 z-30 hidden h-16 w-[18px] -translate-y-1/2 items-center justify-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 text-slate-500 shadow-sm hover:w-6 hover:bg-white hover:text-slate-800 md:flex dark:border-white/10 dark:bg-[#070b14] dark:text-slate-300 dark:hover:bg-[#121826] dark:hover:text-white ${railReady ? 'transition-[left,width,color,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none' : ''}`}
+          style={{ left: railOpen ? '17rem' : '0px' }}
+        >
+          <ChevronLeft className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${railOpen ? '' : 'rotate-180'}`} strokeWidth={1.75} />
+        </button>
+        {!railOpen ? (
+          <button
+            type="button"
+            aria-label="Open history"
+            title="Open history"
+            aria-controls="mm-history"
+            aria-expanded={false}
+            onClick={() => setRail(true)}
+            className="absolute left-2 top-2 z-30 hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 md:inline-flex dark:border-white/10 dark:bg-[#151d30] dark:text-slate-200"
+          >
+            <PanelLeft className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        ) : null}
         {mobileRail ? (
           <div className="absolute inset-0 z-40 flex md:hidden">
             <HistoryRail
@@ -1074,6 +1124,7 @@ export default function ChatBotApp() {
               user={user}
               onOpen={(id) => void openThread(id)}
               onNew={startNewChat}
+              onCollapse={() => setMobileRail(false)}
               onNavigate={() => setMobileRail(false)}
             />
             <button type="button" aria-label="Close history" className="min-w-0 flex-1 bg-black/40" onClick={() => setMobileRail(false)} />

@@ -1,3 +1,4 @@
+import { PanelLeft } from "lucide-react";
 import { AccountMenu } from "@/components/account-menu";
 import type { AppUser } from "@/lib/auth/use-current-user";
 
@@ -11,20 +12,40 @@ export default function HistoryRail({
   activeId,
   onOpen,
   onNew,
+  onCollapse,
   user,
   onNavigate,
+  railId,
 }: {
   threads: HistoryItem[];
   activeId: string;
   onOpen: (id: string) => void;
   onNew: () => void;
+  onCollapse?: () => void;
   user: AppUser | null;
   onNavigate?: () => void;
+  railId?: string;
 }) {
   return (
-    <aside className="flex h-full w-[17rem] shrink-0 flex-col border-r border-slate-200 bg-slate-50 text-slate-800 dark:border-white/10 dark:bg-[#070b14] dark:text-slate-100">
-      <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <p className="text-xs font-medium tracking-wide text-slate-500">History</p>
+    <aside
+      id={railId}
+      className="flex h-full w-[17rem] shrink-0 flex-col border-r border-slate-200 bg-slate-50 text-slate-800 dark:border-white/10 dark:bg-[#070b14] dark:text-slate-100"
+    >
+      <div className="flex items-center gap-1 px-2 pt-2.5 pb-2">
+        {onCollapse ? (
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-label="Close history"
+            aria-controls={railId}
+            aria-expanded="true"
+            title="Close history"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200/80 dark:text-slate-300 dark:hover:bg-white/10"
+          >
+            <PanelLeft className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        ) : null}
+        <p className="min-w-0 flex-1 truncate px-1 text-xs font-medium tracking-wide text-slate-500">History</p>
         <button
           type="button"
           onClick={() => {
