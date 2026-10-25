@@ -1,3 +1,4 @@
+import "./pg-guard";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 import { env } from "./env.server";
 

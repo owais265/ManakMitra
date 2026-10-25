@@ -1,4 +1,4 @@
-import "@/lib/postgres-url";
+import { lastPgCode } from "@/lib/pg-guard";
 import { createFileRoute } from "@tanstack/react-router";
 import { auth } from "@/lib/auth/server";
 
@@ -15,13 +15,15 @@ async function handleAuth(request: Request): Promise<Response> {
   try {
     const { getSql } = await import("@/lib/db");
     await getSql();
-    return await auth.handler(request);
+    const response = await auth.handler(request);
+    if (response.status < 500) return response;
+    const code = lastPgCode();
+    if (!code) return response;
+    return Response.json({ status: response.status, code }, { status: response.status });
   } catch (error) {
-    const err = error as { name?: string; code?: string; message?: string; cause?: { code?: string; message?: string } };
-    console.error("[auth] failed", err.code || err.cause?.code || err.name || "error");
-    return Response.json(
-      { status: 500, code: err.code || err.cause?.code || err.name || "error" },
-      { status: 500 },
-    );
+    const err = error as { name?: string; code?: string; cause?: { code?: string } };
+    const code = err.code || err.cause?.code || lastPgCode() || err.name || "error";
+    console.error("[auth] failed", code);
+    return Response.json({ status: 500, code }, { status: 500 });
   }
 }
