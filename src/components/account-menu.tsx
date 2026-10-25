@@ -30,7 +30,19 @@ export function AccountMenu({ user, placement }: { user: AppUser; placement: "do
   const [signingOut, setSigningOut] = useState(false);
   const gate = useSyncExternalStore(subscribe, hasGateSessionMarker, () => false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<number | null>(null);
   const label = user.displayName ?? user.primaryEmail ?? "Account";
+
+  const cancelClose = () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+  };
+
+  const armClose = () => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 180);
+  };
+
+  useEffect(() => () => cancelClose(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -62,26 +74,31 @@ export function AccountMenu({ user, placement }: { user: AppUser; placement: "do
     <div
       ref={rootRef}
       className="relative"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={() => {
+        cancelClose();
+        setOpen(true);
+      }}
+      onMouseLeave={armClose}
     >
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          cancelClose();
+          setOpen((value) => !value);
+        }}
         className="inline-flex rounded-full"
       >
         {avatar}
       </button>
       {open ? (
-        <div
-          role="menu"
-          className={`absolute right-0 z-[70] w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#161616] ${
-            placement === "up" ? "bottom-full mb-2" : "top-full mt-2"
-          }`}
-        >
+        <div className={`absolute right-0 z-[70] ${placement === "up" ? "bottom-full pb-2" : "top-full pt-2"}`}>
+          <div
+            role="menu"
+            className="w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-[#161616]"
+          >
           <Link
             to="/login"
             role="menuitem"
@@ -102,6 +119,7 @@ export function AccountMenu({ user, placement }: { user: AppUser; placement: "do
           >
             {signingOut ? "Logging out…" : "Log out"}
           </button>
+          </div>
         </div>
       ) : null}
     </div>
