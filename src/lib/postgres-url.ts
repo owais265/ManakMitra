@@ -27,3 +27,14 @@ if (source) {
   const tuned = withSsl(source);
   if (process.env.DATABASE_URL !== tuned) process.env.DATABASE_URL = tuned;
 }
+
+// package.json sideEffects is false, so a bare import of this file is dropped
+// from the production bundle. Call this from a value the auth module uses.
+export function ensureDatabaseUrl(): string | undefined {
+  const next =
+    readEnv("DATABASE_URL") || readEnv("POSTGRES_URL") || readEnv("POSTGRES_URL_NON_POOLING");
+  if (!next) return undefined;
+  const tuned = withSsl(next);
+  if (process.env.DATABASE_URL !== tuned) process.env.DATABASE_URL = tuned;
+  return tuned;
+}

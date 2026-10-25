@@ -1,4 +1,4 @@
-import "./postgres-url";
+import { ensureDatabaseUrl } from "./postgres-url";
 import { Client, Pool, type PoolClient } from "pg";
 
 type PgLast = { code?: string; hint?: string };
@@ -42,54 +42,64 @@ function loosen(client: Client) {
 }
 
 const originalQuery = Client.prototype.query as (...args: unknown[]) => unknown;
-Client.prototype.query = function query(this: Client, ...args: unknown[]) {
-  const result = originalQuery.apply(this, args);
-  if (result && typeof (result as Promise<unknown>).then === "function") {
-    return (result as Promise<unknown>).catch((error: unknown) => {
-      remember(error);
-      throw error;
-    });
-  }
-  return result;
-} as typeof Client.prototype.query;
-
 const originalClientConnect = Client.prototype.connect as (
   this: Client,
   callback?: (error?: Error) => void,
 ) => unknown;
-Client.prototype.connect = function connect(this: Client, callback?: (error?: Error) => void) {
-  loosen(this);
-  if (typeof callback === "function") {
-    return originalClientConnect.call(this, (error?: Error) => {
-      if (error) remember(error);
-      callback(error);
-    });
-  }
-  const result = originalClientConnect.call(this);
-  if (result && typeof (result as Promise<unknown>).then === "function") {
-    return (result as Promise<unknown>).catch((error: unknown) => {
-      remember(error);
-      throw error;
-    });
-  }
-  return result;
-} as typeof Client.prototype.connect;
-
 const originalConnect = Pool.prototype.connect as (...args: unknown[]) => unknown;
-Pool.prototype.connect = function connect(this: Pool, ...args: unknown[]) {
-  const marked = this as Pool & { __mmErr?: boolean };
-  if (!marked.__mmErr) {
-    marked.__mmErr = true;
-    this.on("error", (error: Error, _client: PoolClient) => {
-      remember(error);
-      const code = "code" in error && typeof (error as { code?: unknown }).code === "string"
-        ? (error as { code: string }).code
-        : "error";
-      console.error("[pg] idle client", code);
-    });
-  }
-  return originalConnect.apply(this, args);
-} as typeof Pool.prototype.connect;
+
+export function installPgGuard(): boolean {
+  ensureDatabaseUrl();
+  const marked = globalPg as typeof globalPg & { __mmPgGuard?: boolean };
+  if (marked.__mmPgGuard) return true;
+  marked.__mmPgGuard = true;
+
+  Client.prototype.query = function query(this: Client, ...args: unknown[]) {
+    const result = originalQuery.apply(this, args);
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      return (result as Promise<unknown>).catch((error: unknown) => {
+        remember(error);
+        throw error;
+      });
+    }
+    return result;
+  } as typeof Client.prototype.query;
+
+  Client.prototype.connect = function connect(this: Client, callback?: (error?: Error) => void) {
+    loosen(this);
+    if (typeof callback === "function") {
+      return originalClientConnect.call(this, (error?: Error) => {
+        if (error) remember(error);
+        callback(error);
+      });
+    }
+    const result = originalClientConnect.call(this);
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      return (result as Promise<unknown>).catch((error: unknown) => {
+        remember(error);
+        throw error;
+      });
+    }
+    return result;
+  } as typeof Client.prototype.connect;
+
+  Pool.prototype.connect = function connect(this: Pool, ...args: unknown[]) {
+    const pool = this as Pool & { __mmErr?: boolean };
+    if (!pool.__mmErr) {
+      pool.__mmErr = true;
+      this.on("error", (error: Error, _client: PoolClient) => {
+        remember(error);
+        const code = "code" in error && typeof (error as { code?: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : "error";
+        console.error("[pg] idle client", code);
+      });
+    }
+    return originalConnect.apply(this, args);
+  } as typeof Pool.prototype.connect;
+
+  return true;
+}
 
 export function clearPgCode(): void {
   globalPg.__mmPgLast = undefined;

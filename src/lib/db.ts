@@ -1,6 +1,14 @@
-import "./pg-guard";
+import { installPgGuard } from "./pg-guard";
+import { ensureDatabaseUrl } from "./postgres-url";
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 import { env } from "./env.server";
+
+// Auth reads DATABASE_URL once, while this module is still loading. The call
+// result is part of the pool URL so the bundler cannot delete it.
+const ensuredUrl = ensureDatabaseUrl();
+if (!installPgGuard()) {
+  throw new Error("database guard failed");
+}
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -18,7 +26,7 @@ function openDatabaseUrl(url: string | undefined): string | undefined {
 }
 
 const rawDatabaseUrl = openDatabaseUrl(
-  env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_URL_NON_POOLING"),
+  ensuredUrl || env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_URL_NON_POOLING"),
 );
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;

@@ -52,6 +52,31 @@ function pgliteBootstrapPlugin(): Plugin {
 }
 
 /**
+ * Better Auth reads DATABASE_URL once, inside src/lib/auth/server.ts.
+ * package.json marks every module side-effect free, so a bare import that
+ * copies POSTGRES_URL into DATABASE_URL is deleted from the production bundle
+ * and sign-in falls through to PGLite. Use the helper's return value on the
+ * line that builds the pool so the call cannot be tree-shaken.
+ */
+function authDatabaseUrlPlugin(): Plugin {
+  return {
+    name: "manakmitra:auth-database-url",
+    enforce: "pre",
+    transform(code, id) {
+      const norm = id.replace(/\\/g, "/");
+      if (!norm.endsWith("/src/lib/auth/server.ts")) return null;
+      if (code.includes("__mmEnsureDatabaseUrl")) return null;
+      const replaced = code.replace(
+        'const databaseUrl = env("DATABASE_URL");',
+        'const databaseUrl = __mmEnsureDatabaseUrl() || env("DATABASE_URL");',
+      );
+      if (replaced === code) return null;
+      return `import { ensureDatabaseUrl as __mmEnsureDatabaseUrl } from "../postgres-url";\n${replaced}`;
+    },
+  };
+}
+
+/**
  * Live-preview OAuth popup — handled HERE so the agent never has to create a
  * `/auth/popup` route (and cannot break it by scaffolding a React page that
  * paints the full app shell in the popup).
@@ -159,6 +184,7 @@ export default defineConfig(({ command, isPreview }) => ({
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
+    authDatabaseUrlPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.
     authPopupPlugin(),
     // Dev-only /__app-env, read by scripts/check-auth-invariant.mjs.
