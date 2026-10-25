@@ -1,13 +1,31 @@
 import "./postgres-url";
 import { Client, Pool, type PoolClient } from "pg";
 
-type PgLast = { code?: string };
+type PgLast = { code?: string; hint?: string };
 const globalPg = globalThis as typeof globalThis & { __mmPgLast?: PgLast };
 
+function sanitize(message: string): string {
+  return message
+    .replace(/postgres(?:ql)?:\/\/\S+/gi, "[url]")
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[email]")
+    .replace(/password[=:][^\s]+/gi, "password=[redacted]")
+    .slice(0, 180);
+}
+
 function remember(error: unknown) {
+  if (typeof error === "string") {
+    globalPg.__mmPgLast = { hint: sanitize(error) };
+    return;
+  }
   if (!error || typeof error !== "object") return;
-  const code = "code" in error ? (error as { code?: unknown }).code : undefined;
-  if (typeof code === "string") globalPg.__mmPgLast = { code };
+  const code = "code" in error && typeof (error as { code?: unknown }).code === "string"
+    ? (error as { code: string }).code
+    : undefined;
+  const message = "message" in error && typeof (error as { message?: unknown }).message === "string"
+    ? sanitize((error as { message: string }).message)
+    : undefined;
+  if (code || message) globalPg.__mmPgLast = { code, hint: message };
+  if ("cause" in error && (error as { cause?: unknown }).cause) remember((error as { cause?: unknown }).cause);
 }
 
 // The auth pool parses its connection string before this file can rewrite it
@@ -77,6 +95,6 @@ export function clearPgCode(): void {
   globalPg.__mmPgLast = undefined;
 }
 
-export function lastPgCode(): string | undefined {
-  return globalPg.__mmPgLast?.code;
+export function lastPgFailure(): { code?: string; hint?: string } {
+  return globalPg.__mmPgLast ?? {};
 }
