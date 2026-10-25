@@ -18,13 +18,15 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
-const databaseUrl = (
-  process.env.POSTGRES_URL_NON_POOLING ||
-  process.env.DATABASE_URL ||
-  process.env.POSTGRES_URL ||
-  ""
-).trim();
-if (!databaseUrl) {
+const candidates = [
+  process.env.POSTGRES_URL_NON_POOLING,
+  process.env.DATABASE_URL,
+  process.env.POSTGRES_URL,
+]
+  .map((value) => (value || "").trim())
+  .filter((value, index, all) => value && all.indexOf(value) === index);
+
+if (candidates.length === 0) {
   console.log(
     "[migrate] no Postgres URL — skipping (the PGLite fallback migrates itself).",
   );
@@ -47,42 +49,54 @@ async function main() {
     return;
   }
 
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
-  const client = await pool.connect();
-  try {
-    await client.query(
-      "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
-    );
-    const applied = (await client.query("SELECT name FROM _migrations")).rows.map(
-      (r) => r.name,
-    );
-
-    let count = 0;
-    for (const { name } of pendingMigrations(entries, applied)) {
-      const text = await readFile(join(migrationsDir, name), "utf8");
-      try {
-        await client.query("BEGIN");
-        // pg's simple-query protocol runs a whole multi-statement file at once.
-        await client.query(text);
-        await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
-        await client.query("COMMIT");
-      } catch (err) {
-        console.error(`[migrate] error applying ${name}`);
-        try {
-          await client.query("ROLLBACK");
-        } catch {
-          // ROLLBACK fails when the connection died — keep the original error.
-        }
-        throw err;
-      }
-      console.log(`[migrate] applied ${name}`);
-      count += 1;
+  let lastError;
+  for (const databaseUrl of candidates) {
+    const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (error) {
+      lastError = error;
+      await pool.end().catch(() => undefined);
+      console.error("[migrate] could not connect, trying the next URL");
+      continue;
     }
-    console.log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
-  } finally {
-    client.release();
-    await pool.end();
+    try {
+      await client.query(
+        "CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+      );
+      const applied = (await client.query("SELECT name FROM _migrations")).rows.map(
+        (r) => r.name,
+      );
+
+      let count = 0;
+      for (const { name } of pendingMigrations(entries, applied)) {
+        const text = await readFile(join(migrationsDir, name), "utf8");
+        try {
+          await client.query("BEGIN");
+          await client.query(text);
+          await client.query("INSERT INTO _migrations (name) VALUES ($1)", [name]);
+          await client.query("COMMIT");
+        } catch (err) {
+          console.error(`[migrate] error applying ${name}`);
+          try {
+            await client.query("ROLLBACK");
+          } catch {
+            // ROLLBACK fails when the connection died — keep the original error.
+          }
+          throw err;
+        }
+        console.log(`[migrate] applied ${name}`);
+        count += 1;
+      }
+      console.log(count ? `[migrate] done — ${count} migration(s) applied.` : "[migrate] up to date.");
+      return;
+    } finally {
+      client.release();
+      await pool.end();
+    }
   }
+  throw lastError ?? new Error("no database connection");
 }
 
 main().catch((err) => {
