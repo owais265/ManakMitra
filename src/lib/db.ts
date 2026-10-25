@@ -6,8 +6,18 @@ export type DbSource = "neon" | "pglite";
 
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
-const rawDatabaseUrl =
-  env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_URL_NON_POOLING");
+function openDatabaseUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  if (!/supabase/i.test(url)) return url;
+  const [base, query = ""] = url.split("?");
+  const params = new URLSearchParams(query);
+  params.set("sslmode", "no-verify");
+  return `${base}?${params.toString()}`;
+}
+
+const rawDatabaseUrl = openDatabaseUrl(
+  env("DATABASE_URL") || env("POSTGRES_URL") || env("POSTGRES_URL_NON_POOLING"),
+);
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
