@@ -27,6 +27,12 @@ import {
 import { PACK_VERIFIED } from '@/lib/pack-stamp';
 import { MORE_URL } from '@/lib/more-desk';
 import SiteHeader from '@/components/site-header';
+import HistoryRail from '@/components/history-rail';
+import GuestLimitDialog from '@/components/guest-limit-dialog';
+import { getBearerToken } from '@/lib/auth/client';
+import { useCurrentUserState } from '@/lib/auth/use-current-user';
+import { listThreads, readThread, saveThread } from '@/lib/chat-memory';
+import { clearGuestThreads, loadGuestThreads, slimTurns, upsertGuestThread } from '@/lib/guest-threads';
 import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk-route';
 import { deskUi } from '@/lib/desk-ui';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
@@ -253,6 +259,11 @@ function getOnlineServerSnapshot() {
 export default function ChatBotApp() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [sessionId, setSessionId] = useState<string>('');
+  const [activeId, setActiveId] = useState(createUniqueId);
+  const [threads, setThreads] = useState<{ id: string; title: string }[]>([]);
+  const [guestLocked, setGuestLocked] = useState(false);
+  const [mobileRail, setMobileRail] = useState(false);
+  const { user, isPending } = useCurrentUserState();
   const [inputText, setInputText] = useState('');
   const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text'; text?: string; dataUrl?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -286,14 +297,56 @@ export default function ChatBotApp() {
 
   useEffect(() => {
     setSessionId(createUniqueId());
-    try {
-      sessionStorage.removeItem('chat_history');
-      sessionStorage.removeItem('chat_context_mode');
-      sessionStorage.removeItem('chat_session_id');
-    } catch {
-      // ignore
-    }
   }, []);
+
+  useEffect(() => {
+    if (isPending) return;
+    if (!user || user.isDevFallback) {
+      setThreads(loadGuestThreads().map((thread) => ({ id: thread.id, title: thread.title })));
+      return;
+    }
+    let cancel = false;
+    void (async () => {
+      const local = loadGuestThreads();
+      let moved = local.length > 0;
+      for (const thread of local) {
+        try {
+          await saveThread({ data: { id: thread.id, title: thread.title, messages: thread.messages } });
+        } catch {
+          moved = false;
+        }
+      }
+      if (moved) clearGuestThreads();
+      try {
+        const rows = await listThreads();
+        if (!cancel) setThreads(rows.map((row) => ({ id: row.id, title: row.title })));
+      } catch {
+        if (!cancel) setThreads([]);
+      }
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [isPending, user?.id]);
+
+  useEffect(() => {
+    if (!activeId || isPending || isTyping) return;
+    const slim = slimTurns(messages);
+    if (!slim.length) return;
+    const title = slim.find((turn) => turn.role === "user")?.text.replace(/\s+/g, " ").trim().slice(0, 72) || "Chat";
+    const timer = window.setTimeout(() => {
+      if (!user || user.isDevFallback) {
+        const stored = upsertGuestThread({ id: activeId, title, updatedAt: Date.now(), messages: slim });
+        setThreads(stored.map((thread) => ({ id: thread.id, title: thread.title })));
+        return;
+      }
+      void saveThread({ data: { id: activeId, title, messages: slim } })
+        .then(() => listThreads())
+        .then((rows) => setThreads(rows.map((row) => ({ id: row.id, title: row.title }))))
+        .catch(() => {});
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [messages, activeId, isPending, isTyping, user?.id, user?.isDevFallback]);
 
   // Network online/offline toast feedback
   useEffect(() => {
@@ -692,9 +745,13 @@ export default function ChatBotApp() {
     }
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const bearer = getBearerToken();
+      if (bearer) headers.Authorization = `Bearer ${bearer}`;
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers,
         body: JSON.stringify({ 
           query: text, 
           language: replyLang,
@@ -708,6 +765,16 @@ export default function ChatBotApp() {
             : undefined,
         })
       });
+
+      if (response.status === 403) {
+        const note = await response.text();
+        if (note.includes('guest-limit')) {
+          setMessages((prev) => prev.filter((m) => m.id !== newMsg.id && m.id !== aiMsgId));
+          setGuestLocked(true);
+          return;
+        }
+        throw new Error(`Server returned status: ${response.status}`);
+      }
 
       if (!response.ok) {
         throw new Error(`Server returned status: ${response.status}`);
@@ -890,6 +957,38 @@ export default function ChatBotApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
+  const startNewChat = () => {
+    if (sendingRef.current) return;
+    setActiveId(createUniqueId());
+    setMessages([]);
+  };
+
+  const openThread = async (id: string) => {
+    if (sendingRef.current || id === activeId) return;
+    setActiveId(id);
+    if (!user || user.isDevFallback) {
+      const found = loadGuestThreads().find((thread) => thread.id === id);
+      setMessages((found?.messages ?? []).map((turn) => ({
+        id: turn.id,
+        role: turn.role,
+        text: turn.text,
+        timestamp: turn.timestamp,
+      })));
+      return;
+    }
+    try {
+      const thread = await readThread({ data: id });
+      setMessages((thread?.messages ?? []).map((turn) => ({
+        id: turn.id,
+        role: turn.role,
+        text: turn.text,
+        timestamp: turn.timestamp,
+      })));
+    } catch {
+      setMessages([]);
+    }
+  };
+
   return (
     <div
       className="relative flex flex-col bg-white text-slate-800 font-sans overflow-hidden min-w-0 min-h-0 z-0 mm-theme-fade dark:bg-[#0c1222] dark:text-slate-100"
@@ -958,8 +1057,37 @@ export default function ChatBotApp() {
 
       {/* Main Layout */}
       <div className="flex flex-1 min-h-0 overflow-hidden w-full min-w-0 relative">
+        <div className="hidden h-full md:flex">
+          <HistoryRail
+            threads={threads}
+            activeId={activeId}
+            user={user}
+            onOpen={(id) => void openThread(id)}
+            onNew={startNewChat}
+          />
+        </div>
+        {mobileRail ? (
+          <div className="absolute inset-0 z-40 flex md:hidden">
+            <HistoryRail
+              threads={threads}
+              activeId={activeId}
+              user={user}
+              onOpen={(id) => void openThread(id)}
+              onNew={startNewChat}
+              onNavigate={() => setMobileRail(false)}
+            />
+            <button type="button" aria-label="Close history" className="min-w-0 flex-1 bg-black/40" onClick={() => setMobileRail(false)} />
+          </div>
+        ) : null}
         {/* Chat Area */}
         <div className={`flex-1 flex flex-col min-h-0 h-full bg-white relative min-w-0 max-w-full overflow-hidden mm-theme-fade dark:bg-[#0c1222] ${messages.length === 0 ? 'justify-center' : ''}`}>
+          <button
+            type="button"
+            className="absolute left-2 top-2 z-30 rounded-full border border-line bg-white px-2.5 py-1 text-xs font-medium text-ink shadow-sm md:hidden dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100"
+            onClick={() => setMobileRail(true)}
+          >
+            History
+          </button>
           
           {/* Offline / Limited Connectivity Banner */}
           {!isOnline && (
@@ -1290,6 +1418,7 @@ export default function ChatBotApp() {
           </div>
         </div>
       </div>
+      {guestLocked ? <GuestLimitDialog onClose={() => setGuestLocked(false)} /> : null}
     </div>
   );
 }

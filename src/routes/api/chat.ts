@@ -1,3 +1,4 @@
+import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
 import { shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
@@ -14,6 +15,7 @@ import { chatLog } from "@/lib/chat-log";
 import { fetchOnceRetry } from "@/lib/http-retry";
 import { env } from "@/lib/env.server";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
+import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
 import { guardSpoken } from "@/lib/answer-guard";
 
@@ -351,6 +353,24 @@ async function collectXai(res: Response, fallbackText: string): Promise<string> 
   }
 }
 
+function withGuestCookie(base: Record<string, string>, cookie?: string): Headers {
+  const headers = new Headers(base);
+  if (cookie) headers.append("Set-Cookie", cookie);
+  return headers;
+}
+
+async function viewerIsSignedIn(request: Request): Promise<boolean> {
+  try {
+    const { auth, authConfigured } = await import("@/lib/auth/server");
+    if (!authConfigured) return false;
+    const session = await auth.api.getSession({ headers: request.headers });
+    return Boolean(session?.user?.id);
+  } catch (error) {
+    console.error("[chat] session check failed", error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -360,6 +380,16 @@ export const Route = createFileRoute("/api/chat")({
         const waHeader = request.headers.get("x-manak-wa");
         const waPass = env("WHATSAPP_VERIFY_TOKEN");
         const fromWa = Boolean(waPass && waHeader === waPass);
+        let signedIn = false;
+        if (!fromWa) {
+          signedIn = await viewerIsSignedIn(request);
+          if (!signedIn && (await guestIsLocked(request))) {
+            return new Response("guest-limit", {
+              status: 403,
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            });
+          }
+        }
         const gate = fromWa ? { ok: true as const } : takeLimit(`chat:${clientIp(request)}`);
         if (!gate.ok) {
           chatLog({
@@ -381,6 +411,7 @@ export const Route = createFileRoute("/api/chat")({
         }
         let query = "";
         let language: AppLang = "en";
+        let guestCookie: string | undefined;
         try {
           const body = (await request.json()) as ChatBody;
           query = typeof body.query === "string" ? body.query.replace(/\u0000/g, "").slice(0, 2000) : "";
@@ -398,6 +429,20 @@ export const Route = createFileRoute("/api/chat")({
               UI_DICTIONARY[language].emptyQuery,
               { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } },
             );
+          }
+          if (!fromWa && !signedIn) {
+              try {
+                const charge = await chargeGuest(request);
+                guestCookie = charge.setCookie;
+                if (!charge.ok) {
+                  return new Response("guest-limit", {
+                    status: 403,
+                    headers: withGuestCookie({ "Content-Type": "text/plain; charset=utf-8" }, guestCookie),
+                  });
+                }
+              } catch (error) {
+                console.error("[chat] guest quota skipped", error instanceof Error ? error.message : error);
+              }
           }
           const labelText = typeof body.labelText === "string" ? body.labelText.replace(/\s+/g, " ").trim().slice(0, 500) : "";
           const sentLabel = Object.prototype.hasOwnProperty.call(body, "labelText");
@@ -644,11 +689,11 @@ export const Route = createFileRoute("/api/chat")({
               }
             },
           });
-          return new Response(stream, { headers });
+          return new Response(stream, { headers: withGuestCookie(headers, guestCookie) });
         } catch {
           return new Response(UI_DICTIONARY[language].catalogueLoadError, {
             status: 200,
-            headers: { "Content-Type": "text/plain; charset=utf-8" },
+            headers: withGuestCookie({ "Content-Type": "text/plain; charset=utf-8" }, guestCookie),
           });
         }
       },

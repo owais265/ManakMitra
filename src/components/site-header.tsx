@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } fro
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { ChevronDown, Menu, Moon, Sun, X } from 'lucide-react';
 import ManakMark from '@/components/manak-mark';
+import { HeaderAuth } from '@/components/account-menu';
 import FaqPopup from '@/components/faq-popup';
 import { chromeCopy } from '@/lib/chrome-copy';
 import { faqCopy } from '@/lib/faq-copy';
@@ -275,6 +276,7 @@ export default function SiteHeader({
             {sheetOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             <span className="sr-only">{sheetOpen ? 'Close' : 'Menu'}</span>
           </button>
+          <HeaderAuth tall={!blend} />
           <label className="sr-only" htmlFor="mm-lang-header">
             {copy.langLabel}
           </label>
@@ -404,6 +406,13 @@ export default function SiteHeader({
             >
               {faq.label}
             </button>
+            <Link
+              to="/login"
+              onClick={closeMenus}
+              className="flex min-h-11 items-center rounded-lg px-3 text-left text-base font-medium text-ink hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
+            >
+              Login
+            </Link>
               </>
             ) : null}
           </nav>

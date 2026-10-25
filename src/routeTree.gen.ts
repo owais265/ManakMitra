@@ -17,6 +17,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as HallmarkRouteImport } from './routes/hallmark'
 import { Route as HuidRouteImport } from './routes/huid'
 import { Route as LabsRouteImport } from './routes/labs'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProductFileRouteImport } from './routes/product-file'
 import { Route as ReadinessRouteImport } from './routes/readiness'
@@ -30,6 +31,7 @@ import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as ApiLabsRouteImport } from './routes/api/labs'
 import { Route as ApiSpeakRouteImport } from './routes/api/speak'
 import { Route as ApiVerifyRouteImport } from './routes/api/verify'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,6 +71,11 @@ const HuidRoute = HuidRouteImport.update({
 const LabsRoute = LabsRouteImport.update({
   id: '/labs',
   path: '/labs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -136,6 +143,11 @@ const ApiVerifyRoute = ApiVerifyRouteImport.update({
   path: '/api/verify',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -146,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/product-file': typeof ProductFileRoute
   '/readiness': typeof ReadinessRoute
@@ -159,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/api/labs': typeof ApiLabsRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/verify': typeof ApiVerifyRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -169,6 +183,7 @@ export interface FileRoutesByTo {
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/product-file': typeof ProductFileRoute
   '/readiness': typeof ReadinessRoute
@@ -182,6 +197,7 @@ export interface FileRoutesByTo {
   '/api/labs': typeof ApiLabsRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/verify': typeof ApiVerifyRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -193,6 +209,7 @@ export interface FileRoutesById {
   '/hallmark': typeof HallmarkRoute
   '/huid': typeof HuidRoute
   '/labs': typeof LabsRoute
+  '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/product-file': typeof ProductFileRoute
   '/readiness': typeof ReadinessRoute
@@ -206,6 +223,7 @@ export interface FileRoutesById {
   '/api/labs': typeof ApiLabsRoute
   '/api/speak': typeof ApiSpeakRoute
   '/api/verify': typeof ApiVerifyRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -218,6 +236,7 @@ export interface FileRouteTypes {
     | '/hallmark'
     | '/huid'
     | '/labs'
+    | '/login'
     | '/privacy'
     | '/product-file'
     | '/readiness'
@@ -231,6 +250,7 @@ export interface FileRouteTypes {
     | '/api/labs'
     | '/api/speak'
     | '/api/verify'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -241,6 +261,7 @@ export interface FileRouteTypes {
     | '/hallmark'
     | '/huid'
     | '/labs'
+    | '/login'
     | '/privacy'
     | '/product-file'
     | '/readiness'
@@ -254,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/labs'
     | '/api/speak'
     | '/api/verify'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
@@ -264,6 +286,7 @@ export interface FileRouteTypes {
     | '/hallmark'
     | '/huid'
     | '/labs'
+    | '/login'
     | '/privacy'
     | '/product-file'
     | '/readiness'
@@ -277,6 +300,7 @@ export interface FileRouteTypes {
     | '/api/labs'
     | '/api/speak'
     | '/api/verify'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -288,6 +312,7 @@ export interface RootRouteChildren {
   HallmarkRoute: typeof HallmarkRoute
   HuidRoute: typeof HuidRoute
   LabsRoute: typeof LabsRoute
+  LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   ProductFileRoute: typeof ProductFileRoute
   ReadinessRoute: typeof ReadinessRoute
@@ -301,6 +326,7 @@ export interface RootRouteChildren {
   ApiLabsRoute: typeof ApiLabsRoute
   ApiSpeakRoute: typeof ApiSpeakRoute
   ApiVerifyRoute: typeof ApiVerifyRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -359,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/labs'
       fullPath: '/labs'
       preLoaderRoute: typeof LabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -452,6 +485,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -464,6 +504,7 @@ const rootRouteChildren: RootRouteChildren = {
   HallmarkRoute: HallmarkRoute,
   HuidRoute: HuidRoute,
   LabsRoute: LabsRoute,
+  LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   ProductFileRoute: ProductFileRoute,
   ReadinessRoute: ReadinessRoute,
@@ -477,6 +518,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLabsRoute: ApiLabsRoute,
   ApiSpeakRoute: ApiSpeakRoute,
   ApiVerifyRoute: ApiVerifyRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

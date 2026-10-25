@@ -868,6 +868,7 @@ A first-time user should not need a manual.
 - Official URL on an Allow — not a screenshot of a PDF
 - Contact / complaint scrolls to the real handoff, it does not invent a ticket
 - Light and dark theme; mobile, tablet and laptop
+- Login sits between FAQ and the language control. Google and X use this app's own account system. Email is the same screen for log in or sign up. A guest in the assistant can ask 20 questions; only that guest locks, and a login dialog opens. Guest chats stay in the tab and clear when the tab closes. A signed-in chat is kept for 24 hours.
 
 **Jury path (under two minutes):**
 
