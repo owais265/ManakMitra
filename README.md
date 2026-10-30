@@ -19,6 +19,22 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
+## Live product — screenshots from Vercel (2026-10-30)
+
+Home, assistant, and desks from the production deploy. The assistant screenshots show real Allow, Clarify, and Refuse exits.
+
+| Home | Assistant — PET bottles (Allow) | Assistant — fan + HUID (Refuse) |
+| --- | --- | --- |
+| ![Home](docs/live/01-home.png) | ![PET](docs/live/03-chat-pet.png) | ![Fan refuse](docs/live/05-chat-fan-refuse.png) |
+
+| Assistant empty | Helmet (Clarify) | Login |
+| --- | --- | --- |
+| ![Chat empty](docs/live/02-chat-empty.png) | ![Helmet](docs/live/04-chat-helmet.png) | ![Login](docs/live/06-login.png) |
+
+| Labs | Verify | HUID | Standards | Hallmark |
+| --- | --- | --- | --- | --- |
+| ![Labs](docs/live/08-labs.png) | ![Verify](docs/live/07-verify.png) | ![HUID](docs/live/09-huid.png) | ![Standards](docs/live/10-standards.png) | ![Hallmark](docs/live/11-hallmark.png) |
+
 **Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Evaluation](#experimental-evaluation--benchmark) · [Corpus](#authorised-pack--what-is-actually-in-the-file) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Hardening](#operational-hardening) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
 
 ---
@@ -252,16 +268,16 @@ The **0** in the last column is invented IS or fee only. Lab ranking is a separa
 
 Hallmark PIN search uses the 10 Oct 2026 cancelled and suspended centre extract only. Those rows are marked not open. HUID on this desk is a 6-character shape check, not the live BIS CARE register. Verify, product file, and standards read the local pack before any database call.
 
-### Live deployment — checked 2026-10-18
+### Live deployment — checked 2026-10-30
 
 | Check | Result | Where |
 | --- | --- | --- |
 | Home | 200 | [forest-yonder-apex-plum.vercel.app](https://forest-yonder-apex-plum.vercel.app/) |
 | Health | 200, `{"ok":true,"pack":false}` | `/api/health` |
 | Contact | 200, published BIS lines | `/contact` |
-| Sourced product | Allow — **IS 10908 : 2023** for LPG rubber tubes | `/api/chat` |
-| Official host on that row | `www.services.bis.gov.in` | Know Your Standard |
-| Production commit | `9f8ad0d` | Vercel project `forest-yonder-apex-plum` |
+| Sourced product | Allow — **IS 14543** for PET bottles | `/chat` |
+| Scheme refuse | Fan + HUID refuses (retrieval = 0) | `/chat` |
+| Production commit | `27a54fa` | Vercel project `forest-yonder-apex-plum` |
 
 ---
 
@@ -858,7 +874,7 @@ Safety eval (`npm run eval:all`, no LLM required):
 
 ## 7. User experience
 
-A first-time user should not need a manual.
+A first-time user should not need a manual. Screenshots from the live site are in [Live product](#live-product--screenshots-from-vercel-2026-10-30).
 
 - One header language lock across every desk. Twelve reply languages. Each script has a webfont, so Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, Gurmukhi, Odia, and Urdu draw, not only English and Devanagari.
 - Under a finished answer: copy, useful, not useful, report, and read-aloud. Read-aloud uses the browser voice for the selected language and marks the word being spoken. A greeting does not get a source card.
@@ -869,6 +885,7 @@ A first-time user should not need a manual.
 - Contact / complaint scrolls to the real handoff, it does not invent a ticket
 - Light and dark theme; mobile, tablet and laptop
 - Login sits between FAQ and the language control. Google and X use this app's own account system. Email is the same screen for log in or sign up. A guest in the assistant can ask 20 questions; only that guest locks, and a login dialog opens. Guest chats stay in the tab and clear when the tab closes. A signed-in chat is kept for 24 hours.
+- History rail on the assistant. It slides open and closed. Guest history stays while the tab is open. Signed-in history is kept for 24 hours.
 
 **Jury path (under two minutes):**
 
@@ -966,7 +983,7 @@ Hybrid extras need `SUPABASE_*` and `HYBRID_RAG=1`. They are optional. The pack 
 
 ## Docker
 
-Pack-only container. Build uses the Nitro `node-server` preset. Vercel deploys stay on the vercel preset.
+Pack-only container. Build uses the Nitro `node-server` preset. Vercel deploys stay on the vercel preset. The image does not need GPU, model weights, or a database for the rank lock.
 
 ```bash
 cp .env.example .env.local   # optional keys
@@ -977,9 +994,17 @@ App: [http://localhost:8080](http://localhost:8080) · Health: [http://localhost
 
 | File | Role |
 | --- | --- |
-| [`Dockerfile`](Dockerfile) | Multi-stage Node 22. Build with `NITRO_PRESET=node-server`. Runtime is `.output/server/index.mjs`, non-root, healthcheck on `/api/health`. |
-| [`docker-compose.yml`](docker-compose.yml) | Single service, port 8080, restart, log cap |
-| [`.dockerignore`](.dockerignore) | Drops `.grok`, env files, tests, and the build cache |
+| [`Dockerfile`](Dockerfile) | Multi-stage Node 22 Alpine. Build with `NITRO_PRESET=node-server` and `HYBRID_RAG=0`. Runtime is `.output/server/index.mjs`, non-root `app` user, healthcheck on `/api/health`. |
+| [`docker-compose.yml`](docker-compose.yml) | Single service `manakmitra:sih26107`, port 8080, restart unless-stopped, json-file log cap (10m × 3) |
+| [`.dockerignore`](.dockerignore) | Drops `.grok`, env files, tests, stress scripts, and the build cache |
+
+What the container ships today:
+
+- Pack-only rank lock. `HYBRID_RAG=0` is the default. Allow / Clarify / Refuse still work without Supabase or an LLM.
+- Optional phrasing. Pass `XAI_API_KEY` or `GEMINI_API_KEY` at run time if you want model wording. Secrets are not baked into the image.
+- Optional hybrid extras. Pass `SUPABASE_*` and set `HYBRID_RAG=1` if you want the dense index. The pack path stays the rank lock either way.
+- Auth is optional. Real accounts need `DATABASE_URL` (Supabase session pooler). Without it the container still serves the pack. Guest chats stay in the browser tab.
+- Healthcheck probes `/api/health` every 30 s. A failed probe restarts the container.
 
 Secrets are not baked in. Pass `XAI_API_KEY` or `SUPABASE_*` at run time if you want phrasing or hybrid extras. `HYBRID_RAG=0` is the default inside the image.
 
