@@ -19,23 +19,69 @@ Ministry of Consumer Affairs, Food & Public Distribution · Theme: Smart Automat
 
 This is **not** an official website of BIS or the Government of India. Always re-check the live portal before you apply, pay, or file.
 
-## Live product — screenshots from Vercel (2026-10-30)
+## Live product
 
-Home, assistant, and desks from the production deploy. The assistant screenshots show real Allow, Clarify, and Refuse exits.
+<p align="center">
+  <img src="docs/live/home.png" alt="Home" width="880" />
+</p>
+<p align="center"><sub>Home</sub></p>
 
-| Home | Assistant — PET bottles (Allow) | Assistant — fan + HUID (Refuse) |
-| --- | --- | --- |
-| ![Home](docs/live/01-home.png) | ![PET](docs/live/03-chat-pet.png) | ![Fan refuse](docs/live/05-chat-fan-refuse.png) |
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/live/allow.png" alt="Allow" width="420" />
+      <br /><sub>Allow — PET bottles, IS 14543</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/live/refuse.png" alt="Refuse" width="420" />
+      <br /><sub>Refuse — fan and HUID</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/live/clarify.png" alt="Clarify" width="420" />
+      <br /><sub>Clarify — helmet</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/live/chat.png" alt="Assistant" width="420" />
+      <br /><sub>Assistant</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/live/labs.png" alt="Labs" width="420" />
+      <br /><sub>Labs</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/live/verify.png" alt="Verify" width="420" />
+      <br /><sub>Verify</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/live/huid.png" alt="HUID" width="420" />
+      <br /><sub>HUID</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/live/login.png" alt="Login" width="420" />
+      <br /><sub>Login</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/live/standards.png" alt="Standards" width="420" />
+      <br /><sub>Standards</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/live/hallmark.png" alt="Hallmark" width="420" />
+      <br /><sub>Hallmark</sub>
+    </td>
+  </tr>
+</table>
 
-| Assistant empty | Helmet (Clarify) | Login |
-| --- | --- | --- |
-| ![Chat empty](docs/live/02-chat-empty.png) | ![Helmet](docs/live/04-chat-helmet.png) | ![Login](docs/live/06-login.png) |
+## Contents
 
-| Labs | Verify | HUID | Standards | Hallmark |
-| --- | --- | --- | --- | --- |
-| ![Labs](docs/live/08-labs.png) | ![Verify](docs/live/07-verify.png) | ![HUID](docs/live/09-huid.png) | ![Standards](docs/live/10-standards.png) | ![Hallmark](docs/live/11-hallmark.png) |
-
-**Contents:** [TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Why this design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Evaluation](#experimental-evaluation--benchmark) · [Corpus](#authorised-pack--what-is-actually-in-the-file) · [Business use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Hybrid math](#hybrid-retrieval--the-actual-math) · [Technical internals](#technical-internals) · [Hardening](#operational-hardening) · [Anti-hallucination](#anti-hallucination--stronger-than-a-whitelist) · [Implementation](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
+[TL;DR](#tldr--what-a-judge-can-verify-today) · [Problem](#1-problem--who-pays-for-the-wrong-door) · [Innovation](#2-innovation--why-a-chatbot-was-not-enough) · [Design](#why-this-design-wins) · [Complexity](#3-technical-complexity--what-is-actually-hard) · [Feasibility](#4-feasibility--it-already-runs) · [Evaluation](#experimental-evaluation--benchmark) · [Pack](#authorised-pack--what-is-actually-in-the-file) · [Use cases](#business-use-cases) · [Architecture](#5-architecture--system-design) · [Math](#hybrid-retrieval--the-actual-math) · [Internals](#technical-internals) · [Hardening](#operational-hardening) · [Honesty](#anti-hallucination--stronger-than-a-whitelist) · [Build](#6-implementation-quality) · [UX](#7-user-experience) · [Impact](#8-impact) · [Scale](#9-scalability--deployment) · [Start](#quick-start) · [Judge path](#judge-path--no-gpu-no-5-gb-download) · [Team](#team-prograckers)
 
 ---
 
@@ -874,7 +920,7 @@ Safety eval (`npm run eval:all`, no LLM required):
 
 ## 7. User experience
 
-A first-time user should not need a manual. Screenshots from the live site are in [Live product](#live-product--screenshots-from-vercel-2026-10-30).
+A first-time user should not need a manual. The live frames are in [Live product](#live-product).
 
 - One header language lock across every desk. Twelve reply languages. Each script has a webfont, so Bengali, Tamil, Telugu, Gujarati, Kannada, Malayalam, Gurmukhi, Odia, and Urdu draw, not only English and Devanagari.
 - Under a finished answer: copy, useful, not useful, report, and read-aloud. Read-aloud uses the browser voice for the selected language and marks the word being spoken. A greeting does not get a source card.
