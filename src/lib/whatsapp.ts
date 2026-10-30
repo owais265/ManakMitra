@@ -11,13 +11,20 @@ export type WaInbound = {
 
 const SITE = "https://forest-yonder-apex-plum.vercel.app/chat";
 
-/** Issued for this callback. Env wins when Vercel actually has the variable. */
-const ISSUED_VERIFY_TOKEN = "4763218ba1d534efa7897ce2a818d2fc448c5dd1e07b1559";
-
+/** Env only. A missing or short value fails closed. There is no source fallback. */
 export function expectedVerifyToken(envValue: string | undefined): string {
-  const fromEnv = envValue?.trim();
-  if (fromEnv && fromEnv.length >= 8) return fromEnv;
-  return ISSUED_VERIFY_TOKEN;
+  const fromEnv = envValue?.trim() ?? "";
+  return fromEnv.length >= 8 ? fromEnv : "";
+}
+
+/** Chat-quota bypass. This secret is not the Meta verify token. */
+export function acceptInternalHeader(header: string | null, secret: string | undefined): boolean {
+  const key = secret?.trim() ?? "";
+  if (key.length < 8 || !header) return false;
+  const given = Buffer.from(header);
+  const want = Buffer.from(key);
+  if (given.length !== want.length) return false;
+  return timingSafeEqual(given, want);
 }
 
 function hubValue(params: URLSearchParams, dotted: string, underscored: string): string | null {

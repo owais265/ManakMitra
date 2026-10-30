@@ -52,13 +52,13 @@ async function answerOne(request: Request, message: WaInbound, token: string): P
     await sendWhatsApp(message, photoReply(), token);
     return;
   }
-  const verify = env("WHATSAPP_VERIFY_TOKEN");
+  const chatSecret = env("WHATSAPP_CHAT_SECRET");
   const origin = new URL(request.url).origin;
   const chat = await fetch(`${origin}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(verify ? { "x-manak-wa": verify } : {}),
+      ...(chatSecret ? { "x-manak-wa": chatSecret } : {}),
     },
     body: JSON.stringify({ query: message.text, language: waLanguage(message.text) }),
     signal: AbortSignal.timeout(25_000),

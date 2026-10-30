@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import {
+  acceptInternalHeader,
   checkSignature,
   expectedVerifyToken,
   photoReply,
@@ -28,11 +29,21 @@ assert.equal(
   verifySubscribe(new URLSearchParams("hub.mode=subscribe&hub.verify_token=desk-token&hub.challenge=bad\nline"), "desk-token"),
   null,
 );
-const issued = expectedVerifyToken(undefined);
+assert.equal(expectedVerifyToken(undefined), "");
+assert.equal(expectedVerifyToken("  "), "");
+assert.equal(expectedVerifyToken("short"), "");
 assert.equal(expectedVerifyToken("from-env-token"), "from-env-token");
-assert.equal(expectedVerifyToken("  "), issued);
-const issuedParams = new URLSearchParams(`hub.mode=subscribe&hub.verify_token=${issued}&hub.challenge=998877`);
-assert.equal(verifySubscribe(issuedParams, expectedVerifyToken("")), "998877");
+assert.equal(
+  verifySubscribe(
+    new URLSearchParams("hub.mode=subscribe&hub.verify_token=from-env-token&hub.challenge=998877"),
+    expectedVerifyToken(""),
+  ),
+  null,
+);
+assert.equal(acceptInternalHeader("chat-secret-value", "chat-secret-value"), true);
+assert.equal(acceptInternalHeader("chat-secret-value", "other-secret-value"), false);
+assert.equal(acceptInternalHeader("chat-secret-value", ""), false);
+assert.equal(acceptInternalHeader(null, "chat-secret-value"), false);
 const fromHeader = subscribeParams("https://manakmitra.local/webhook", (name) =>
   name === "x-invoke-query" ? "hub.mode=subscribe&hub.verify_token=desk-token&hub.challenge=42" : null,
 );
