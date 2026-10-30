@@ -86,6 +86,18 @@ At the end:
 [FOLLOW_UP] One recommended next lookup (product or BIS service name, not a question)
 [META] high | general`;
 
+function feeSafe(spoken: string, trusted: string, fallback: string): string {
+  const amounts = (text: string) =>
+    new Set(
+      [...text.matchAll(/(?:₹|\brs\.?\s*|\binr\s*)(\d[\d,]*)/gi)].map((match) => match[1].replace(/,/g, "")),
+    );
+  const allowed = amounts(`${trusted}\n${fallback}`);
+  for (const amount of amounts(spoken)) {
+    if (!allowed.has(amount)) return fallback;
+  }
+  return spoken;
+}
+
 function pickSpoken(modelText: string, fallback: string): string {
   const spoken = modelText.trim();
   const head = fallback.split("\n")[0] || "";
@@ -515,8 +527,8 @@ export const Route = createFileRoute("/api/chat")({
                 const guidedKind = !attachment ? moreKind(query) : null;
                 if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
                   t = performance.now();
-                  const spoken = await answerText(query, language, SOCIAL_PROMPT(language), socialReply(language), 0.4, 220);
-                  step("reply", "Answered the greeting", "No catalogue search", t);
+                  const spoken = socialReply(language);
+                  step("reply", "Answered the greeting", "Published greeting", t);
                   say(spoken);
                   return;
                 }
@@ -610,6 +622,12 @@ export const Route = createFileRoute("/api/chat")({
                 step("exit", "Chose the exit", exitDetail, t);
                 const guided = !attachment ? moreReply(query, language) : null;
                 const pack = guided || getFallbackBISResponse(retrievalQuery, language);
+                if (guided) {
+                  t = performance.now();
+                  step("write", "Wrote the answer", "Published catalogue card", t);
+                  say(guided);
+                  return;
+                }
                 const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
                 console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
                 let evidence = retrieved.hasEvidence
@@ -675,7 +693,8 @@ export const Route = createFileRoute("/api/chat")({
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
                   : modelPrompt(query, attachment);
                 t = performance.now();
-                const spoken = guardSpoken(
+                const spoken = feeSafe(
+                  guardSpoken(
                   await answerText(
                     userPrompt,
                     language,
@@ -685,6 +704,9 @@ export const Route = createFileRoute("/api/chat")({
                     1600,
                     image,
                   ),
+                  trusted.join("\n"),
+                  pack,
+                ),
                   trusted.join("\n"),
                   pack,
                 );
