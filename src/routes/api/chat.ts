@@ -125,15 +125,23 @@ function xaiModels(): string[] {
   return [...new Set(list)];
 }
 
+let geminiCursor = 0;
+
 function geminiKeys(): string[] {
-  const list = [
-    process.env.GEMINI_API_KEY,
-    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-    process.env.GOOGLE_API_KEY,
-  ]
-    .map((k) => k?.trim() || "")
-    .filter(Boolean);
-  return [...new Set(list)];
+  const out: string[] = [];
+  const push = (raw: string | undefined) => {
+    const value = raw?.trim();
+    if (!value || value.startsWith("#") || out.includes(value)) return;
+    out.push(value);
+  };
+  push(process.env.GEMINI_API_KEY);
+  push(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  push(process.env.GOOGLE_API_KEY);
+  for (const part of (process.env.GEMINI_API_KEYS || "").split(/[\n,]/)) push(part);
+  if (out.length < 2) return out;
+  const start = geminiCursor % out.length;
+  geminiCursor = (start + 1) % out.length;
+  return [...out.slice(start), ...out.slice(0, start)];
 }
 
 function geminiModels(): string[] {
