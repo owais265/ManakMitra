@@ -159,7 +159,6 @@ function geminiModels(): string[] {
   const list = [
     preferred,
     "gemini-3.5-flash-lite",
-    "gemini-3.8-flash",
   ].filter((m): m is string => Boolean(m));
   return [...new Set(list)];
 }
@@ -276,7 +275,7 @@ async function tryGeminiText(
             contents: [{ role: "user", parts }],
             generationConfig: { temperature, maxOutputTokens: Math.min(maxTokens, 700) },
           }),
-          signal: AbortSignal.timeout(7_000),
+          signal: AbortSignal.timeout(12_000),
         });
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
