@@ -18,9 +18,11 @@ test-results
 *.log
 .DS_Store
 artifacts
+attachments
 tmp
 .cache
 scripts/stress
+docs/live
 *.test.ts
 *.test.mjs
 *.test.py

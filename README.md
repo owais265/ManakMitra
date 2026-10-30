@@ -1040,16 +1040,16 @@ App: [http://localhost:8080](http://localhost:8080) · Health: [http://localhost
 
 | File | Role |
 | --- | --- |
-| [`Dockerfile`](Dockerfile) | Multi-stage Node 22 Alpine. Build with `NITRO_PRESET=node-server` and `HYBRID_RAG=0`. Runtime is `.output/server/index.mjs`, non-root `app` user, healthcheck on `/api/health`. |
-| [`docker-compose.yml`](docker-compose.yml) | Single service `manakmitra:sih26107`, port 8080, restart unless-stopped, json-file log cap (10m × 3) |
-| [`.dockerignore`](.dockerignore) | Drops `.grok`, env files, tests, stress scripts, and the build cache |
+| [`Dockerfile`](Dockerfile) | Three stages on Node 22 Alpine. `npm ci` uses a BuildKit cache. Runtime copies only `.output` and the pack, runs as `node`, and starts under `dumb-init`. Healthcheck hits `/api/health`. |
+| [`docker-compose.yml`](docker-compose.yml) | Service `manakmitra:sih26107`, port 8080, `no-new-privileges`, optional auth and LLM env, restart unless-stopped, json-file log cap (10m × 3) |
+| [`.dockerignore`](.dockerignore) | Drops `.grok`, env files, tests, stress scripts, screenshots, and the build cache |
 
 What the container ships today:
 
 - Pack-only rank lock. `HYBRID_RAG=0` is the default. Allow / Clarify / Refuse still work without Supabase or an LLM.
 - Optional phrasing. Pass `XAI_API_KEY` or `GEMINI_API_KEY` at run time if you want model wording. Secrets are not baked into the image.
 - Optional hybrid extras. Pass `SUPABASE_*` and set `HYBRID_RAG=1` if you want the dense index. The pack path stays the rank lock either way.
-- Auth is optional. Real accounts need `DATABASE_URL` (Supabase session pooler). Without it the container still serves the pack. Guest chats stay in the browser tab.
+- Auth is optional. Real accounts need `DATABASE_URL` and `BETTER_AUTH_SECRET`. Without them the container still serves the pack. Guest chats stay in the browser tab.
 - Healthcheck probes `/api/health` every 30 s. A failed probe restarts the container.
 
 Secrets are not baked in. Pass `XAI_API_KEY` or `SUPABASE_*` at run time if you want phrasing or hybrid extras. `HYBRID_RAG=0` is the default inside the image.
