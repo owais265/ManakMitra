@@ -11,6 +11,12 @@ export type WaInbound = {
 
 const SITE = "https://forest-yonder-apex-plum.vercel.app/chat";
 
+/** Off unless explicitly turned on after Meta business verification. */
+export function whatsappEnabled(flag: string | undefined): boolean {
+  const value = flag?.trim().toLowerCase();
+  return value === "1" || value === "true" || value === "on";
+}
+
 /** Env only. A missing or short value fails closed. There is no source fallback. */
 export function expectedVerifyToken(envValue: string | undefined): string {
   const fromEnv = envValue?.trim() ?? "";

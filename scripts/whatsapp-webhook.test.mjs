@@ -10,6 +10,7 @@ import {
   subscribeParams,
   verifySubscribe,
   waLanguage,
+  whatsappEnabled,
 } from "../src/lib/whatsapp.ts";
 
 const ok = verifySubscribe(
@@ -85,6 +86,9 @@ assert.equal(checkSignature(raw, `sha256=${mac}`, "app-secret"), true);
 assert.equal(checkSignature(raw, "sha256=00", "app-secret"), false);
 assert.equal(checkSignature(raw, null, undefined), true);
 
+assert.equal(whatsappEnabled(undefined), false);
+assert.equal(whatsappEnabled("0"), false);
+assert.equal(whatsappEnabled("1"), true);
 assert.equal(waLanguage("सीमेंट"), "hi");
 assert.equal(waLanguage("cement"), "en");
 

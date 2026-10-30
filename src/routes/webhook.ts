@@ -10,6 +10,7 @@ import {
   subscribeParams,
   verifySubscribe,
   waLanguage,
+  whatsappEnabled,
   type WaInbound,
 } from "@/lib/whatsapp";
 
@@ -68,10 +69,15 @@ async function answerOne(request: Request, message: WaInbound, token: string): P
   await sendWhatsApp(message, reply, token);
 }
 
+function stopped(): Response {
+  return new Response("stopped", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+}
+
 export const Route = createFileRoute("/webhook")({
   server: {
     handlers: {
       GET: async ({ request }) => {
+        if (!whatsappEnabled(env("WHATSAPP_ENABLED"))) return stopped();
         const params = subscribeParams(request.url, (name) => request.headers.get(name));
         const challenge = verifySubscribe(params, expectedVerifyToken(env("WHATSAPP_VERIFY_TOKEN")));
         if (challenge) {
@@ -84,6 +90,7 @@ export const Route = createFileRoute("/webhook")({
         });
       },
       POST: async ({ request }) => {
+        if (!whatsappEnabled(env("WHATSAPP_ENABLED"))) return stopped();
         const raw = await request.text();
         if (raw.length > 200_000) return new Response("ok", { status: 200 });
         const secret = env("WHATSAPP_APP_SECRET");
