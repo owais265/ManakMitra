@@ -140,10 +140,8 @@ function geminiModels(): string[] {
   const preferred = process.env.GEMINI_MODEL?.trim();
   const list = [
     preferred,
-    "gemini-2.0-flash",
-    "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
   ].filter((m): m is string => Boolean(m));
   return [...new Set(list)];
 }
