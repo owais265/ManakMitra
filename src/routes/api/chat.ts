@@ -125,7 +125,17 @@ function xaiModels(): string[] {
   return [...new Set(list)];
 }
 
+let skipXaiUntil = 0;
 let geminiCursor = 0;
+
+function xaiAuthFailure(status: number, detail: string): boolean {
+  return (
+    status === 401 ||
+    status === 403 ||
+    (status === 400 && /incorrect api key|invalid api key/i.test(detail)) ||
+    /invalid api key|incorrect api key|permission-denied|spending limit|used all available credits/i.test(detail)
+  );
+}
 
 function geminiKeys(): string[] {
   const out: string[] = [];
@@ -177,6 +187,7 @@ async function answerText(
   ];
 
   let lastDetail = "";
+  if (Date.now() >= skipXaiUntil) {
   for (const apiKey of keys) {
     for (const model of xaiModels()) {
       let res: Response;
@@ -208,18 +219,17 @@ async function answerText(
       if (!res.ok || !res.body) {
         lastDetail = await res.text().catch(() => "");
         console.error(`[chat] xAI ${res.status} model=${model}:`, lastDetail.slice(0, 400));
-        const authOrCredits =
-          res.status === 401 ||
-          res.status === 403 ||
-          /invalid api key|incorrect api key|permission-denied|spending limit|used all available credits/i.test(
-            lastDetail,
-          );
-        if (authOrCredits) break;
+        const authOrCredits = xaiAuthFailure(res.status, lastDetail);
+        if (authOrCredits) {
+          skipXaiUntil = Date.now() + 10 * 60_000;
+          break;
+        }
         continue;
       }
       console.info(`[chat] xAI streaming model=${model}`);
       return collectXai(res, fallbackText);
     }
+  }
   }
 
   const gemini = await tryGeminiText(query, system, fallbackText, temperature, maxTokens, imageDataUrl);
@@ -255,23 +265,19 @@ async function tryGeminiText(
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
       let res: Response;
       try {
-        res = await fetchOnceRetry(
-          (ms) =>
-            fetch(url, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": apiKey,
-              },
-              body: JSON.stringify({
-                system_instruction: { parts: [{ text: system }] },
-                contents: [{ role: "user", parts }],
-                generationConfig: { temperature, maxOutputTokens: maxTokens },
-              }),
-              signal: AbortSignal.timeout(ms),
-            }),
-          12_000,
-        );
+        res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: system }] },
+            contents: [{ role: "user", parts }],
+            generationConfig: { temperature, maxOutputTokens: Math.min(maxTokens, 700) },
+          }),
+          signal: AbortSignal.timeout(7_000),
+        });
       } catch (error) {
         lastDetail = error instanceof Error ? error.message : String(error);
         console.error("[chat] Gemini threw:", lastDetail);
@@ -510,7 +516,7 @@ export const Route = createFileRoute("/api/chat")({
                 const guidedKind = !attachment ? moreKind(query) : null;
                 if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
                   t = performance.now();
-                  const spoken = await answerText(query, language, SOCIAL_PROMPT(language), socialReply(language), 0.4, 500);
+                  const spoken = await answerText(query, language, SOCIAL_PROMPT(language), socialReply(language), 0.4, 220);
                   step("reply", "Answered the greeting", "No catalogue search", t);
                   say(spoken);
                   return;
