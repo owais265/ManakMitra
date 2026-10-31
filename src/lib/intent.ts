@@ -1,6 +1,6 @@
-import { offtopicCopy, socialCopy, type AppLang } from "@/lib/language";
-import { FOLLOW_CUE, isFollowCue, type ChatTurn } from "@/lib/query-context";
-import { matchProductFamily, glossIndic } from "@/lib/product-playbook";
+import { offtopicCopy, socialCopy, type AppLang } from "./language.ts";
+import { FOLLOW_CUE, isFollowCue, type ChatTurn } from "./query-context.ts";
+import { matchProductFamily, glossIndic } from "./product-playbook.ts";
 
 export type ChatIntent = "social" | "bis" | "offtopic";
 

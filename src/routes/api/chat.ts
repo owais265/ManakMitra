@@ -18,7 +18,7 @@ import { acceptInternalHeader } from "@/lib/whatsapp";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
-import { guardSpoken } from "@/lib/answer-guard";
+import { planDeskAgent } from "@/lib/desk-agents";
 
 type ChatBody = {
   query?: string;
@@ -501,10 +501,18 @@ export const Route = createFileRoute("/api/chat")({
                 }
                 const gateQuery = [followSubject, query].filter(Boolean).join(" ");
                 const intent = classifyIntent(query);
+                const plan = planDeskAgent(query, Boolean(attachment));
                 step(
                   "read",
                   "Read the question",
                   intent === "bis" ? "Indian Standards question" : intent === "social" ? "Greeting" : "Outside Indian Standards",
+                  t,
+                );
+                t = performance.now();
+                step(
+                  "agent",
+                  "Chose one desk",
+                  plan.injection ? `${plan.agent} · dropped an override` : plan.agent,
                   t,
                 );
                 if (attachment && attachment.kind !== "text" && sentLabel && !labelText && !query.trim()) {
@@ -626,6 +634,12 @@ export const Route = createFileRoute("/api/chat")({
                   t = performance.now();
                   step("write", "Wrote the answer", "Published catalogue card", t);
                   say(guided);
+                  return;
+                }
+                if (plan.injection) {
+                  t = performance.now();
+                  step("write", "Wrote the answer", "Override dropped. Catalogue card only", t);
+                  say(pack);
                   return;
                 }
                 const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;

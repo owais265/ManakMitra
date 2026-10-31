@@ -1,4 +1,4 @@
-import { matchProductFamily } from "@/lib/product-playbook";
+import { matchProductFamily } from "./product-playbook.ts";
 
 export type ChatTurn = { role?: string; text?: string };
 
