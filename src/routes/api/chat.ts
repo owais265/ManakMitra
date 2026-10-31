@@ -18,6 +18,7 @@ import { acceptInternalHeader } from "@/lib/whatsapp";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
+import { guardSpoken } from "@/lib/answer-guard";
 import { planDeskAgent } from "@/lib/desk-agents";
 
 type ChatBody = {
