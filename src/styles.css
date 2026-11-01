@@ -569,6 +569,12 @@
   overflow: hidden;
   contain: paint;
   pointer-events: none;
+  background: #f6f8fa url("/theme-light-poster.jpg") center / cover no-repeat;
+}
+
+html.dark .mm-theme-film {
+  background-color: #0c1222;
+  background-image: url("/theme-dark-poster.jpg");
 }
 
 .mm-theme-film video {
@@ -579,7 +585,7 @@
   object-fit: cover;
   object-position: center;
   pointer-events: none;
-  background: #000 center / cover no-repeat;
+  background: transparent;
   transform: translateZ(0);
   transition: none;
 }

@@ -33,11 +33,9 @@ export const Route = createRootRoute({
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Sans+Oriya:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap",
-      },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "preload", as: "image", href: "/theme-light-poster.jpg" },
+      { rel: "preload", as: "image", href: "/theme-dark-poster.jpg" },
     ],
   }),
   loader: () => readThemeDark(),
@@ -67,7 +65,7 @@ function RootDocument() {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('mm_theme');var dark=t==='dark';var bg=dark?'#0c1222':'#f6f8fa';var root=document.documentElement;root.classList.toggle('dark',dark);root.style.backgroundColor=bg;root.style.colorScheme=dark?'dark':'light';document.cookie='mm_theme='+(dark?'dark':'light')+'; Path=/; Max-Age=31536000; SameSite=Lax';var l=localStorage.getItem('mm_lang');if(l)root.lang=l}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('mm_theme');var dark=t==='dark';var bg=dark?'#0c1222':'#f6f8fa';var root=document.documentElement;root.classList.toggle('dark',dark);root.style.backgroundColor=bg;root.style.colorScheme=dark?'dark':'light';document.cookie='mm_theme='+(dark?'dark':'light')+'; Path=/; Max-Age=31536000; SameSite=Lax';var l=localStorage.getItem('mm_lang');if(l)root.lang=l;var f=document.createElement('link');f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&family=Noto+Sans+Malayalam:wght@400;500;600;700&family=Noto+Sans+Oriya:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap';f.media='print';f.onload=function(){this.media='all'};document.head.appendChild(f)}catch(e){}})();`,
           }}
         />
         <HeadContent />
