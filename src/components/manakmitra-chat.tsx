@@ -5,7 +5,7 @@ import {
   FileText, 
   Send, Mic, CheckCircle, 
   AlertTriangle, XCircle, ExternalLink, X,
-  Info, Copy, Check, Share, RotateCcw, WifiOff, Plus, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag, PanelLeft, ChevronLeft
+  Info, Copy, Check, Share, RotateCcw, WifiOff, Download, MapPin, ThumbsUp, ThumbsDown, Volume2, Square, Flag, PanelLeft, ChevronLeft
 } from 'lucide-react';
 import { speechLang, UI_DICTIONARY, type AppLang } from '@/lib/language';
 import { loadVoices, pickVoice, readAloudLabel, speechChunks, spokenSlice, voiceTag } from '@/lib/read-aloud';
@@ -36,6 +36,8 @@ import { clearGuestThreads, loadGuestThreads, slimTurns, upsertGuestThread } fro
 import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk-route';
 import { deskUi } from '@/lib/desk-ui';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
+import { DraftChip, PlusMenu } from '@/components/composer-plus';
+import { rememberRecent } from '@/lib/recent-files';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -1346,6 +1348,7 @@ export default function ChatBotApp() {
                         return;
                       }
                       setDraftFile({ name: parsed.attachment.name, kind: parsed.attachment.kind, dataUrl: parsed.attachment.dataUrl });
+                      rememberRecent({ name: parsed.attachment.name, kind: parsed.attachment.kind, dataUrl: parsed.attachment.dataUrl });
                       return;
                     }
                     const text = await picked.text();
@@ -1356,13 +1359,14 @@ export default function ChatBotApp() {
                       return;
                     }
                     setDraftFile({ name: parsed.attachment.name, kind: 'text', text: parsed.attachment.text });
+                    rememberRecent({ name: parsed.attachment.name, kind: 'text', text: parsed.attachment.text });
                   })().catch(() => {
                     setToastMessage(UI_DICTIONARY[language].pngReadError);
                     setTimeout(() => setToastMessage(null), 3500);
                   });
                 }}
               />
-              <div className={`relative overflow-hidden rounded-3xl border bg-slate-50 transition-colors dark:bg-[#201f1d] ${isTyping ? 'border-blue-300 opacity-80' : 'border-slate-200 dark:border-white/10'} ${isListening ? 'border-red-400' : ''}`}>
+              <div className={`relative overflow-visible rounded-3xl border bg-slate-50 transition-colors dark:bg-[#201f1d] ${isTyping ? 'border-blue-300 opacity-80' : 'border-slate-200 dark:border-white/10'} ${isListening ? 'border-red-400' : ''}`}>
                 {isWaitingForMic && (
                   <div className="absolute -top-8 left-0 right-0 flex justify-center">
                     <span className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow-sm animate-pulse">
@@ -1388,17 +1392,7 @@ export default function ChatBotApp() {
                     </button>
                   </div>
                 )}
-                {draftFile && (
-                  <div className="flex items-center gap-2 px-3 pt-2">
-                    <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 dark:border-slate-600 dark:bg-[#1c2640] dark:text-slate-200">
-                      <FileText className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{draftFile.name}</span>
-                      <button type="button" aria-label={`Remove ${draftFile.name}`} onClick={() => setDraftFile(null)} className="ml-1 text-slate-500 hover:text-slate-900 dark:hover:text-white">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  </div>
-                )}
+                {draftFile ? <DraftChip file={draftFile} language={language} onRemove={() => setDraftFile(null)} /> : null}
                 <textarea 
                   ref={inputRef}
                   aria-label={UI_DICTIONARY[language].composerPlaceholder}
@@ -1419,14 +1413,12 @@ export default function ChatBotApp() {
                   dir="auto"
                 />
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-2">
-                  <button
-                    type="button"
-                    aria-label={UI_DICTIONARY[language].attach}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-500 hover:bg-slate-200/80 dark:text-slate-300 dark:hover:bg-white/10"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </button>
+                  <PlusMenu
+                    language={language}
+                    attachLabel={UI_DICTIONARY[language].attach}
+                    onUpload={() => fileInputRef.current?.click()}
+                    onPick={(file) => setDraftFile({ name: file.name, kind: file.kind, text: file.text, dataUrl: file.dataUrl })}
+                  />
                   <div className="flex items-center gap-1">
                     <button 
                       type="button"
