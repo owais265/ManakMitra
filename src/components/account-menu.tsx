@@ -7,11 +7,8 @@ import { useCurrentUserState, type AppUser } from "@/lib/auth/use-current-user";
 const subscribe = () => () => {};
 
 export function HeaderAuth({ tall }: { tall: boolean }) {
-  const { user, isPending } = useCurrentUserState();
+  const { user } = useCurrentUserState();
   const box = tall ? "h-9 sm:h-11" : "h-9";
-  if (isPending) {
-    return <span aria-hidden className={`inline-block w-[4.25rem] animate-pulse rounded border border-line bg-slate-100 dark:border-slate-600 dark:bg-white/10 ${box}`} />;
-  }
   if (!user || user.isDevFallback) {
     return (
       <Link

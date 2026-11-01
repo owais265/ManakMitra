@@ -32,7 +32,6 @@
     -moz-osx-font-smoothing: grayscale;
     background-color: #f6f8fa;
     color: #0b1f3a;
-    transition: background-color 0.4s ease, color 0.4s ease;
   }
 
   html.dark {
@@ -44,7 +43,11 @@
   body {
     background-color: inherit;
     color: inherit;
-    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+
+  html.mm-theme-live,
+  html.mm-theme-live body {
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   :focus-visible {
@@ -501,7 +504,11 @@
   }
 
   .mm-theme-fade {
-    transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    transition: none;
+  }
+
+  html.mm-theme-live .mm-theme-fade {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .mm-glass {
@@ -574,7 +581,7 @@
   pointer-events: none;
   background: #000 center / cover no-repeat;
   transform: translateZ(0);
-  transition: opacity 0.4s ease;
+  transition: none;
 }
 
 .mm-theme-film-dark {
@@ -587,6 +594,10 @@ html.dark .mm-theme-film-light {
 
 html.dark .mm-theme-film-dark {
   opacity: 1;
+}
+
+html.mm-theme-live .mm-theme-film video {
+  transition: opacity 0.2s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {

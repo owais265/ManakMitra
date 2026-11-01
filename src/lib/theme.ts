@@ -1,16 +1,26 @@
+import { themeCookie } from "./theme-pref.ts";
+
 const THEME_KEY = "mm_theme";
 const EVENT = "mm-theme";
 const DARK_BG = "#0c1222";
-const LIGHT_BG = "#ffffff";
+const LIGHT_BG = "#f6f8fa";
+
+let serverHint = false;
+
+/** Called from the root render with the cookie the server already painted. */
+export function hintServerTheme(dark: boolean) {
+  serverHint = dark;
+}
 
 export function isDarkTheme(): boolean {
-  if (typeof document === "undefined") return false;
+  if (typeof document === "undefined") return serverHint;
   return document.documentElement.classList.contains("dark");
 }
 
-export function applyTheme(dark: boolean) {
+export function applyTheme(dark: boolean, animate = false) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
+  if (animate) root.classList.add("mm-theme-live");
   root.classList.toggle("dark", dark);
   root.style.backgroundColor = dark ? DARK_BG : LIGHT_BG;
   root.style.colorScheme = dark ? "dark" : "light";
@@ -21,6 +31,7 @@ export function applyTheme(dark: boolean) {
   if (meta) meta.setAttribute("content", dark ? DARK_BG : "#1e3a8a");
   try {
     window.localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+    document.cookie = themeCookie(dark);
   } catch {
     /* ignore */
   }
@@ -28,17 +39,18 @@ export function applyTheme(dark: boolean) {
 }
 
 export function initTheme() {
-  let dark = false;
+  let dark = serverHint;
   try {
-    dark = window.localStorage.getItem(THEME_KEY) === "dark";
+    const stored = window.localStorage.getItem(THEME_KEY);
+    if (stored === "dark" || stored === "light") dark = stored === "dark";
   } catch {
-    dark = false;
+    /* keep the server hint */
   }
-  applyTheme(dark);
+  applyTheme(dark, false);
 }
 
 export function toggleTheme() {
-  applyTheme(!isDarkTheme());
+  applyTheme(!isDarkTheme(), true);
 }
 
 export function subscribeTheme(cb: () => void) {
@@ -52,10 +64,11 @@ export function subscribeTheme(cb: () => void) {
 }
 
 export function getThemeSnapshot() {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return serverHint;
   try {
-    if (window.localStorage.getItem(THEME_KEY) === "dark") return true;
-    if (window.localStorage.getItem(THEME_KEY) === "light") return false;
+    const stored = window.localStorage.getItem(THEME_KEY);
+    if (stored === "dark") return true;
+    if (stored === "light") return false;
   } catch {
     /* ignore */
   }
@@ -63,5 +76,5 @@ export function getThemeSnapshot() {
 }
 
 export function getThemeServerSnapshot() {
-  return false;
+  return serverHint;
 }

@@ -2,10 +2,12 @@ import { useLayoutEffect, useSyncExternalStore } from "react";
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { readThemeDark } from "@/lib/theme-pref";
 import {
   subscribeTheme,
   getThemeSnapshot,
   getThemeServerSnapshot,
+  hintServerTheme,
   initTheme,
 } from "@/lib/theme";
 import appCss from "../styles.css?url";
@@ -38,12 +40,15 @@ export const Route = createRootRoute({
       },
     ],
   }),
+  loader: () => readThemeDark(),
   component: RootDocument,
 });
 
 function RootDocument() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isChat = pathname === "/chat" || pathname.startsWith("/chat/");
+  const serverDark = Route.useLoaderData();
+  hintServerTheme(serverDark === true);
   const dark = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
 
   useLayoutEffect(() => {
@@ -60,12 +65,12 @@ function RootDocument() {
   return (
     <html lang="en" className={htmlClass} suppressHydrationWarning>
       <head>
-        <HeadContent />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem('mm_theme')==='dark'){document.documentElement.classList.add('dark');document.documentElement.style.backgroundColor='#0c1222'}var l=localStorage.getItem('mm_lang');if(l)document.documentElement.lang=l}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('mm_theme');var dark=t==='dark';var bg=dark?'#0c1222':'#f6f8fa';var root=document.documentElement;root.classList.toggle('dark',dark);root.style.backgroundColor=bg;root.style.colorScheme=dark?'dark':'light';document.cookie='mm_theme='+(dark?'dark':'light')+'; Path=/; Max-Age=31536000; SameSite=Lax';var l=localStorage.getItem('mm_lang');if(l)root.lang=l}catch(e){}})();`,
           }}
         />
+        <HeadContent />
       </head>
       <body
         className={
