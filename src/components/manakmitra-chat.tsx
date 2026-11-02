@@ -38,6 +38,7 @@ import { deskUi } from '@/lib/desk-ui';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
 import { DraftChip, PlusMenu } from '@/components/composer-plus';
 import { rememberRecent } from '@/lib/recent-files';
+import { foldSpokenQuery } from '@/lib/spoken-is';
 
 type MessageRole = 'user' | 'ai';
 type Confidence = 'high' | 'medium' | 'low' | null;
@@ -505,12 +506,13 @@ export default function ChatBotApp() {
         }
 
         const base = speechBaseTextRef.current;
-        const currentSpoken = (finalTranscript || interimTranscript).trim();
+        const spokenFinal = foldSpokenQuery(finalTranscript);
+        const currentSpoken = (finalTranscript ? spokenFinal : interimTranscript).trim();
         if (currentSpoken) {
           setInputText(base ? `${base} ${currentSpoken}` : currentSpoken);
         }
         if (finalTranscript) {
-          speechBaseTextRef.current = (base ? `${base} ${finalTranscript}` : finalTranscript).trim();
+          speechBaseTextRef.current = (base ? `${base} ${spokenFinal}` : spokenFinal).trim();
         }
       };
 
@@ -693,7 +695,8 @@ export default function ChatBotApp() {
 
   const handleSend = async (text: string) => {
     const file = draftFile;
-    if (!text.trim() && !file) return;
+    const asked = foldSpokenQuery(text).trim();
+    if (!asked && !file) return;
     if (sendingRef.current) return;
     sendingRef.current = true;
     stickToBottomRef.current = true;
@@ -709,7 +712,7 @@ export default function ChatBotApp() {
     // Reply language is only the header dropdown — never auto-switch from the query.
     const replyLang = language;
 
-    const shown = [text.trim(), file ? `Attached: ${file.name}` : ''].filter(Boolean).join('\n');
+    const shown = [asked, file ? `Attached: ${file.name}` : ''].filter(Boolean).join('\n');
     const newMsg: Message = {
       id: createUniqueId(),
       role: 'user',
@@ -772,7 +775,7 @@ export default function ChatBotApp() {
         credentials: 'same-origin',
         headers,
         body: JSON.stringify({ 
-          query: text, 
+          query: asked, 
           language: replyLang,
           history: messages
             .filter((m) => m.role === 'user' && m.text)

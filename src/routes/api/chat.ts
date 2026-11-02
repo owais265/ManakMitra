@@ -20,6 +20,7 @@ import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
 import { guardSpoken } from "@/lib/answer-guard";
 import { planDeskAgent } from "@/lib/desk-agents";
+import { foldSpokenQuery } from "@/lib/spoken-is";
 
 type ChatBody = {
   query?: string;
@@ -437,7 +438,7 @@ export const Route = createFileRoute("/api/chat")({
         let guestCookie: string | undefined;
         try {
           const body = (await request.json()) as ChatBody;
-          query = typeof body.query === "string" ? body.query.replace(/\u0000/g, "").slice(0, 2000) : "";
+          query = foldSpokenQuery(typeof body.query === "string" ? body.query.replace(/\u0000/g, "").slice(0, 2000) : "");
           language = isAppLang(body.language) ? body.language : "en";
           const parsed = parseAttachment(body.attachment);
           if (!parsed.ok) {
