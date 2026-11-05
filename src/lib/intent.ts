@@ -26,21 +26,30 @@ const OFFTOPIC_HARD =
 const GENERIC_STANDARD_ASK =
   /\b(what (is|are) (an |the )?indian standards?|how many indian standards?|can indian standards?|find applicable indian standards?|conformity to is\b|a standard be (revised|withdrawn)|manufacturing standards? revised|equivalent standard|tolerance limits in a standard|grade and standard|standards? (help|used in|contribute)|role of (bis|technical committees)|how is bis funded|contact bis|penalty for selling|uncertified products?|how to start bis|documents does bis|bis test reports|bis funded|factory inspection|during surveillance|third-party (laborator|test)|international test reports?|in-house and third-party|test samples selected|product fails testing|accelerated testing|deemed certification|licenses? for multiple products|voluntary to mandatory|imported products? subject|support does bis|track isi|certification be expedited|after isi licen[cs]e expires|what are the safety requirements)\b/i;
 
-export function classifyIntent(query: string, _history?: ChatTurn[]): ChatIntent {
-  const q = glossIndic(query.trim());
-  if (!q) return "social";
-  if (OFFTOPIC_HARD.test(q)) return "offtopic";
+export function mentionsOfftopic(query: string): boolean {
+  return OFFTOPIC_HARD.test(glossIndic(query.trim()));
+}
 
-  const cueOnly = isFollowCue(q) && !matchProductFamily(q) && !/\bIS[\s/.-]*\d+/i.test(q) && !MESSY_IS.test(q);
-  if (cueOnly) return "social";
-
-  const hasBis =
+function looksLikeBis(q: string): boolean {
+  return (
     /\bIS[\s/.-]*\d+/i.test(q) ||
     MESSY_IS.test(q) ||
     BIS_HINT.test(q) ||
     BIS_NATIVE.test(q) ||
     GENERIC_STANDARD_ASK.test(q) ||
-    Boolean(matchProductFamily(q));
+    Boolean(matchProductFamily(q))
+  );
+}
+
+export function classifyIntent(query: string, _history?: ChatTurn[]): ChatIntent {
+  const q = glossIndic(query.trim());
+  if (!q) return "social";
+  const hasBis = looksLikeBis(q);
+  if (OFFTOPIC_HARD.test(q) && !hasBis) return "offtopic";
+
+  const cueOnly = isFollowCue(q) && !matchProductFamily(q) && !/\bIS[\s/.-]*\d+/i.test(q) && !MESSY_IS.test(q);
+  if (cueOnly) return "social";
+
   if (hasBis) return "bis";
   if (FOLLOW_CUE.test(q) && q.length < 40 && !hasBis) return "social";
   if ((SOCIAL_CUE.test(q) || SOCIAL_NATIVE.test(q)) && q.length < 220) return "social";

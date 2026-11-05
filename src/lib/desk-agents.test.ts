@@ -8,6 +8,7 @@ describe("planDeskAgent", () => {
     assert.equal(planDeskAgent("how do I apply for ISI mark on a ceiling fan").agent, "certify");
     assert.equal(planDeskAgent("hello").agent, "social");
     assert.equal(planDeskAgent("what is the ipl score").agent, "refuse");
+    assert.notEqual(planDeskAgent("who won the ipl and which Indian Standard applies to cement").agent, "refuse");
     assert.equal(planDeskAgent("labs near 492001").agent, "labs");
     assert.equal(planDeskAgent("verify CM/L-1234567").agent, "verify");
     assert.equal(

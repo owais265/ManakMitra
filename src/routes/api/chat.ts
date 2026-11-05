@@ -1,7 +1,7 @@
 import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
 import { shapeNote } from "@/lib/reply-shape";
-import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
+import { classifyIntent, mentionsOfftopic, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
@@ -742,6 +742,10 @@ export const Route = createFileRoute("/api/chat")({
                 if (searchMode === "deep" && isCaseBrief(query)) {
                   evidence +=
                     "\n\nCASE BRIEF: Several numbered parts. Answer every part, in that order, in one reply. Use only the rows and the lab board above. If a fee or a rupee amount is not written there, say it is not in this pack and name the official page. Do not invent a nearer laboratory. Do not stop after the first part.";
+                }
+                if (mentionsOfftopic(query)) {
+                  evidence +=
+                    "\n\nOFF-TOPIC ASIDE: Part of the question is not about Indian Standards. Answer only the standards, scheme, lab, or licence part. One short line that the other part is outside this desk. Do not answer the sport, recipe, price, film, or health question.";
                 }
                 const userPrompt = labelText
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`

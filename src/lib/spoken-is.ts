@@ -33,5 +33,27 @@ export function foldSpokenQuery(raw: string): string {
   ];
   for (const re of spoken) text = text.replace(re, "IS");
   text = text.replace(/बी[\s.]*आई[\s.]*एस/g, "BIS");
+  const typos: Array<[RegExp, string]> = [
+    [/\bcemenet\b/gi, "cement"],
+    [/\bcemnet\b/gi, "cement"],
+    [/\bcemant\b/gi, "cement"],
+    [/\bsiment\b/gi, "cement"],
+    [/\bportlant\b/gi, "portland"],
+    [/\bhelmate\b/gi, "helmet"],
+    [/\bhelmat\b/gi, "helmet"],
+    [/\bhelmt\b/gi, "helmet"],
+    [/\bstandrd\b/gi, "standard"],
+    [/\bstandart\b/gi, "standard"],
+    [/\blabortory\b/gi, "laboratory"],
+    [/\blaboratry\b/gi, "laboratory"],
+    [/\blaboratroy\b/gi, "laboratory"],
+    [/\blisence\b/gi, "licence"],
+    [/\blicnce\b/gi, "licence"],
+    [/\bhardning\b/gi, "hardening"],
+    [/\bcertifcation\b/gi, "certification"],
+    [/\bhallmak\b/gi, "hallmark"],
+    [/\bjewellry\b/gi, "jewellery"],
+  ];
+  for (const [re, word] of typos) text = text.replace(re, word);
   return text.replace(/[ \t]{2,}/g, " ");
 }

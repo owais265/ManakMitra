@@ -8,5 +8,7 @@ describe("foldSpokenQuery", () => {
     assert.equal(foldSpokenQuery("मुझे आई एस १४५४३ बताइए"), "मुझे IS 14543 बताइए");
     assert.equal(foldSpokenQuery("ஐ எஸ் 4151"), "IS 4151");
     assert.equal(foldSpokenQuery("ceiling fan"), "ceiling fan");
+    assert.equal(foldSpokenQuery("standrd for cemenet portlant"), "standard for cement portland");
+    assert.equal(foldSpokenQuery("helmate hardning"), "helmet hardening");
   });
 });
