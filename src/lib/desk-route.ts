@@ -67,11 +67,20 @@ function isVerifyAsk(text: string): boolean {
   return VERIFY_CUE.test(text);
 }
 
+/** A short CM/L question stays on the shape card. A numbered brief does not. */
+export function isCaseBrief(query: string): boolean {
+  const text = query.trim();
+  if (!text) return false;
+  const numbered = text.match(/(?:^|\n)\s*\d{1,2}[.)]\s+\S/g);
+  return (numbered?.length ?? 0) >= 2;
+}
+
 /** Chat keeps a fixed card only for a licence number or an explicit product file. Other questions go to retrieval. */
 export function chatHardCard(query: string): "file" | "licence" | null {
   const text = query.trim();
   if (!text) return null;
   if (FILE_CUE.test(text)) return "file";
+  if (isCaseBrief(text)) return null;
   if (LICENCE.test(text) || /\bcm\/?l\b/i.test(text)) return "licence";
   return null;
 }

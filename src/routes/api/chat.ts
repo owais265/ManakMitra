@@ -2,7 +2,7 @@ import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
 import { shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
-import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
+import { chatHardCard, deskKind, deskReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply, feeOrClause } from "@/lib/more-desk";
@@ -660,7 +660,7 @@ export const Route = createFileRoute("/api/chat")({
                 step("exit", "Chose the exit", exitDetail, t);
                 const guided = !attachment ? moreReply(query, language) : null;
                 const pack = guided || getFallbackBISResponse(retrievalQuery, language);
-                if (guided || (!attachment && feeOrClause(query))) {
+                if (guided || (!attachment && feeOrClause(query) && !isCaseBrief(query))) {
                   t = performance.now();
                   step("write", "Wrote the answer", "Published catalogue card", t);
                   say(pack);
@@ -734,6 +734,10 @@ export const Route = createFileRoute("/api/chat")({
                   evidence += "\n\nSCHEME: Hallmark and HUID do not apply to this product. Say that first. Point to ISI or CRS, not jewellery verification.";
                 }
                 if (deepNote) evidence += `\n\n${deepNote}`;
+                if (searchMode === "deep" && isCaseBrief(query)) {
+                  evidence +=
+                    "\n\nCASE BRIEF: Several numbered parts. Answer every part, in that order, in one reply. Use only the rows and the lab board above. If a fee or a rupee amount is not written there, say it is not in this pack and name the official page. Do not invent a nearer laboratory. Do not stop after the first part.";
+                }
                 const userPrompt = labelText
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
                   : modelPrompt(query, attachment);
@@ -746,7 +750,7 @@ export const Route = createFileRoute("/api/chat")({
                     SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) + "\n\n" + shapeNote(query),
                     pack,
                     searchMode === "deep" ? 0.2 : 0.25,
-                    searchMode === "deep" ? 2000 : 1600,
+                    searchMode === "deep" && isCaseBrief(query) ? 3200 : searchMode === "deep" ? 2000 : 1600,
                     image,
                   ),
                   trusted.join("\n"),
