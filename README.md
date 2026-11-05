@@ -109,6 +109,8 @@ What this README will **not** claim: Hit@3 on a 10-query cement set, a 0.45 s GP
 
 The composer chip, next to the microphone, is a down-arrow menu with two modes: **Fast** and **Deep search**. Fast is unchanged.
 
+![Fast and Deep search in the composer](docs/live/search-mode.png)
+
 Deep search does three things. The work trace shows each one with its own time:
 
 1. Search the local catalogue index.
