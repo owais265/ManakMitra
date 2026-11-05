@@ -43,6 +43,8 @@ assert.equal(moreKind("check R-41000001"), null);
 assert.equal(moreKind("IS 269 cement"), null);
 assert.equal(moreKind("what is the fee for ISI"), null);
 assert.equal(feeOrClause("ISI mark for cement fee"), true);
+assert.equal(feeOrClause("18k gold is 750, no fee"), false);
+assert.equal(feeOrClause("quote clause 4 of IS 269"), true);
 assert.equal(moreKind("clause 5 of the standard"), null);
 assert.equal(moreKind("ipl score"), null);
 assert.equal(moreKind("cement"), null);

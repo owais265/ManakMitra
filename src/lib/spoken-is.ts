@@ -55,5 +55,8 @@ export function foldSpokenQuery(raw: string): string {
     [/\bjewellry\b/gi, "jewellery"],
   ];
   for (const [re, word] of typos) text = text.replace(re, word);
+  if (/\bhelmets?\b/i.test(text) && /\btwo[\s-]?wheelers?\b/i.test(text)) {
+    text = text.replace(/\bhelmets?\b/gi, "two wheeler helmet");
+  }
   return text.replace(/[ \t]{2,}/g, " ");
 }

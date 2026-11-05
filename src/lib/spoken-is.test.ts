@@ -10,5 +10,6 @@ describe("foldSpokenQuery", () => {
     assert.equal(foldSpokenQuery("ceiling fan"), "ceiling fan");
     assert.equal(foldSpokenQuery("standrd for cemenet portlant"), "standard for cement portland");
     assert.equal(foldSpokenQuery("helmate hardning"), "helmet hardening");
+    assert.match(foldSpokenQuery("helmt two wheeler standrd"), /two wheeler helmet/);
   });
 });

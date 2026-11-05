@@ -191,7 +191,10 @@ function hasIsNumber(original: string, q: string): boolean {
 }
 
 export function feeOrClause(q: string): boolean {
-  return /\b(clause|fee|fees|timeline|penalty|marking fee)\b/i.test(q);
+  const fee = /\b(fee|fees|marking fee)\b/i.test(q);
+  const negated = /\b(no|not|without|don't|do not)\b(?:\s+\w+){0,6}\s+fees?\b/i.test(q);
+  const asksFee = fee && !negated;
+  return asksFee || /\b(clause|timeline|penalty)\b/i.test(q);
 }
 
 export function moreKind(raw: string): MoreKind | null {
