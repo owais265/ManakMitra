@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { deskKind, deskReply, labsFinderResult, chatHardCard, isCaseBrief } from "../src/lib/desk-route.ts";
+import { deskKind, deskReply, labsFinderResult, chatHardCard, hardCardReply, isCaseBrief } from "../src/lib/desk-route.ts";
 import { listProductFamilies } from "../src/lib/product-playbook.ts";
 
 const families = listProductFamilies();
@@ -88,6 +88,8 @@ assert.equal(deskKind("hello"), null);
 assert.equal(chatHardCard("verify cement"), null);
 assert.equal(chatHardCard("verify CM/L-1234567"), "licence");
 assert.equal(chatHardCard("verify CM/L number"), "licence");
+assert.match(hardCardReply("licence CM/L kaisa dikhta hai cement ka", "en"), /CM\/L-1234567/);
+assert.doesNotMatch(hardCardReply("licence CM/L kaisa dikhta hai cement ka", "en"), /pump/i);
 assert.equal(isCaseBrief("1. Which standard applies?\n2. Which scheme?"), true);
 assert.equal(chatHardCard("Plant near Amritsar.\n1. Which standard applies to cement?\n2. What does a CM/L number look like?"), null);
 assert.equal(isCaseBrief("verify CM/L number"), false);

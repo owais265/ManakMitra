@@ -2,7 +2,7 @@ import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
 import { shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, mentionsOfftopic, offtopicReply, socialReply } from "@/lib/intent";
-import { chatHardCard, deskKind, deskReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
+import { chatHardCard, deskKind, deskReply, hardCardReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply, feeOrClause } from "@/lib/more-desk";
@@ -102,9 +102,9 @@ function feeSafe(spoken: string, trusted: string, fallback: string, keep = false
     }
     return spoken;
   }
-  return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)(\d[\d,]*)/gi, (full, raw: string) =>
-    allowed.has(raw.replace(/,/g, "")) ? full : "a fee that is not in this pack",
-  );
+  if (keep) {
+    return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)\d[\d,]*/gi, "a fee that is not in this pack");
+  }
 }
 
 function pickSpoken(modelText: string, fallback: string): string {
@@ -533,11 +533,11 @@ export const Route = createFileRoute("/api/chat")({
                   return;
                 }
                 const hard = !attachment ? chatHardCard(query) : null;
-                if (hard) {
+                if (hard && !isCaseBrief(query)) {
                   t = performance.now();
-                  const card = deskReply(query, language) || "";
-                  const hits = await searchField(query, hard === "file" ? "file" : "verify");
-                  step("desk", "Opened the desk card", hits.length ? `${hits.length} loaded rows` : "No title match", t);
+                  const card = hardCardReply(query, language);
+                  const hits = hard === "file" ? await searchField(query, "file") : [];
+                  step("desk", "Opened the desk card", hits.length ? `${hits.length} loaded rows` : "Shape card", t);
                   if (searchMode === "deep") {
                     step("check", "Cross-checked both", "Skipped — this question opens a desk card, not the two indexes", performance.now());
                   }
@@ -569,7 +569,7 @@ export const Route = createFileRoute("/api/chat")({
                   say(offtopicReply(language));
                   return;
                 }
-                if (!attachment && isHallmarkSchemeMix(gateQuery)) {
+                if (!attachment && isHallmarkSchemeMix(gateQuery) && !isCaseBrief(query)) {
                   t = performance.now();
                   step("refuse", "Refused", searchMode === "deep" ? "Deep search skipped — hallmark does not apply" : "Hallmark does not apply", t);
                   chatLog({

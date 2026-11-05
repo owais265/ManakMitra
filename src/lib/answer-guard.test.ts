@@ -29,6 +29,11 @@ test("empty model text falls back", () => {
   assert.equal(guardSpoken("  ", trusted, pack), pack);
 });
 
+test("a one-line fragment with no standard falls back", () => {
+  assert.equal(guardSpoken("For testing", trusted, pack), pack);
+  assert.equal(guardCase("For testing", trusted, pack), pack);
+});
+
 test("a numbered case keeps the other parts when one IS is not in the pack", () => {
   const spoken = "1. Rapid hardening cement is IS 8041.\n2. The test method IS 4031 is not listed here.\n3. Confirm the fee on https://www.manakonline.in";
   const trustedCase = "IS 8041 : 1990 Rapid hardening\nhttps://www.bis.gov.in/x";

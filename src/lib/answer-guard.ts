@@ -18,9 +18,17 @@ export function extractUrls(text: string): string[] {
   return [...text.matchAll(URL_RE)].map((match) => match[0].replace(/[.,;]+$/, ""));
 }
 
+function tooThin(text: string): boolean {
+  const body = text.replace(/\s+/g, " ").trim();
+  if (body.length >= 80) return false;
+  if (/\bIS[\s/.-]*\d{3,6}\b/i.test(body)) return false;
+  if (/https?:\/\//i.test(body)) return false;
+  return true;
+}
+
 export function guardSpoken(spoken: string, trusted: string, fallback: string): string {
   const text = spoken.trim();
-  if (!text) return fallback;
+  if (!text || tooThin(text)) return fallback;
   const allowed = new Set(extractIsNumbers(trusted));
   const invented = extractIsNumbers(text).filter((number) => !allowed.has(number));
   if (invented.length) return fallback;
@@ -36,7 +44,7 @@ export function guardSpoken(spoken: string, trusted: string, fallback: string): 
 /** A numbered case keeps the reply. An IS number or link that is not in the pack is blanked, not used as a reason to throw the whole answer away. */
 export function guardCase(spoken: string, trusted: string, fallback: string): string {
   const text = spoken.trim();
-  if (!text) return fallback;
+  if (!text || tooThin(text)) return fallback;
   const allowed = new Set(extractIsNumbers(trusted));
   const hay = trusted.toLowerCase();
   let next = text.replace(IS_RE, (full, number: string) => (allowed.has(number) ? full : "a standard that is not in this pack"));

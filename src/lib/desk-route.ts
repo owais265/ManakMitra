@@ -85,7 +85,11 @@ export function chatHardCard(query: string): "file" | "licence" | null {
   return null;
 }
 
-/** Same board the labs page draws: embed map, nearby list, then farther. Null until a PIN or known city is in the query. */
+/** Shape card for a bare CM/L or R-number. No catalogue title dump. */
+export function hardCardReply(query: string, language: AppLang = "en"): string {
+  if (/\bcm\/?l\b/i.test(query) || LICENCE.test(query)) return verifyText(query, language);
+  return fileText(query, language);
+}
 export type LabBoard = {
   origin: { lat: number; lng: number; label: string };
   nearby: RankedLab[];
