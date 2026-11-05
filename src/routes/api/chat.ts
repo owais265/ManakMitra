@@ -102,9 +102,7 @@ function feeSafe(spoken: string, trusted: string, fallback: string, keep = false
     }
     return spoken;
   }
-  if (keep) {
-    return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)\d[\d,]*/gi, "a fee that is not in this pack");
-  }
+  return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)\d[\d,]*/gi, "a fee that is not in this pack");
 }
 
 function pickSpoken(modelText: string, fallback: string): string {
