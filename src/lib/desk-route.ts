@@ -72,7 +72,7 @@ export function chatHardCard(query: string): "file" | "licence" | null {
   const text = query.trim();
   if (!text) return null;
   if (FILE_CUE.test(text)) return "file";
-  if (LICENCE.test(text)) return "licence";
+  if (LICENCE.test(text) || /\bcm\/?l\b/i.test(text)) return "licence";
   return null;
 }
 
@@ -112,6 +112,17 @@ function verifyText(query: string, language: AppLang): string {
   const ui = deskUi(language);
   const licence = query.match(LICENCE)?.[0];
   if (licence) return licencePoints(checkLicence(licence), language);
+  if (/\bcm\/?l\b/i.test(query)) {
+    return [
+      ui.verifyStart,
+      "",
+      `- ${ui.isiEg}`,
+      `- ${ui.crsEg}`,
+      `- ${ui.huidEg}`,
+      "",
+      tags(ui.openManak, "portal", "https://www.manakonline.in", chromeCopy(language).verify, "low", "hallmarking"),
+    ].join("\n");
+  }
   const name = payload(query);
   if (name.length < 2) {
     return [
