@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { APP_LANGS } from "./language.ts";
 import { pickVoice, speechChunks, spokenSlice, voiceTag } from "./read-aloud.ts";
-import { askCount, caseModeNote, shapeNote, sourcesBelong, wantsList } from "./reply-shape.ts";
+import { askCount, caseModeNote, caseUserCue, shapeNote, sourcesBelong, wantsList } from "./reply-shape.ts";
 
 const PRODUCTS = ["ceiling fan", "cement", "helmet", "laptop", "gold jewellery", "packaged water", "toy", "electric switch"];
 const FACTS = [
@@ -68,6 +68,8 @@ test("points and several questions change the shape, not the evidence", () => {
   assert.match(caseModeNote(brief, "deep"), /Read:/);
   assert.match(caseModeNote(brief, "fast"), /Do not start with "Read:"/);
   assert.equal(caseModeNote("cement standard", "deep"), "");
+  assert.match(caseUserCue(brief, "deep"), /1, 2, 3/);
+  assert.match(caseUserCue(brief, "fast"), /Do not number/);
 });
 
 test("reading uses the selected language, and the highlight stays inside the text", () => {

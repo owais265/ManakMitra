@@ -73,6 +73,8 @@ export function caseModeNote(query: string, mode: "fast" | "deep"): string {
       "- Then answer part 1, part 2, and the rest with the same numbers. One short paragraph per part. Do not merge two parts into one sentence.",
       "- Each part gives the IS number from the rows above, or the words \"not in this pack\".",
       "- No rupee amount. No laboratory closer than the board.",
+      "- ISI licences look like CM/L-1234567. CRS registrations look like R-41000001. You may state that shape. It is not a fee.",
+      "- Stopping before the last number is a failed answer.",
     ].join("\n");
   }
   return [
@@ -80,4 +82,17 @@ export function caseModeNote(query: string, mode: "fast" | "deep"): string {
     "- One short paragraph on the main product and its scheme only.",
     "- Do not start with \"Read:\". Do not number the parts. Leave the later parts for Deep.",
   ].join("\n");
+}
+
+/** Repeated under the user's question so the model cannot miss the mode. */
+export function caseUserCue(query: string, mode: "fast" | "deep"): string {
+  const lines = query
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => /^\d{1,2}[.)]\s+\S/.test(line));
+  if (lines.length < 2) return "";
+  if (mode === "fast") {
+    return "Fast mode. One short paragraph on the main product only. Do not number the reply. Do not start with Read.";
+  }
+  return `Deep mode. The reply must contain every number ${lines.map((_, i) => i + 1).join(", ")}. One block each, in this order:\n${lines.join("\n")}`;
 }

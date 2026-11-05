@@ -1,6 +1,6 @@
 import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
-import { caseModeNote, shapeNote } from "@/lib/reply-shape";
+import { caseModeNote, caseUserCue, shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, mentionsOfftopic, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, hardCardReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
@@ -747,9 +747,12 @@ export const Route = createFileRoute("/api/chat")({
                   evidence +=
                     "\n\nOFF-TOPIC ASIDE: Part of the question is not about Indian Standards. Answer only the standards, scheme, lab, or licence part. One short line that the other part is outside this desk. Do not answer the sport, recipe, price, film, or health question.";
                 }
-                const userPrompt = labelText
-                  ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
-                  : modelPrompt(query, attachment);
+                const userPrompt = [
+                  labelText ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}` : modelPrompt(query, attachment),
+                  caseUserCue(query, searchMode),
+                ]
+                  .filter(Boolean)
+                  .join("\n\n");
                 t = performance.now();
                 const caseBrief = searchMode === "deep" && isCaseBrief(query);
                 const trustedBlob = trusted.join("\n");
