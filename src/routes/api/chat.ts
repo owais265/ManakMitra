@@ -533,6 +533,9 @@ export const Route = createFileRoute("/api/chat")({
                   const card = deskReply(query, language) || "";
                   const hits = await searchField(query, hard === "file" ? "file" : "verify");
                   step("desk", "Opened the desk card", hits.length ? `${hits.length} loaded rows` : "No title match", t);
+                  if (searchMode === "deep") {
+                    step("check", "Cross-checked both", "Skipped — this question opens a desk card, not the two indexes", 0);
+                  }
                   const lines = hits.map((hit) => `- ${hit.title}${hit.url ? ` — ${hit.url}` : ""}`);
                   say([card, lines.length ? "Loaded rows for this field. Not a licence grant." : "", ...lines].filter(Boolean).join("\n"));
                   return;
@@ -542,13 +545,13 @@ export const Route = createFileRoute("/api/chat")({
                 if (!attachment && !followSubject && !desk && !guidedKind && intent === "social") {
                   t = performance.now();
                   const spoken = socialReply(language);
-                  step("reply", "Answered the greeting", "Published greeting", t);
+                  step("reply", "Answered the greeting", searchMode === "deep" ? "Deep search skipped — greeting" : "Published greeting", t);
                   say(spoken);
                   return;
                 }
                 if (!attachment && !followSubject && intent === "offtopic") {
                   t = performance.now();
-                  step("refuse", "Refused", "Outside Indian Standards", t);
+                  step("refuse", "Refused", searchMode === "deep" ? "Deep search skipped — outside Indian Standards" : "Outside Indian Standards", t);
                   chatLog({
                     id: reqId,
                     desk: "chat",
@@ -563,7 +566,7 @@ export const Route = createFileRoute("/api/chat")({
                 }
                 if (!attachment && isHallmarkSchemeMix(gateQuery)) {
                   t = performance.now();
-                  step("refuse", "Refused", "Hallmark does not apply", t);
+                  step("refuse", "Refused", searchMode === "deep" ? "Deep search skipped — hallmark does not apply" : "Hallmark does not apply", t);
                   chatLog({
                     id: reqId,
                     desk: "chat",
