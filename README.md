@@ -107,15 +107,15 @@ What this README will **not** claim: Hit@3 on a 10-query cement set, a 0.45 s GP
 
 ## Search
 
-The composer has a Fast / Deep menu, the same kind of control as a model picker. Fast is unchanged.
+The composer chip, next to the microphone, is a down-arrow menu with two modes: **Fast** and **Deep search**. Fast is unchanged.
 
-Deep search does three things, and the work trace shows each one:
+Deep search does three things. The work trace shows each one with its own time:
 
-1. Search the local pack.
+1. Search the local catalogue index.
 2. Search the hybrid index.
 3. Cross-check. A strong local row stays. A hybrid row that names a different standard is dropped. If the two searches name different standards and neither is locked, the answer asks which product you mean instead of picking one.
 
-A question about a fee still returns the catalogue card. Deep search does not add a rupee amount.
+A greeting, an off-topic question, a desk card, or a hallmark mismatch does not run both indexes. The trace says why Deep search stopped. A question about a fee still returns the catalogue card. Deep search does not add a rupee amount.
 
 ---
 

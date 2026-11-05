@@ -534,7 +534,7 @@ export const Route = createFileRoute("/api/chat")({
                   const hits = await searchField(query, hard === "file" ? "file" : "verify");
                   step("desk", "Opened the desk card", hits.length ? `${hits.length} loaded rows` : "No title match", t);
                   if (searchMode === "deep") {
-                    step("check", "Cross-checked both", "Skipped — this question opens a desk card, not the two indexes", 0);
+                    step("check", "Cross-checked both", "Skipped — this question opens a desk card, not the two indexes", performance.now());
                   }
                   const lines = hits.map((hit) => `- ${hit.title}${hit.url ? ` — ${hit.url}` : ""}`);
                   say([card, lines.length ? "Loaded rows for this field. Not a licence grant." : "", ...lines].filter(Boolean).join("\n"));
@@ -601,16 +601,17 @@ export const Route = createFileRoute("/api/chat")({
                 if (searchMode === "deep") {
                   const localStarted = performance.now();
                   const local = retrieve(retrievalQuery);
-                  step("local", "Searched the local pack", `${local.hits.length} rows · ${local.mode}`, performance.now() - localStarted);
+                  step("local", "Searched the local pack", `${local.hits.length} rows · catalogue index · ${local.mode}`, localStarted);
                   const hybridStarted = performance.now();
                   const hybrid = await retrieveHybrid(retrievalQuery);
-                  step("hybrid", "Searched the hybrid index", `${hybrid.hits.length} rows · ${hybrid.mode}`, performance.now() - hybridStarted);
+                  step("hybrid", "Searched the hybrid index", `${hybrid.hits.length} rows · hybrid index · ${hybrid.mode}`, hybridStarted);
+                  const checkStarted = performance.now();
                   const report = crossVerify(local, hybrid);
                   step(
                     "check",
                     "Cross-checked both",
                     `${report.verdict} · local ${report.localRows} · hybrid ${report.hybridRows} · agreed ${report.agreed.join(", ") || "none"}`,
-                    1,
+                    checkStarted,
                   );
                   retrieved = report.merged;
                   cacheFlag = "deep";

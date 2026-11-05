@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Clock, FileText, Paperclip, Plus, X, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Clock, FileText, Paperclip, Plus, X, Check, Zap, ScanSearch } from "lucide-react";
 import type { AppLang } from "@/lib/language";
 import { loadRecent, type RecentFile } from "@/lib/recent-files";
 
@@ -218,44 +218,48 @@ export function SearchModeMenu({ mode, onChange }: { mode: SearchMode; onChange:
   return (
     <div ref={rootRef} className="relative">
       {open ? (
-        <div role="menu" className="absolute right-0 bottom-12 z-30 w-56 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-white/10 dark:bg-[#1c1b19]">
+        <div
+          role="menu"
+          className="absolute right-0 bottom-full z-30 mb-2 w-52 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#2c2b29] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+        >
           <button
             type="button"
             role="menuitemradio"
             aria-checked={mode === "fast"}
             onClick={() => pick("fast")}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-slate-100 dark:hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
           >
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">Fast</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">The usual catalogue answer</span>
-            </span>
-            {mode === "fast" ? <Check className="h-4 w-4 text-slate-700 dark:text-slate-200" /> : null}
+            <Zap className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-300" />
+            <span className="min-w-0 flex-1 font-medium">Fast</span>
+            {mode === "fast" ? <Check className="h-4 w-4 shrink-0" /> : null}
           </button>
           <button
             type="button"
             role="menuitemradio"
             aria-checked={mode === "deep"}
             onClick={() => pick("deep")}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-slate-100 dark:hover:bg-white/10"
+            className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left text-sm text-slate-800 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
           >
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-slate-900 dark:text-slate-100">Deep search</span>
-              <span className="block text-xs text-slate-500 dark:text-slate-400">Local and hybrid, then cross-check</span>
-            </span>
-            {mode === "deep" ? <Check className="h-4 w-4 text-slate-700 dark:text-slate-200" /> : null}
+            <ScanSearch className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-300" />
+            <span className="min-w-0 flex-1 font-medium">Deep search</span>
+            {mode === "deep" ? <Check className="h-4 w-4 shrink-0" /> : null}
           </button>
         </div>
       ) : null}
       <button
         type="button"
+        aria-label="Search mode"
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((on) => !on)}
-        className="inline-flex h-9 items-center gap-1 rounded-full px-2.5 text-sm font-medium text-slate-700 hover:bg-slate-200/80 dark:text-slate-200 dark:hover:bg-white/10"
+        className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-[13px] font-semibold ${
+          open
+            ? "bg-slate-200 text-slate-900 dark:bg-[#3a3834] dark:text-white"
+            : "bg-slate-200/80 text-slate-800 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/[0.16]"
+        }`}
       >
-        {mode === "deep" ? "Deep" : "Fast"}
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        {mode === "deep" ? "Deep search" : "Fast"}
+        <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform dark:text-slate-400 ${open ? "rotate-180" : ""}`} />
       </button>
     </div>
   );
