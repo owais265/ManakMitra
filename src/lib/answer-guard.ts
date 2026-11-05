@@ -32,3 +32,19 @@ export function guardSpoken(spoken: string, trusted: string, fallback: string): 
   }
   return text;
 }
+
+/** A numbered case keeps the reply. An IS number or link that is not in the pack is blanked, not used as a reason to throw the whole answer away. */
+export function guardCase(spoken: string, trusted: string, fallback: string): string {
+  const text = spoken.trim();
+  if (!text) return fallback;
+  const allowed = new Set(extractIsNumbers(trusted));
+  const hay = trusted.toLowerCase();
+  let next = text.replace(IS_RE, (full, number: string) => (allowed.has(number) ? full : "a standard that is not in this pack"));
+  next = next.replace(URL_RE, (url) => {
+    const clean = url.replace(/[.,;]+$/, "");
+    if (isOfficialHost(clean) || hay.includes(clean.toLowerCase())) return url;
+    return "";
+  });
+  next = next.replace(/[ \t]{2,}/g, " ").trim();
+  return next || fallback;
+}

@@ -10,6 +10,10 @@ describe("planDeskAgent", () => {
     assert.equal(planDeskAgent("what is the ipl score").agent, "refuse");
     assert.equal(planDeskAgent("labs near 492001").agent, "labs");
     assert.equal(planDeskAgent("verify CM/L-1234567").agent, "verify");
+    assert.equal(
+      planDeskAgent("Cement plant near Amritsar.\n1. Which standard applies?\n2. What does a CM/L number look like?\n3. Which laboratory is nearest?").agent,
+      "labs",
+    );
   });
 
   it("never plans a second tool", () => {

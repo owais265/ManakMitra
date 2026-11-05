@@ -18,7 +18,7 @@ import { acceptInternalHeader } from "@/lib/whatsapp";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
-import { guardSpoken } from "@/lib/answer-guard";
+import { guardCase, guardSpoken } from "@/lib/answer-guard";
 import { planDeskAgent } from "@/lib/desk-agents";
 import { foldSpokenQuery } from "@/lib/spoken-is";
 import { crossVerify } from "@/lib/deep-search";
@@ -90,16 +90,21 @@ At the end:
 [FOLLOW_UP] One recommended next lookup (product or BIS service name, not a question)
 [META] high | general`;
 
-function feeSafe(spoken: string, trusted: string, fallback: string): string {
+function feeSafe(spoken: string, trusted: string, fallback: string, keep = false): string {
   const amounts = (text: string) =>
     new Set(
       [...text.matchAll(/(?:₹|\brs\.?\s*|\binr\s*)(\d[\d,]*)/gi)].map((match) => match[1].replace(/,/g, "")),
     );
   const allowed = amounts(`${trusted}\n${fallback}`);
-  for (const amount of amounts(spoken)) {
-    if (!allowed.has(amount)) return fallback;
+  if (!keep) {
+    for (const amount of amounts(spoken)) {
+      if (!allowed.has(amount)) return fallback;
+    }
+    return spoken;
   }
-  return spoken;
+  return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)(\d[\d,]*)/gi, (full, raw: string) =>
+    allowed.has(raw.replace(/,/g, "")) ? full : "a fee that is not in this pack",
+  );
 }
 
 function pickSpoken(modelText: string, fallback: string): string {
@@ -742,22 +747,25 @@ export const Route = createFileRoute("/api/chat")({
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
                   : modelPrompt(query, attachment);
                 t = performance.now();
+                const caseBrief = searchMode === "deep" && isCaseBrief(query);
+                const trustedBlob = trusted.join("\n");
                 const spoken = feeSafe(
-                  guardSpoken(
+                  (caseBrief ? guardCase : guardSpoken)(
                   await answerText(
                     userPrompt,
                     language,
                     SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) + "\n\n" + shapeNote(query),
                     pack,
                     searchMode === "deep" ? 0.2 : 0.25,
-                    searchMode === "deep" && isCaseBrief(query) ? 3200 : searchMode === "deep" ? 2000 : 1600,
+                    caseBrief ? 3200 : searchMode === "deep" ? 2000 : 1600,
                     image,
                   ),
-                  trusted.join("\n"),
+                  trustedBlob,
                   pack,
                 ),
-                  trusted.join("\n"),
+                  trustedBlob,
                   pack,
+                  caseBrief,
                 );
                 step("write", "Wrote the answer", "From the rows above", t);
                 const unreadLabel = Boolean(attachment && attachment.kind !== "text" && sentLabel && !labelText);

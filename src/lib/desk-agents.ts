@@ -1,4 +1,4 @@
-import { chatHardCard, deskKind } from "./desk-route.ts";
+import { chatHardCard, deskKind, isCaseBrief } from "./desk-route.ts";
 import { classifyIntent } from "./intent.ts";
 import { moreKind, type MoreKind } from "./more-desk.ts";
 
@@ -22,6 +22,10 @@ export function planDeskAgent(query: string, hasAttachment = false): AgentPlan {
   if (!text) return { agent: "refuse", tools: 1, injection };
   if (injection && text.split(/\s+/).length < 3) return { agent: "refuse", tools: 1, injection: true };
   if (hasAttachment) return { agent: "retrieve", tools: 1, injection };
+  if (isCaseBrief(query)) {
+    const desk = deskKind(query);
+    return { agent: desk || "retrieve", tools: 1, injection };
+  }
   const hard = chatHardCard(text);
   if (hard === "file") return { agent: "file", tools: 1, injection };
   if (hard === "licence") return { agent: "verify", tools: 1, injection };
