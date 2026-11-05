@@ -97,12 +97,25 @@ A pure retrieval demo that always returns top-5 from one PDF is not this product
 | Hybrid stress | 100 / 100 fail = 0 on the hybrid retrieve path (2026-10-13) | `scripts/hybrid-stress-100.mjs` |
 | Pack file | 18,995 catalogue rows + 627 curated chunks, 100% official hosts | [`src/data/rag-pack.json`](src/data/rag-pack.json) |
 | Voice + label OCR | Browser STT and Tesseract label read. No invented number. Label-photo path is not end-to-end tested yet | Chat mic is in the live app. Photo path is code only |
+| Search modes | **Fast** is the usual path. **Deep** runs the local pack and the hybrid index, then keeps a row only when they agree or the local pack has locked it | Composer menu, next to the mic |
 | No invented IS / fee / clause | Faithfulness is a pass/fail gate, not a published 0.95 score | M3 and M10 |
 | Official host only | A non-allowlisted URL is dropped | `src/lib/official-hosts.ts` |
 | Pack-only kill switch | `HYBRID_RAG=0` still returns IS + scheme + official URL | Environment table below |
 | No GPU required | Judge laptop runs the pack path in Docker or `npm run dev` | [Judge path](#judge-path--no-gpu-no-5-gb-download) |
 
 What this README will **not** claim: Hit@3 on a 10-query cement set, a 0.45 s GPU latency, or a 559-standard building-materials corpus. Those numbers belong to a different hackathon and a different product. Ours is the SIH26107 assistant: standards **and** schemes **and** process **and** hallmarking **and** labs **and** consumer handoff, with a refuse when evidence is missing.
+
+## Search
+
+The composer has a Fast / Deep menu, the same kind of control as a model picker. Fast is unchanged.
+
+Deep search does three things, and the work trace shows each one:
+
+1. Search the local pack.
+2. Search the hybrid index.
+3. Cross-check. A strong local row stays. A hybrid row that names a different standard is dropped. If the two searches name different standards and neither is locked, the answer asks which product you mean instead of picking one.
+
+A question about a fee still returns the catalogue card. Deep search does not add a rupee amount.
 
 ---
 

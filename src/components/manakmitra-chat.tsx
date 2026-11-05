@@ -36,7 +36,7 @@ import { clearGuestThreads, loadGuestThreads, slimTurns, upsertGuestThread } fro
 import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk-route';
 import { deskUi } from '@/lib/desk-ui';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
-import { DraftChip, PlusMenu } from '@/components/composer-plus';
+import { DraftChip, PlusMenu, SearchModeMenu, type SearchMode } from '@/components/composer-plus';
 import { rememberRecent } from '@/lib/recent-files';
 import { foldSpokenQuery } from '@/lib/spoken-is';
 
@@ -271,6 +271,8 @@ export default function ChatBotApp() {
   const { user, isPending } = useCurrentUserState();
   const [inputText, setInputText] = useState('');
   const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text'; text?: string; dataUrl?: string } | null>(null);
+  const [searchMode, setSearchMode] = useState<SearchMode>('fast');
+  const searchModeRef = useRef<SearchMode>('fast');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [, setContextMode] = useState<string>('general');
@@ -300,6 +302,11 @@ export default function ChatBotApp() {
     initLang();
     try {
       if (window.localStorage.getItem('mm-history-open') === '0') setRailOpen(false);
+      const saved = window.localStorage.getItem('mm-search-mode');
+      if (saved === 'deep' || saved === 'fast') {
+        setSearchMode(saved);
+        searchModeRef.current = saved;
+      }
     } catch {
       /* private mode */
     }
@@ -782,6 +789,7 @@ export default function ChatBotApp() {
             .slice(-3)
             .map((m) => ({ role: 'user', text: m.text.slice(0, 400) })),
           labelText,
+          search: searchModeRef.current,
           attachment: file
             ? { name: file.name, kind: file.kind, text: file.text, dataUrl: file.dataUrl }
             : undefined,
@@ -1422,7 +1430,19 @@ export default function ChatBotApp() {
                     onUpload={() => fileInputRef.current?.click()}
                     onPick={(file) => setDraftFile({ name: file.name, kind: file.kind, text: file.text, dataUrl: file.dataUrl })}
                   />
-                  <div className="flex items-center gap-1">
+                  <div className="ml-auto flex items-center gap-1">
+                    <SearchModeMenu
+                      mode={searchMode}
+                      onChange={(mode) => {
+                        searchModeRef.current = mode;
+                        setSearchMode(mode);
+                        try {
+                          window.localStorage.setItem('mm-search-mode', mode);
+                        } catch {
+                          /* private mode */
+                        }
+                      }}
+                    />
                     <button 
                       type="button"
                       aria-label={isListening ? UI_DICTIONARY[language].stopDone : UI_DICTIONARY[language].speakTitle}

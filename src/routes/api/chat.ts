@@ -21,6 +21,7 @@ import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
 import { guardSpoken } from "@/lib/answer-guard";
 import { planDeskAgent } from "@/lib/desk-agents";
 import { foldSpokenQuery } from "@/lib/spoken-is";
+import { crossVerify } from "@/lib/deep-search";
 
 type ChatBody = {
   query?: string;
@@ -28,6 +29,7 @@ type ChatBody = {
   attachment?: unknown;
   history?: ChatTurn[];
   labelText?: string;
+  search?: "fast" | "deep";
 };
 
 const SYSTEM_PROMPT = (language: AppLang, evidence: string, confidence: string, mode: string) => `You are ManakMitra. You sound like a careful colleague who just checked the public BIS catalogue, not like a database printout and not like a general chatbot. You do not claim you are built by BIS or the Government of India.
@@ -436,10 +438,12 @@ export const Route = createFileRoute("/api/chat")({
         let query = "";
         let language: AppLang = "en";
         let guestCookie: string | undefined;
+        let searchMode: "fast" | "deep" = "fast";
         try {
           const body = (await request.json()) as ChatBody;
           query = foldSpokenQuery(typeof body.query === "string" ? body.query.replace(/\u0000/g, "").slice(0, 2000) : "");
           language = isAppLang(body.language) ? body.language : "en";
+          searchMode = body.search === "deep" ? "deep" : "fast";
           const parsed = parseAttachment(body.attachment);
           if (!parsed.ok) {
             return new Response(parsed.error, {
@@ -582,7 +586,7 @@ export const Route = createFileRoute("/api/chat")({
                 step("scheme", "Checked the scheme", schemeDetail, t);
                 const typed = query.trim() ? retrievalText(query, attachment) : "";
                 const retrievalQuery = [followSubject, typed, labelText].filter(Boolean).join("\n").slice(0, 500);
-                const { retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
+                const { retrieve, retrieveHybrid, formatEvidenceBlock } = await import("@/lib/retrieve");
                 const { getFallbackBISResponse } = await import("@/lib/bisKnowledge");
                 t = performance.now();
                 const deskName = desk || guidedKind || "chat";
@@ -590,10 +594,30 @@ export const Route = createFileRoute("/api/chat")({
                 const bust = request.headers.get("x-cache-bust");
                 let cacheFlag = "miss";
                 let retrieved = bust ? null : cacheGet(cacheKey);
-                if (retrieved) cacheFlag = "hit";
-                if (!retrieved) {
-                  retrieved = await retrieveHybrid(retrievalQuery);
-                  if (!bust) cacheSet(cacheKey, retrieved);
+                let deepNote = "";
+                if (searchMode === "deep") {
+                  const localStarted = performance.now();
+                  const local = retrieve(retrievalQuery);
+                  step("local", "Searched the local pack", `${local.hits.length} rows · ${local.mode}`, performance.now() - localStarted);
+                  const hybridStarted = performance.now();
+                  const hybrid = await retrieveHybrid(retrievalQuery);
+                  step("hybrid", "Searched the hybrid index", `${hybrid.hits.length} rows · ${hybrid.mode}`, performance.now() - hybridStarted);
+                  const report = crossVerify(local, hybrid);
+                  step(
+                    "check",
+                    "Cross-checked both",
+                    `${report.verdict} · local ${report.localRows} · hybrid ${report.hybridRows} · agreed ${report.agreed.join(", ") || "none"}`,
+                    1,
+                  );
+                  retrieved = report.merged;
+                  cacheFlag = "deep";
+                  deepNote = report.note;
+                } else {
+                  if (retrieved) cacheFlag = "hit";
+                  if (!retrieved) {
+                    retrieved = await retrieveHybrid(retrievalQuery);
+                    if (!bust) cacheSet(cacheKey, retrieved);
+                  }
                 }
                 const locked = (retrieved.hits[0]?.score ?? 0) >= 0.45;
                 chatLog({
@@ -705,6 +729,7 @@ export const Route = createFileRoute("/api/chat")({
                 if (!attachment && isHallmarkSchemeMix(query)) {
                   evidence += "\n\nSCHEME: Hallmark and HUID do not apply to this product. Say that first. Point to ISI or CRS, not jewellery verification.";
                 }
+                if (deepNote) evidence += `\n\n${deepNote}`;
                 const userPrompt = labelText
                   ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}`
                   : modelPrompt(query, attachment);
@@ -716,8 +741,8 @@ export const Route = createFileRoute("/api/chat")({
                     language,
                     SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) + "\n\n" + shapeNote(query),
                     pack,
-                    0.25,
-                    1600,
+                    searchMode === "deep" ? 0.2 : 0.25,
+                    searchMode === "deep" ? 2000 : 1600,
                     image,
                   ),
                   trusted.join("\n"),
