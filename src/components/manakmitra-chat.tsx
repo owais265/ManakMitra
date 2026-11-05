@@ -298,6 +298,13 @@ export default function ChatBotApp() {
   inputTextRef.current = inputText;
 
   useLayoutEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [inputText]);
+
+  useLayoutEffect(() => {
     initTheme();
     initLang();
     try {
@@ -1419,11 +1426,11 @@ export default function ChatBotApp() {
                     }
                   }}
                   placeholder={isListening ? UI_DICTIONARY[language].listeningPlaceholder : UI_DICTIONARY[language].composerPlaceholder}
-                  className="w-full bg-transparent px-4 pt-3.5 pb-14 focus:outline-none resize-none max-h-40 min-h-[88px] text-base leading-7 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                  className="w-full bg-transparent px-4 pt-3.5 pb-1 focus:outline-none resize-none max-h-40 min-h-[44px] overflow-y-auto text-base leading-7 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 [scrollbar-width:thin]"
                   rows={1}
                   dir="auto"
                 />
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between p-2">
+                <div className="flex items-center justify-between px-2 pb-2 pt-1">
                   <PlusMenu
                     language={language}
                     attachLabel={UI_DICTIONARY[language].attach}
