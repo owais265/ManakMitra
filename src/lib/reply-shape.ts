@@ -62,3 +62,22 @@ export function shapeNote(query: string): string {
       : "- This question does not need a source card. Do not emit [SOURCE]. Do not hang an unrelated link on the reply.",
   ].join("\n");
 }
+
+/** Deep writes the whole numbered case. Fast names the main product only. */
+export function caseModeNote(query: string, mode: "fast" | "deep"): string {
+  if (askCount(query) < 2) return "";
+  if (mode === "deep") {
+    return [
+      "DEEP CASE (this overrides the short-paragraph rule):",
+      "- First line must start with \"Read:\" and name the product, the place if one was given, and how many parts you will answer.",
+      "- Then answer part 1, part 2, and the rest with the same numbers. One short paragraph per part. Do not merge two parts into one sentence.",
+      "- Each part gives the IS number from the rows above, or the words \"not in this pack\".",
+      "- No rupee amount. No laboratory closer than the board.",
+    ].join("\n");
+  }
+  return [
+    "FAST CASE (this overrides the answer-every-point rule):",
+    "- One short paragraph on the main product and its scheme only.",
+    "- Do not start with \"Read:\". Do not number the parts. Leave the later parts for Deep.",
+  ].join("\n");
+}

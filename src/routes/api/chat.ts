@@ -1,6 +1,6 @@
 import "@/lib/postgres-url";
 import { createFileRoute } from "@tanstack/react-router";
-import { shapeNote } from "@/lib/reply-shape";
+import { caseModeNote, shapeNote } from "@/lib/reply-shape";
 import { classifyIntent, mentionsOfftopic, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, hardCardReply, isCaseBrief, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
@@ -665,7 +665,7 @@ export const Route = createFileRoute("/api/chat")({
                 step("exit", "Chose the exit", exitDetail, t);
                 const guided = !attachment ? moreReply(query, language) : null;
                 const pack = guided || getFallbackBISResponse(retrievalQuery, language);
-                if (guided || (!attachment && feeOrClause(query) && !isCaseBrief(query))) {
+                if (!isCaseBrief(query) && (guided || (!attachment && feeOrClause(query)))) {
                   t = performance.now();
                   step("write", "Wrote the answer", "Published catalogue card", t);
                   say(pack);
@@ -758,10 +758,14 @@ export const Route = createFileRoute("/api/chat")({
                   await answerText(
                     userPrompt,
                     language,
-                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) + "\n\n" + shapeNote(query),
+                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) +
+                      "\n\n" +
+                      shapeNote(query) +
+                      "\n\n" +
+                      caseModeNote(query, searchMode),
                     pack,
                     searchMode === "deep" ? 0.2 : 0.25,
-                    caseBrief ? 3200 : searchMode === "deep" ? 2000 : 1600,
+                    caseBrief ? 3200 : searchMode === "deep" ? 2000 : isCaseBrief(query) ? 700 : 1600,
                     image,
                   ),
                   trustedBlob,
