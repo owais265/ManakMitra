@@ -5,7 +5,7 @@ import { classifyIntent, offtopicReply, socialReply } from "@/lib/intent";
 import { chatHardCard, deskKind, deskReply, labsFinderResult } from "@/lib/desk-route";
 import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
-import { checkHuid, huidToken, moreKind, moreReply } from "@/lib/more-desk";
+import { checkHuid, huidToken, moreKind, moreReply, feeOrClause } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
 import { isFollowCue, followRetrieval, boundHistory, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
@@ -632,10 +632,10 @@ export const Route = createFileRoute("/api/chat")({
                 step("exit", "Chose the exit", exitDetail, t);
                 const guided = !attachment ? moreReply(query, language) : null;
                 const pack = guided || getFallbackBISResponse(retrievalQuery, language);
-                if (guided) {
+                if (guided || (!attachment && feeOrClause(query))) {
                   t = performance.now();
                   step("write", "Wrote the answer", "Published catalogue card", t);
-                  say(guided);
+                  say(pack);
                   return;
                 }
                 if (plan.injection) {

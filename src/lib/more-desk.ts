@@ -190,7 +190,7 @@ function hasIsNumber(original: string, q: string): boolean {
   return true;
 }
 
-function feeOrClause(q: string): boolean {
+export function feeOrClause(q: string): boolean {
   return /\b(clause|fee|fees|timeline|penalty|marking fee)\b/i.test(q);
 }
 
