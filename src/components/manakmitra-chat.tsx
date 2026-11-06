@@ -37,7 +37,21 @@ import { needsDeviceLocation, labsFinderResult, type LabBoard } from '@/lib/desk
 import { deskUi } from '@/lib/desk-ui';
 import { mapsEmbedUrl, mapsSearchUrl, type RankedLab } from '@/lib/labs';
 import { DraftChip, PlusMenu, SearchModeMenu, type SearchMode } from '@/components/composer-plus';
+import { topicAnchor, type ChatTurn } from '@/lib/query-context';
 import { rememberRecent } from '@/lib/recent-files';
+
+function historyForSend(prev: { role: string; text: string }[]): ChatTurn[] {
+  const users = prev
+    .filter((m) => m.role === 'user' && m.text)
+    .map((m) => ({ role: 'user' as const, text: m.text.replace(/\s+/g, ' ').trim().slice(0, 400) }))
+    .filter((m) => m.text);
+  const recent = users.slice(-4);
+  const anchor = topicAnchor(users);
+  if (anchor && !recent.some((turn) => turn.text.replace(/\s+/g, ' ').includes(anchor.slice(0, 48)))) {
+    recent.unshift({ role: 'user', text: anchor.slice(0, 400) });
+  }
+  return recent.slice(-6);
+}
 import { foldSpokenQuery } from '@/lib/spoken-is';
 
 type MessageRole = 'user' | 'ai';
@@ -799,10 +813,7 @@ export default function ChatBotApp() {
         body: JSON.stringify({ 
           query: asked, 
           language: replyLang,
-          history: messages
-            .filter((m) => m.role === 'user' && m.text)
-            .slice(-3)
-            .map((m) => ({ role: 'user', text: m.text.slice(0, 400) })),
+          history: historyForSend(messages),
           labelText,
           search: searchModeRef.current,
           attachment: file

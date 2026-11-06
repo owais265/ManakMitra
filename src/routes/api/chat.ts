@@ -7,7 +7,7 @@ import { pinCentroid } from "@/lib/labs";
 import { labBoard, searchField, type PackField } from "@/lib/place-catalogue.server";
 import { checkHuid, huidToken, moreKind, moreReply, feeOrClause } from "@/lib/more-desk";
 import { isHallmarkSchemeMix, matchProductFamily, shouldClarify } from "@/lib/product-playbook";
-import { isFollowCue, followRetrieval, boundHistory, type ChatTurn } from "@/lib/query-context";
+import { isContinuation, followRetrieval, boundHistory, type ChatTurn } from "@/lib/query-context";
 import { isAppLang, langPromptName, UI_DICTIONARY, type AppLang } from "@/lib/language";
 import { modelPrompt, parseAttachment, retrievalText, type ReadyAttachment } from "@/lib/attachments";
 import { buildStops } from "@/lib/work-trace";
@@ -516,13 +516,13 @@ export const Route = createFileRoute("/api/chat")({
               try {
                 let t = performance.now();
                 let followSubject = "";
-                const slotted = !attachment && isFollowCue(query) ? followRetrieval(query, history) : query.trim();
+                const slotted = !attachment && isContinuation(query) ? followRetrieval(query, history) : query.trim();
                 if (slotted !== query.trim()) {
                   const cue = query.trim();
                   followSubject = slotted.endsWith(cue) ? slotted.slice(0, slotted.length - cue.length).trim() : slotted;
                 }
                 const gateQuery = [followSubject, query].filter(Boolean).join(" ");
-                const intent = classifyIntent(query);
+                const intent = classifyIntent(followSubject ? gateQuery : query);
                 const plan = planDeskAgent(query, Boolean(attachment));
                 step(
                   "read",

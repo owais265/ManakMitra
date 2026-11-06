@@ -68,6 +68,10 @@ const FILLERS = new Set([
   "uska",
   "uske",
   "uski",
+  "iske",
+  "iski",
+  "isko",
+  "usko",
   "now",
   "tell",
   "then",
@@ -85,7 +89,104 @@ const FILLERS = new Set([
   "ke",
   "pe",
   "par",
+  "give",
+  "a",
+  "an",
+  "of",
+  "to",
+  "i",
+  "am",
+  "its",
+  "it",
+  "do",
+  "did",
+  "need",
+  "needs",
+  "what",
+  "how",
+  "where",
+  "when",
+  "which",
+  "in",
+  "on",
+  "about",
+  "regarding",
+  "just",
+  "only",
+  "some",
+  "any",
+  "your",
+  "you",
+  "we",
+  "our",
+  "with",
+  "from",
+  "is",
+  "are",
+  "was",
+  "be",
+  "by",
+  "bhi",
+  "se",
+  "ko",
+  "ye",
+  "yeh",
+  "woh",
+  "vo",
+  "so",
+  "up",
 ]);
+
+/** A new turn that names sport, food, or health is never a follow-up. */
+const TOPIC_BREAK =
+  /\b(ipl|cricket|biryani|recipe|cook|fever|prescribe|share price|movie|film|football|world cup|horoscope)\b|who won (the )?(match|game|ipl)/i;
+
+const CONTINUE_SIGNAL = new Set([
+  "exact",
+  "exactly",
+  "detail",
+  "details",
+  "elaborate",
+  "expand",
+  "explain",
+  "continue",
+  "roadmap",
+  "roadmaps",
+  "further",
+  "specific",
+  "specifics",
+  "precise",
+  "clearly",
+  "full",
+  "complete",
+  "documents",
+  "document",
+  "papers",
+  "inspection",
+  "sample",
+  "samples",
+  "testing",
+  "timeline",
+  "information",
+  "info",
+  "vistaar",
+  "vistara",
+  "jaankari",
+  "jankari",
+  "poora",
+  "pura",
+  "poori",
+  "poore",
+  "zyada",
+  "adhik",
+  "certification",
+  "certificate",
+  "certificates",
+  "whole",
+]);
+
+const ANCHOR_BIS =
+  /\b(certif\w*|standards?|manufactur\w*|isi\b|bis\b|schemes?|hallmark\w*|licen[cs]es?|labs?|laborator(?:y|ies)|pet\b|bootels?|bottles?|plastic|qco\b|crs\b|marks?|inspections?|testing|products?|road\s*maps?|process(?:es)?|fees?|apply|application)\b/i;
 
 export const FOLLOW_CUE = new RegExp(
   `\\b(${[...FOLLOW_CUE_STRONG, ...FOLLOW_CUE_WEAK].join("|")})\\b`,
@@ -128,6 +229,63 @@ export function isFollowCue(query: string): boolean {
     return false;
   }
   return sawCue;
+}
+
+function normTok(token: string): string {
+  if (/^d[ae]{1,2}t[aei]+l/.test(token) || token === "dtail" || token === "dtails" || token === "deatiles" || token === "deatils") {
+    return "detail";
+  }
+  if (token === "excat" || token === "exatc" || token === "exactt") return "exact";
+  if (token === "roadmp" || token === "rodmap") return "roadmap";
+  if (token === "certfication" || token === "certifcation" || token === "certtifcation") return "certification";
+  return token;
+}
+
+/**
+ * A short turn that only asks to continue ("exact details", "poora batao").
+ * A named product, an IS number, or a hard off-topic word is not a continuation.
+ */
+export function isPureContinuation(query: string): boolean {
+  const q = query.trim();
+  if (!q || q.length > 180) return false;
+  if (TOPIC_BREAK.test(q)) return false;
+  if (extractIsNumbers(q).length) return false;
+  if (matchProductFamily(q)) return false;
+  const toks = tokenize(q);
+  if (!toks.length || toks.length > 12) return false;
+  let signal = false;
+  for (const raw of toks) {
+    const token = normTok(raw);
+    if (CONTINUE_SIGNAL.has(token) || ALL_CUE_SET.has(token)) {
+      signal = true;
+      continue;
+    }
+    if (FILLERS.has(token) || FILLERS.has(raw)) continue;
+    return false;
+  }
+  return signal;
+}
+
+/** Cue-only follow-up, or a detail ellipsis. Still false when this turn names its own product. */
+export function isContinuation(query: string): boolean {
+  return isFollowCue(query) || isPureContinuation(query);
+}
+
+/**
+ * Last user question that was not itself a follow-up.
+ * Assistant prose is ignored so a catalogue card cannot become the next subject.
+ */
+export function topicAnchor(history?: ChatTurn[]): string {
+  if (!history?.length) return "";
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const turn = history[i];
+    if (!turn || turn.role === "assistant" || typeof turn.text !== "string") continue;
+    const text = turn.text.trim();
+    if (!text || isContinuation(text)) continue;
+    const cleaned = text.replace(IS_TOKEN, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+    if (cleaned) return cleaned;
+  }
+  return "";
 }
 
 export function isShortFollow(query: string): boolean {
@@ -189,7 +347,7 @@ function withoutIs(text: string): string {
 export function boundHistory(history: unknown): ChatTurn[] {
   if (!Array.isArray(history)) return [];
   const out: ChatTurn[] = [];
-  for (const turn of history.slice(-6)) {
+  for (const turn of history.slice(-8)) {
     if (!turn || typeof turn !== "object") continue;
     const raw = (turn as ChatTurn).text;
     const text = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim().slice(0, 400) : "";
@@ -226,14 +384,19 @@ export function slotFromHistory(history?: ChatTurn[]): TurnSlot {
 }
 
 /**
- * A cue-only follow-up may reuse product, scheme, and PIN.
- * A new question is unchanged. An earlier IS number is never copied in.
+ * A continuation reuses the last real user question, never an earlier IS number.
+ * A new product, a new IS number, or an off-topic line is returned unchanged.
  */
 export function followRetrieval(query: string, history?: ChatTurn[]): string {
   const q = query.trim();
-  if (!q || !isFollowCue(q)) return q;
-  const slot = slotFromHistory(history);
-  const prefix = [slot.product, slot.scheme, slot.city].filter(Boolean).join(" ");
-  if (!prefix) return q;
-  return `${prefix} ${q}`.replace(IS_TOKEN, " ").replace(/\s+/g, " ").trim();
+  if (!q || !isContinuation(q) || TOPIC_BREAK.test(q)) return q;
+  const anchor = topicAnchor(history);
+  if (!anchor) return q;
+  if (!ANCHOR_BIS.test(anchor) && !matchProductFamily(anchor)) return q;
+  const anchorFamily = matchProductFamily(anchor);
+  const queryFamily = matchProductFamily(q);
+  if (queryFamily && anchorFamily && queryFamily.id !== anchorFamily.id) return q;
+  const city = anchor.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] ?? "";
+  const prefix = city && !anchor.includes(city) ? `${anchor} ${city}` : anchor;
+  return `${prefix} ${q}`.replace(IS_TOKEN, " ").replace(/\s+/g, " ").trim().slice(0, 500);
 }
