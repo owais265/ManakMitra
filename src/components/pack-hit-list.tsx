@@ -1,5 +1,7 @@
 export type PackHit = { title: string; url: string };
 
+// Shared with the desk pages. The list component stays in this file.
+// eslint-disable-next-line react-refresh/only-export-components
 export async function fetchPackHits(kind: string, q: string): Promise<PackHit[]> {
   const response = await fetch("/api/labs", {
     method: "POST",

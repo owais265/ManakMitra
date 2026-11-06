@@ -79,17 +79,6 @@ If process rows exist AND the user asked how to apply / verify (not a vague one-
 [PROCESS_STEPS] Step 1 | Step 2 | Step 3 | Step 4
 If a disambiguation NOTE is present, omit [PROCESS_STEPS].`;
 
-const SOCIAL_PROMPT = (language: AppLang) => `You are ManakMitra. Respond in ${langPromptName(language)}. LANGUAGE LOCK: selected UI language only. Do not mix languages. Keep BIS/ISI/CRS/HUID and URLs in English form.
-The user is greeting you or asking who you are.
-Reply in 3–5 short sentences: greet them, say you help with Indian Standards, ISI/CRS, hallmarking, labs, and complaints, then name 1–2 example lookups (cement ISI, laptop CRS, gold HUID). Do not ask the user a question.
-No catalogue dump, no Manakonline lecture, no BIS Act, no "22,000 standards".
-Do not invent IS numbers or fees.
-Do not mention Smart India Hackathon, prototype, or government ownership.
-At the end:
-[SOURCE] ManakMitra | assistant | 2026-09-07 | https://www.bis.gov.in
-[FOLLOW_UP] One recommended next lookup (product or BIS service name, not a question)
-[META] high | general`;
-
 function feeSafe(spoken: string, trusted: string, fallback: string, keep = false): string {
   const amounts = (text: string) =>
     new Set(

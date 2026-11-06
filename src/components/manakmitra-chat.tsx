@@ -333,9 +333,11 @@ export default function ChatBotApp() {
     setSessionId(createUniqueId());
   }, []);
 
+  const sessionKey = !user || user.isDevFallback ? "guest" : user.id;
+
   useEffect(() => {
     if (isPending) return;
-    if (!user || user.isDevFallback) {
+    if (sessionKey === "guest") {
       setThreads(loadGuestThreads().map((thread) => ({ id: thread.id, title: thread.title })));
       return;
     }
@@ -361,7 +363,7 @@ export default function ChatBotApp() {
     return () => {
       cancel = true;
     };
-  }, [isPending, user?.id]);
+  }, [isPending, sessionKey]);
 
   useEffect(() => {
     if (!activeId || isPending || isTyping) return;
@@ -369,7 +371,7 @@ export default function ChatBotApp() {
     if (!slim.length) return;
     const title = slim.find((turn) => turn.role === "user")?.text.replace(/\s+/g, " ").trim().slice(0, 72) || "Chat";
     const timer = window.setTimeout(() => {
-      if (!user || user.isDevFallback) {
+      if (sessionKey === "guest") {
         const stored = upsertGuestThread({ id: activeId, title, updatedAt: Date.now(), messages: slim });
         setThreads(stored.map((thread) => ({ id: thread.id, title: thread.title })));
         return;
@@ -380,7 +382,7 @@ export default function ChatBotApp() {
         .catch(() => {});
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [messages, activeId, isPending, isTyping, user?.id, user?.isDevFallback]);
+  }, [messages, activeId, isPending, isTyping, sessionKey]);
 
   // Network online/offline toast feedback
   useEffect(() => {

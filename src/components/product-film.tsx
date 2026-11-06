@@ -215,6 +215,7 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
   const settledRef = useRef(false);
   const modeRef = useRef<Mode>('rest');
   const lockRef = useRef<{ html: string; body: string; pad: string } | null>(null);
+  const closeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     setMounted(true);
@@ -256,7 +257,7 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
   useEffect(() => {
     if (mode === 'rest') return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close();
+      if (event.key === 'Escape') closeRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -415,6 +416,8 @@ export default function ProductFilm({ t }: { t: LandingCopy }) {
       setMode('rest');
     };
   }
+
+  closeRef.current = close;
 
   const poses = (narrow ? NARROW : SCENES)[scene] ?? SCENES[0];
   const open = mode !== 'rest';

@@ -80,7 +80,6 @@ for (const f of families) {
   const r = retrieve(q);
   const top3 = (r.hits || []).slice(0, 3);
   const titles = top3.map((h) => h.title).join(" | ");
-  const blob = hitBlob(top3);
   const familyOk = fam?.id === f.id;
   add("M1", `family-${f.id}`, familyOk, familyOk ? fam.id : `${fam?.id || "none"} != ${f.id} | ${q}`);
   if (f.is.length) {
@@ -172,7 +171,6 @@ add("M5", "clarify-not-916", !shouldClarify("916 gold HUID"), "specific must not
 
 /* M6 scheme mix-up 0 */
 {
-  const r = retrieve("CRS R-number verify");
   const fb = groundedFallback("CRS R-number verify", "en");
   const ok = !/Tap Verify HUID|Enter the 6-digit HUID|Apply online as jeweller/i.test(fb);
   add("M6", "crs-not-huid", ok, ok ? "crs path" : "HUID/jeweller leaked");
