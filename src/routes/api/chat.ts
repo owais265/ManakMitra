@@ -18,7 +18,7 @@ import { acceptInternalHeader } from "@/lib/whatsapp";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
-import { guardCase, guardSpoken } from "@/lib/answer-guard";
+import { guardCase, guardFileClaims, guardFileSpoken, guardSpoken } from "@/lib/answer-guard";
 import { FORGE_LINE, forgeAsk, planDeskAgent } from "@/lib/desk-agents";
 import { foldSpokenQuery } from "@/lib/spoken-is";
 import { crossVerify } from "@/lib/deep-search";
@@ -102,10 +102,12 @@ function feeSafe(spoken: string, trusted: string, fallback: string, keep = false
     }
     return spoken;
   }
-  return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)\d[\d,]*/gi, "a fee that is not in this pack");
+  return spoken.replace(/(?:₹|\brs\.?\s*|\binr\s*)(\d[\d,]*)/gi, (full, amount: string) =>
+    allowed.has(amount.replace(/,/g, "")) ? full : "a fee that is not in this pack",
+  );
 }
 
-function pickSpoken(modelText: string, fallback: string): string {
+function pickSpoken(modelText: string, fallback: string, keepFile = false): string {
   const spoken = modelText.trim();
   const head = fallback.split("\n")[0] || "";
   const fallbackReal =
@@ -115,7 +117,7 @@ function pickSpoken(modelText: string, fallback: string): string {
     /no verified hits|not enough verified|insufficient evidence|catalogue has no row|no matching row|do not have enough/i.test(
       spoken.slice(0, 500),
     );
-  if (fallbackReal && (!spoken || falseRefuse)) return fallback;
+  if (!keepFile && fallbackReal && (!spoken || falseRefuse)) return fallback;
   return spoken || fallback;
 }
 
@@ -191,8 +193,11 @@ async function answerText(
   maxTokens = 900,
   imageDataUrl?: string,
 ): Promise<string> {
-  const keys = xaiKeys();
-  const text = query.slice(0, 8000);
+  const keepFile = Boolean(imageDataUrl) || /ATTACHED (TEXT FILE|PDF|WORD)/.test(query);
+  const cap = imageDataUrl ? 8_000 : 60_000;
+  const text = query.length > cap
+    ? `${query.slice(0, cap)}\n\n[NOT READ] The rest of this prompt was cut. Do not guess it.`
+    : query;
   const userContent = imageDataUrl
     ? [
         { type: "text", text },
@@ -204,6 +209,7 @@ async function answerText(
     { role: "user" as const, content: userContent },
   ];
 
+  const keys = xaiKeys();
   let lastDetail = "";
   if (Date.now() >= skipXaiUntil) {
   for (const apiKey of keys) {
@@ -245,12 +251,12 @@ async function answerText(
         continue;
       }
       console.info(`[chat] xAI streaming model=${model}`);
-      return collectXai(res, fallbackText);
+      return collectXai(res, fallbackText, keepFile);
     }
   }
   }
 
-  const gemini = await tryGeminiText(query, system, fallbackText, temperature, maxTokens, imageDataUrl);
+  const gemini = await tryGeminiText(query, system, fallbackText, temperature, maxTokens, imageDataUrl, keepFile);
   if (gemini) return gemini;
 
   if (!keys.length) {
@@ -268,14 +274,21 @@ async function tryGeminiText(
   temperature: number,
   maxTokens: number,
   imageDataUrl?: string,
+  keepFile = false,
 ): Promise<string | null> {
   const keys = geminiKeys();
   if (!keys.length) return null;
-  const text = query.slice(0, 8000);
+  const cap = imageDataUrl ? 8_000 : 60_000;
+  const text = query.length > cap
+    ? `${query.slice(0, cap)}\n\n[NOT READ] The rest of this prompt was cut. Do not guess it.`
+    : query;
   const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [{ text }];
   if (imageDataUrl) {
-    const b64 = imageDataUrl.replace(/^data:image\/png;base64,/i, "");
-    parts.push({ inline_data: { mime_type: "image/png", data: b64 } });
+    const match = /^data:(image\/(?:png|jpeg|jpg|webp));base64,([a-z0-9+/=\s]+)$/i.exec(imageDataUrl.trim());
+    if (match?.[1] && match[2]) {
+      const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+      parts.push({ inline_data: { mime_type: mime, data: match[2].replace(/\s/g, "") } });
+    }
   }
   let lastDetail = "";
   for (const apiKey of keys) {
@@ -307,14 +320,14 @@ async function tryGeminiText(
         continue;
       }
       console.info(`[chat] Gemini streaming model=${model}`);
-      return collectGemini(res, fallbackText);
+      return collectGemini(res, fallbackText, keepFile);
     }
   }
   console.error("[chat] Gemini attempts failed", lastDetail.slice(0, 200));
   return null;
 }
 
-async function collectGemini(res: Response, fallbackText: string): Promise<string> {
+async function collectGemini(res: Response, fallbackText: string, keepFile = false): Promise<string> {
   const decoder = new TextDecoder();
   const reader = res.body!.getReader();
   let buffer = "";
@@ -343,14 +356,14 @@ async function collectGemini(res: Response, fallbackText: string): Promise<strin
       }
     }
     if (!spoken.trim()) console.error("[chat] Gemini empty stream — pack fallback");
-    return pickSpoken(spoken, fallbackText);
+    return pickSpoken(spoken, fallbackText, keepFile);
   } catch (error) {
     console.error("[chat] Gemini stream failed:", error instanceof Error ? error.message : error);
-    return spoken.trim() ? pickSpoken(spoken, fallbackText) : fallbackText;
+    return spoken.trim() ? pickSpoken(spoken, fallbackText, keepFile) : fallbackText;
   }
 }
 
-async function collectXai(res: Response, fallbackText: string): Promise<string> {
+async function collectXai(res: Response, fallbackText: string, keepFile = false): Promise<string> {
   const decoder = new TextDecoder();
   const reader = res.body!.getReader();
   let buffer = "";
@@ -377,10 +390,10 @@ async function collectXai(res: Response, fallbackText: string): Promise<string> 
       }
     }
     if (!spoken.trim()) console.error("[chat] xAI empty stream — pack fallback");
-    return pickSpoken(spoken, fallbackText);
+    return pickSpoken(spoken, fallbackText, keepFile);
   } catch (error) {
     console.error("[chat] xAI stream failed:", error instanceof Error ? error.message : error);
-    return spoken.trim() ? pickSpoken(spoken, fallbackText) : fallbackText;
+    return spoken.trim() ? pickSpoken(spoken, fallbackText, keepFile) : fallbackText;
   }
 }
 
@@ -454,7 +467,18 @@ export const Route = createFileRoute("/api/chat")({
               headers: { "Content-Type": "text/plain; charset=utf-8" },
             });
           }
-          const attachment: ReadyAttachment | null = parsed.attachment;
+          let attachment: ReadyAttachment | null = parsed.attachment;
+          if (attachment && (attachment.kind === "pdf" || attachment.kind === "docx")) {
+            const { readAttachmentFile } = await import("@/lib/file-text");
+            const read = await readAttachmentFile(attachment);
+            if (!read.ok) {
+              return new Response(read.error, {
+                status: 400,
+                headers: { "Content-Type": "text/plain; charset=utf-8" },
+              });
+            }
+            attachment = { kind: "text", name: attachment.name, text: read.file.text };
+          }
           if (!query.trim() && !attachment) {
             return new Response(
               UI_DICTIONARY[language].emptyQuery,
@@ -701,13 +725,18 @@ export const Route = createFileRoute("/api/chat")({
                   say(pack);
                   return;
                 }
-                const image = attachment?.kind === "png" ? attachment.dataUrl : undefined;
+                const image =
+                  attachment && (attachment.kind === "png" || attachment.kind === "image") ? attachment.dataUrl : undefined;
                 console.info(`[chat] retrieval evidence=${retrieved.hasEvidence} hits=${retrieved.hits.length} confidence=${retrieved.confidence} mode=${retrieved.mode} follow=${followSubject || "-"} file=${attachment?.kind ?? "none"}`);
                 let evidence = retrieved.hasEvidence
                   ? formatEvidenceBlock(retrieved)
                   : "MATCH: no\nNO VERIFIED HITS in the local BIS catalogue for this query.\nYou MUST say the catalogue has no row. Do not invent an IS number, fee, or mandatory status.\nPoint the user to Know Your Standard: https://standards.bis.gov.in/website/know-your-standards";
                 if (labelText) {
-                  evidence += `\n\nLABEL TEXT READ IN THE BROWSER: ${labelText}\nUse a number from this label only when that same number is in the ranked hits. If it is not, say the photo text is not in this pack.`;
+                  evidence += `\n\nLABEL TEXT READ IN THE BROWSER: ${labelText}\nUse a number from this label only when that same number is also visible in the attached file text. If it is not in the file, say the photo text is not in the attached file.`;
+                }
+                if (attachment) {
+                  evidence +=
+                    "\n\nFILE RULE: The attached file is a separate source from the catalogue rows. A sentence about the file may use only what is in the attached text or visible in the image. Do not merge a catalogue IS number, fee, laboratory, or clause into that sentence. If the file does not say it, say the file does not say it. If the text is marked NOT READ, do not guess the missing part. Do not invent a CM/L, HUID, or IS number from memory.";
                 }
                 if (followSubject) {
                   evidence = `FOLLOW-UP SUBJECT: ${followSubject}\nThe user already named this. Answer the new question about it. Do not switch products.\n\n${evidence}`;
@@ -752,6 +781,8 @@ export const Route = createFileRoute("/api/chat")({
                       hits.map((hit) => `- ${hit.title}${hit.url ? ` | ${hit.url}` : ""}`).join("\n");
                   }
                 }
+                const fileText = attachment?.kind === "text" ? attachment.text : "";
+                if (fileText) trusted.push(fileText);
                 const code = huidToken(query);
                 if (code) {
                   const shape = checkHuid(query);
@@ -766,12 +797,19 @@ export const Route = createFileRoute("/api/chat")({
                 }
                 if (deepNote) evidence += `\n\n${deepNote}`;
                 if (searchMode === "deep" && isCaseBrief(query)) {
-                  evidence +=
-                    "\n\nCASE BRIEF: Several numbered parts. Answer every part, in that order, in one reply. Use only the rows and the lab board above. If a fee or a rupee amount is not written there, say it is not in this pack and name the official page. Do not invent a nearer laboratory. Do not stop after the first part.";
+                  evidence += attachment
+                    ? "\n\nCASE BRIEF: Several numbered parts. Answer every part, in that order. For a part about the attached file, use only the file text. For a part about the catalogue, use only the rows above. Do not mix them. If a fee is not in the source for that part, say it is not written there."
+                    : "\n\nCASE BRIEF: Several numbered parts. Answer every part, in that order, in one reply. Use only the rows and the lab board above. If a fee or a rupee amount is not written there, say it is not in this pack and name the official page. Do not invent a nearer laboratory. Do not stop after the first part.";
                 }
                 if (mentionsOfftopic(query)) {
                   evidence +=
                     "\n\nOFF-TOPIC ASIDE: Part of the question is not about Indian Standards. Answer only the standards, scheme, lab, or licence part. One short line that the other part is outside this desk. Do not answer the sport, recipe, price, film, or health question.";
+                }
+                if (attachment) {
+                  evidence =
+                    "MATCH: file\nThe user attached a file. Do not use a catalogue row in this answer.\n" +
+                    "Say only what is in the attached text or visible in the image.\n" +
+                    "If it is not there, say the file does not say it. Do not invent an IS number, a CM/L licence, a fee, or a laboratory.";
                 }
                 const userPrompt = [
                   labelText ? `${modelPrompt(query, attachment)}\n\nLABEL TEXT READ IN THE BROWSER:\n${labelText}` : modelPrompt(query, attachment),
@@ -781,29 +819,53 @@ export const Route = createFileRoute("/api/chat")({
                   .join("\n\n");
                 t = performance.now();
                 const caseBrief = searchMode === "deep" && isCaseBrief(query);
+                const fileAnswer = Boolean(attachment);
                 const trustedBlob = trusted.join("\n");
-                const spoken = feeSafe(
-                  (caseBrief ? guardCase : guardSpoken)(
-                  await answerText(
+                const fileOverride = attachment
+                  ? "\n\nFILE OVERRIDE: An attached file is the source. Ignore MATCH. Do not answer from the ranked catalogue hits. Do not write Hypothetical or pack has no SOP. Use only the attached text or the attached image. If it is not there, say the file does not say it. Do not invent an IS number, a CM/L licence, or a fee."
+                  : "";
+                const rawModel = await answerText(
                     userPrompt,
                     language,
                     SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) +
                       "\n\n" +
                       shapeNote(query) +
                       "\n\n" +
-                      caseModeNote(query, searchMode),
+                      caseModeNote(query, searchMode) +
+                    fileOverride,
                     pack,
                     searchMode === "deep" ? 0.2 : 0.25,
                     caseBrief ? 3200 : searchMode === "deep" ? 2000 : isCaseBrief(query) ? 700 : 1600,
                     image,
-                  ),
-                  trustedBlob,
-                  pack,
-                ),
-                  trustedBlob,
-                  pack,
-                  caseBrief,
-                );
+                  );
+                const { groundFileAnswer } = await import("@/lib/file-text");
+                const packDump = /pack has no SOP|Catalogue metadata only|IS number not in this catalogue/i;
+                let modelText = rawModel;
+                if (image && packDump.test(modelText)) {
+                  await new Promise((resolve) => setTimeout(resolve, 1200));
+                  modelText = await answerText(
+                    userPrompt,
+                    language,
+                    SYSTEM_PROMPT(language, evidence, retrieved.confidence, retrieved.mode) +
+                      "\n\n" +
+                      shapeNote(query) +
+                      "\n\n" +
+                      caseModeNote(query, searchMode) +
+                      fileOverride,
+                    "The image could not be read. Nothing was guessed.",
+                    0.2,
+                    700,
+                    image,
+                  );
+                }
+                if (image && packDump.test(modelText)) {
+                  modelText = "The image could not be read. Nothing was guessed. No licence number is visible.";
+                }
+                const rawSpoken = fileText ? groundFileAnswer(query, fileText, modelText) : modelText;
+                const guarded = fileAnswer
+                  ? guardFileSpoken(rawSpoken, fileText, trustedBlob)
+                  : (caseBrief ? guardCase : guardSpoken)(rawSpoken, trustedBlob, pack);
+                const spoken = feeSafe(guarded, fileAnswer ? fileText : trustedBlob, fileAnswer ? "" : pack, caseBrief || fileAnswer);
                 step("write", "Wrote the answer", "From the rows above", t);
                 const unreadLabel = Boolean(attachment && attachment.kind !== "text" && sentLabel && !labelText);
                 say(unreadLabel ? `The label could not be read. No licence number was extracted.\n\n${spoken}` : spoken);

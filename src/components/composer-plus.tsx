@@ -18,7 +18,7 @@ const COPY: Record<AppLang, { upload: string; recent: string; empty: string; rem
   or: { upload: "ଫାଇଲ ଅପଲୋଡ଼", recent: "ସାମ୍ପ୍ରତିକ ଫାଇଲ", empty: "ସାମ୍ପ୍ରତିକ ଫାଇଲ ନାହିଁ", remove: "ହଟାନ୍ତୁ" },
 };
 
-export type DraftFile = { name: string; kind: "png" | "image" | "text"; text?: string; dataUrl?: string };
+export type DraftFile = { name: string; kind: "png" | "image" | "text" | "pdf" | "docx"; text?: string; dataUrl?: string };
 
 function extOf(name: string) {
   const ext = name.split(".").pop()?.toUpperCase() ?? "FILE";
@@ -27,7 +27,7 @@ function extOf(name: string) {
 
 export function DraftChip({ file, language, onRemove }: { file: DraftFile; language: AppLang; onRemove: () => void }) {
   const copy = COPY[language];
-  const image = file.kind !== "text" && file.dataUrl;
+  const image = (file.kind === "png" || file.kind === "image") && Boolean(file.dataUrl);
   return (
     <div className="px-3 pt-3">
       {image ? (
@@ -156,7 +156,7 @@ export function PlusMenu({
                     }}
                     className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left hover:bg-slate-100 dark:hover:bg-white/10"
                   >
-                    {file.dataUrl && file.kind !== "text" ? (
+                    {file.dataUrl && (file.kind === "png" || file.kind === "image") ? (
                       <img src={file.dataUrl} alt="" className="h-8 w-8 shrink-0 rounded-lg object-cover" />
                     ) : (
                       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-200">

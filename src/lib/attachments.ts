@@ -13,7 +13,9 @@ export type IncomingAttachment = {
 export type ReadyAttachment =
   | { kind: "text"; name: string; text: string }
   | { kind: "png"; name: string; dataUrl: string }
-  | { kind: "image"; name: string; dataUrl: string };
+  | { kind: "image"; name: string; dataUrl: string }
+  | { kind: "pdf"; name: string; dataUrl: string }
+  | { kind: "docx"; name: string; dataUrl: string };
 
 export type AttachmentResult =
   | { ok: true; attachment: null }
@@ -56,6 +58,26 @@ function pngBytes(dataUrl: string): Uint8Array | null {
   return bytes;
 }
 
+function docBytes(dataUrl: string, kind: "pdf" | "docx"): boolean {
+  const mime =
+    kind === "pdf"
+      ? /^data:application\/pdf;base64,([a-z0-9+/=\s]+)$/i
+      : /^data:(?:application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document|application\/octet-stream|application\/zip);base64,([a-z0-9+/=\s]+)$/i;
+  const match = mime.exec(dataUrl.trim());
+  if (!match?.[1]) return false;
+  const b64 = match[1].replace(/\s/g, "");
+  if (!b64 || b64.length % 4 === 1 || b64.length > 12_000_000) return false;
+  let binary: string;
+  try {
+    binary = atob(b64);
+  } catch {
+    return false;
+  }
+  if (binary.length < 8 || binary.length > 8_000_000) return false;
+  if (kind === "pdf") return binary.startsWith("%PDF-");
+  return binary.charCodeAt(0) === 0x50 && binary.charCodeAt(1) === 0x4b && binary.charCodeAt(2) === 3 && binary.charCodeAt(3) === 4;
+}
+
 function imageBytes(dataUrl: string): boolean {
   const match = /^data:image\/(png|jpeg|jpg|webp);base64,([a-z0-9+/=\s]+)$/i.exec(dataUrl.trim());
   if (!match) return false;
@@ -92,10 +114,27 @@ export function parseAttachment(raw: unknown): AttachmentResult {
   }
 
   if (kind === "image") {
+    if (ext && !["png", "jpg", "jpeg", "webp"].includes(ext)) {
+      return { ok: false, error: "Use a photo under 1.5 MB. JPG, PNG, or WEBP." };
+    }
     if (typeof body.dataUrl !== "string" || !imageBytes(body.dataUrl)) {
       return { ok: false, error: "Use a photo under 1.5 MB. JPG, PNG, or WEBP." };
     }
     return { ok: true, attachment: { kind: "image", name, dataUrl: body.dataUrl.trim() } };
+  }
+
+  if (kind === "pdf" || (!kind && ext === "pdf")) {
+    if (typeof body.dataUrl !== "string" || !docBytes(body.dataUrl, "pdf")) {
+      return { ok: false, error: "Only a real PDF under 8 MB is allowed." };
+    }
+    return { ok: true, attachment: { kind: "pdf", name: ext === "pdf" ? name : `${name}.pdf`, dataUrl: body.dataUrl.trim() } };
+  }
+
+  if (kind === "docx" || (!kind && ext === "docx")) {
+    if (typeof body.dataUrl !== "string" || !docBytes(body.dataUrl, "docx")) {
+      return { ok: false, error: "Only a real Word file (.docx) under 8 MB is allowed." };
+    }
+    return { ok: true, attachment: { kind: "docx", name: ext === "docx" ? name : `${name}.docx`, dataUrl: body.dataUrl.trim() } };
   }
 
   if (kind === "text" || (!kind && TEXT_EXT.has(ext))) {
@@ -119,13 +158,18 @@ export function modelPrompt(query: string, attachment: ReadyAttachment | null): 
   if (!attachment) return ask;
   if (attachment.kind === "text") {
     const head = ask || "Read the attached text and answer if it relates to Indian Standards or BIS services.";
-    return `${head}\n\nATTACHED TEXT FILE (${attachment.name}):\n${attachment.text}`;
+    return `${head}\n\nATTACHED TEXT FILE (${attachment.name}):\n${attachment.text}\n\nUse this file text for what the file says. Do not add a catalogue IS number, fee, or laboratory into a sentence about the file. If the file does not say it, say so.`;
   }
-  return ask || "Read the attached PNG. If it shows a product, IS number, ISI, CRS, or hallmark, say what you can actually see. Do not invent an IS number.";
+  if (attachment.kind === "pdf" || attachment.kind === "docx") {
+    const head = ask || `Read the attached ${attachment.kind === "pdf" ? "PDF" : "Word file"}.`;
+    return `${head}\n\nThe attached ${attachment.kind.toUpperCase()} was not extracted. Say you could not read it. Do not guess its contents. Do not invent an IS number.`;
+  }
+  const head = ask || (attachment.kind === "png" ? "Read the attached PNG." : "Read the attached image.");
+  return `${head}\n\nRead only the attached image pixels. If a licence number, IS number, or hallmark is not visible, say it is not visible. Do not invent one. Do not use a caption from memory.`;
 }
 
 export function retrievalText(query: string, attachment: ReadyAttachment | null): string {
-  if (attachment?.kind === "text") {
+  if (attachment?.kind === "text" && attachment.text.length <= 400) {
     return `${query}\n${attachment.text}`.trim().slice(0, 2000);
   }
   const typed = query.trim();

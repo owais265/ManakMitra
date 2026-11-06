@@ -270,7 +270,7 @@ export default function ChatBotApp() {
   const [railReady, setRailReady] = useState(false);
   const { user, isPending } = useCurrentUserState();
   const [inputText, setInputText] = useState('');
-  const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text'; text?: string; dataUrl?: string } | null>(null);
+  const [draftFile, setDraftFile] = useState<{ name: string; kind: 'png' | 'image' | 'text' | 'pdf' | 'docx'; text?: string; dataUrl?: string } | null>(null);
   const [searchMode, setSearchMode] = useState<SearchMode>('fast');
   const searchModeRef = useRef<SearchMode>('fast');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1347,7 +1347,7 @@ export default function ChatBotApp() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp,.txt,.md,.csv,.json,text/plain"
+                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp,.pdf,.docx,.txt,.md,.csv,.json,text/plain,application/pdf"
                 className="sr-only"
                 aria-label={UI_DICTIONARY[language].attach}
                 onChange={(event) => {
@@ -1356,6 +1356,26 @@ export default function ChatBotApp() {
                   if (!picked) return;
                   void (async () => {
                     const ext = picked.name.split('.').pop()?.toLowerCase() ?? '';
+                    const isPdf = picked.type === 'application/pdf' || ext === 'pdf';
+                    const isDocx = ext === 'docx' || picked.type.includes('wordprocessingml');
+                    if (isPdf || isDocx) {
+                      const dataUrl = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(String(reader.result || ''));
+                        reader.onerror = () => reject(new Error('read'));
+                        reader.readAsDataURL(picked);
+                      });
+                      const kind = isPdf ? 'pdf' : 'docx';
+                      const parsed = parseAttachment({ name: picked.name, kind, dataUrl });
+                      if (!parsed.ok || !parsed.attachment || (parsed.attachment.kind !== 'pdf' && parsed.attachment.kind !== 'docx')) {
+                        setToastMessage(UI_DICTIONARY[language].fileType);
+                        setTimeout(() => setToastMessage(null), 3500);
+                        return;
+                      }
+                      setDraftFile({ name: parsed.attachment.name, kind: parsed.attachment.kind, dataUrl: parsed.attachment.dataUrl });
+                      rememberRecent({ name: parsed.attachment.name, kind: parsed.attachment.kind, dataUrl: parsed.attachment.dataUrl });
+                      return;
+                    }
                     const image = picked.type === 'image/png' || picked.type === 'image/jpeg' || picked.type === 'image/webp' || ['png', 'jpg', 'jpeg', 'webp'].includes(ext);
                     if (image) {
                       const dataUrl = await new Promise<string>((resolve, reject) => {

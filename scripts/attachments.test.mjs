@@ -110,6 +110,27 @@ for (let i = 0; i < 50; i += 1) {
   });
 }
 
+check("real pdf and docx magic", () => {
+  const pdf = Buffer.from("%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF\n");
+  const okPdf = parseAttachment({
+    name: "citizens.pdf",
+    kind: "pdf",
+    dataUrl: `data:application/pdf;base64,${pdf.toString("base64")}`,
+  });
+  assert.equal(okPdf.ok, true);
+  assert.equal(okPdf.attachment.kind, "pdf");
+  assert.match(modelPrompt("What does page 1 say?", okPdf.attachment), /not extracted|Do not guess/i);
+  const docx = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+  const okDoc = parseAttachment({
+    name: "scheme.docx",
+    kind: "docx",
+    dataUrl: `data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;base64,${docx.toString("base64")}`,
+  });
+  assert.equal(okDoc.ok, true);
+  assert.equal(okDoc.attachment.kind, "docx");
+  assert.equal(parseAttachment({ name: "a.pdf", kind: "pdf", text: "x" }).ok, false);
+});
+
 console.log(`attachments tests passed: ${passed}`);
 if (passed < 500) {
   console.error(`expected at least 500 checks, got ${passed}`);

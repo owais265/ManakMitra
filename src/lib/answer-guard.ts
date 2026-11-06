@@ -56,3 +56,39 @@ export function guardCase(spoken: string, trusted: string, fallback: string): st
   next = next.replace(/[ \t]{2,}/g, " ").trim();
   return next || fallback;
 }
+
+const FILE_CLAIM =
+  /\b(file|document|charter|pdf|page|attached|excerpt|docx|image|photo|png|paragraph|section|word)\b/i;
+
+/** A sentence that claims to describe the attached file may not name an IS number the file does not contain. */
+export function guardFileClaims(spoken: string, fileText: string): string {
+  const allowed = new Set(extractIsNumbers(fileText));
+  return spoken
+    .split(/(\n+)/)
+    .map((part) => {
+      if (!FILE_CLAIM.test(part)) return part;
+      IS_RE.lastIndex = 0;
+      return part.replace(IS_RE, (full, number: string) =>
+        allowed.has(number) ? full : "a number that is not in the attached file",
+      );
+    })
+    .join("");
+}
+
+/** A file answer stays a file answer. An invented IS number is blanked. The catalogue card is not substituted. */
+export function guardFileSpoken(spoken: string, fileText: string, packTrusted: string): string {
+  const text = spoken.trim();
+  if (!text) return "The attached file was read, but no answer was produced. Nothing was guessed.";
+  let next = guardFileClaims(text, fileText);
+  const allowed = new Set([...extractIsNumbers(fileText), ...extractIsNumbers(packTrusted)]);
+  IS_RE.lastIndex = 0;
+  next = next.replace(IS_RE, (full, number: string) => (allowed.has(number) ? full : "a standard that is not in this pack"));
+  const hay = `${fileText}\n${packTrusted}`.toLowerCase();
+  URL_RE.lastIndex = 0;
+  next = next.replace(URL_RE, (url) => {
+    const clean = url.replace(/[.,;]+$/, "");
+    if (isOfficialHost(clean) || hay.includes(clean.toLowerCase())) return url;
+    return "";
+  });
+  return next.replace(/[ \t]{2,}/g, " ").trim() || "The attached file was read, but no answer was produced. Nothing was guessed.";
+}

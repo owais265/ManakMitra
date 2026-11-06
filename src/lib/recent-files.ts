@@ -1,7 +1,7 @@
 export type RecentFile = {
   id: string;
   name: string;
-  kind: "png" | "image" | "text";
+  kind: "png" | "image" | "text" | "pdf" | "docx";
   text?: string;
   dataUrl?: string;
   at: number;
@@ -23,7 +23,7 @@ export function pushRecent(list: RecentFile[], next: Omit<RecentFile, "id" | "at
 function isRecent(value: unknown): value is RecentFile {
   if (!value || typeof value !== "object") return false;
   const row = value as RecentFile;
-  return typeof row.name === "string" && (row.kind === "png" || row.kind === "image" || row.kind === "text");
+  return typeof row.name === "string" && (row.kind === "png" || row.kind === "image" || row.kind === "text" || row.kind === "pdf" || row.kind === "docx");
 }
 
 export function loadRecent(): RecentFile[] {
