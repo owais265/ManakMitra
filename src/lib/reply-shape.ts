@@ -19,7 +19,7 @@ export function askCount(query: string): number {
     .split(/\n/)
     .map((line) => line.trim())
     .filter(Boolean);
-  const numbered = lines.filter((line) => /^\d+[\).\]]\s+\S/.test(line) || /^[-*•]\s+\S/.test(line));
+  const numbered = lines.filter((line) => /^\d+[.)\]]\s+\S/.test(line) || /^[-*•]\s+\S/.test(line));
   if (numbered.length >= 2) return Math.min(numbered.length, 8);
   const questions = query
     .split("?")

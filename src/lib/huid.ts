@@ -46,7 +46,7 @@ export function checkHuid(raw: string): HuidCheck {
 /** Pull the code a person is asking about out of a sentence. */
 export function extractHuid(query: string): string {
   const labelled = query.match(
-    /(?:huid|ह्यूइड|ह्यूआईडी|हालमार्क\s*कोड)\s*[:#\-]?\s*([A-Za-z0-9०-९.\-_/]{4,20})/i,
+    /(?:huid|ह्यूइड|ह्यूआईडी|हालमार्क\s*कोड)\s*[:#-.]?\s*([A-Za-z0-9०-९./_-]{4,20})/i,
   );
   if (labelled?.[1]) return labelled[1];
   const tokens = query.match(/[A-Za-z0-9०-९][A-Za-z0-9०-९./-]{3,20}/g) || [];

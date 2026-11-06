@@ -17,7 +17,7 @@ function escapeRe(s: string): string {
 }
 
 function hasAlias(query: string, alias: string): boolean {
-  if (/[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0A80-\u0AFF\u0B00-\u0B7F\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F]/.test(alias)) {
+  if (/\p{Script=Devanagari}|\p{Script=Bengali}|\p{Script=Gurmukhi}|\p{Script=Gujarati}|\p{Script=Oriya}|\p{Script=Tamil}|\p{Script=Telugu}|\p{Script=Kannada}|\p{Script=Malayalam}/u.test(alias)) {
     return query.toLowerCase().includes(alias.toLowerCase());
   }
   const words = alias.toLowerCase().trim().split(/\s+/).filter(Boolean);

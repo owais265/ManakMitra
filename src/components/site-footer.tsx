@@ -83,7 +83,7 @@ export default function SiteFooter() {
                 </a>
               </li>
               <li>
-                <a href="https://www.google.com/maps/search/?api=1&query=Bureau%20of%20Indian%20Standards%209%20Bahadur%20Shah%20Zafar%20Marg%20New%20Delhi" target="_blank" rel="noopener noreferrer" aria-label={chrome.address} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-slate-200 transition-colors duration-150 hover:bg-white/10">
+                <a href="https://www.bis.gov.in/?lang=en" target="_blank" rel="noopener noreferrer" aria-label={chrome.address} className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 text-slate-200 transition-colors duration-150 hover:bg-white/10">
                   <MapPin className="h-4 w-4" />
                 </a>
               </li>
@@ -129,7 +129,7 @@ export default function SiteFooter() {
               </li>
               <li>
                 <a
-                  href="https://www.google.com/maps/search/?api=1&query=Bureau%20of%20Indian%20Standards%209%20Bahadur%20Shah%20Zafar%20Marg%20New%20Delhi"
+                  href="https://www.bis.gov.in/?lang=en"
                   target="_blank"
                   rel="noopener noreferrer"
                   className={linkClass}

@@ -336,7 +336,7 @@ async function main() {
 
   const fresh = rows.filter((r) => !existing.has(r.source_hash));
   let inserted = 0;
-  let skipped = rows.length - fresh.length;
+  const skipped = rows.length - fresh.length;
   for (let i = 0; i < fresh.length; i += BATCH) {
     const slice = fresh.slice(i, i + BATCH);
     await upsertSlice(sb, slice, i);

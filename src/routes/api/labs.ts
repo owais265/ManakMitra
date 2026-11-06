@@ -104,6 +104,12 @@ export const Route = createFileRoute("/api/labs")({
           });
         }
         const board = await labBoard(origin, product);
+        const sourced = [...board.nearby, ...board.farther].some(
+          (lab) => lab.tier === "bis-own" || lab.tier === "bis-recognised",
+        );
+        const near = board.nearby.some((lab) => lab.tier === "bis-own" || lab.tier === "bis-recognised");
+        const distance =
+          " Distance is the city PIN centre, not a factory gate. If a listed distance is under 5 km, say that.";
         return Response.json({
           origin,
           source,
@@ -112,9 +118,13 @@ export const Route = createFileRoute("/api/labs")({
           nearby: board.nearby,
           farther: board.farther,
           mapUrl: areaMapUrl(origin.lat, origin.lng, origin.label, product),
-          note: board.nearby.some((lab) => lab.tier === "bis-recognised" || lab.tier === "bis-own")
-            ? "BIS laboratory is a BIS own laboratory. BIS recognised is a Group-1 row from the loaded extract. National laboratory, including NPL, is not a BIS laboratory and not a recommendation. Distance is the city centre, not a surveyed gate. A product name is not a test scope."
-            : "No laboratory from the loaded extract could be placed. BIS own laboratories are still listed. National laboratories are not a BIS recommendation.",
+          note: near
+            ? "BIS laboratory is a BIS own laboratory. BIS recognised is a Group-1 row from the loaded extract with an official source. A national laboratory, including NPL, is not a BIS laboratory and not a recommendation." +
+              distance
+            : sourced
+              ? "No BIS own laboratory and no Group-1 recognised laboratory from the loaded extract is near this PIN. This desk will not name a national laboratory. Look the test up on https://lims.bis.gov.in. A BIS laboratory farther away may still be listed." +
+                distance
+              : "No BIS own laboratory and no Group-1 recognised laboratory from the loaded extract could be placed for this PIN. This desk will not name a national laboratory. Look the test up on https://lims.bis.gov.in.",
         });
       },
     },

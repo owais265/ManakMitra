@@ -18,7 +18,13 @@ const KINDS = new Set<FeedbackKind>(["up", "down", "report"]);
 
 function clip(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "").trim().slice(0, max);
+  let clean = "";
+  for (const ch of value) {
+    const code = ch.charCodeAt(0);
+    const control = code <= 0x08 || code === 0x0b || code === 0x0c || (code >= 0x0e && code <= 0x1f);
+    if (!control) clean += ch;
+  }
+  return clean.trim().slice(0, max);
 }
 
 /** Trust boundary for a feedback click. Drops the essay, mail, and non-official URLs. */

@@ -307,7 +307,7 @@ const CITY_PIN: { re: RegExp; pin: string }[] = [
 export function publishedPin(text: string): string | null {
   const india = text.match(/India\s*-\s*([1-9]\d{5})\b/i);
   if (india) return india[1];
-  const marked = text.match(/\b(?:pin(?:\s*code)?|pincode)\s*[:\-]?\s*([1-9]\d{5})\b/i);
+  const marked = text.match(/\b(?:pin(?:\s*code)?|pincode)\s*[:-]?\s*([1-9]\d{5})\b/i);
   if (marked) return marked[1];
   const all = [...text.matchAll(/(?<!\d)([1-9]\d{5})(?!\d)/g)].map((match) => match[1]);
   return all.length ? all[all.length - 1] : null;

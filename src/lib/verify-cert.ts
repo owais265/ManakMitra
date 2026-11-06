@@ -1,4 +1,5 @@
 import { listProductFamilies, matchProductFamily, shouldClarify, type SchemeKind } from "./product-playbook.ts";
+import { foldSpokenQuery } from "./spoken-is.ts";
 
 export type VerifyMode = "licence" | "brand" | "photo";
 
@@ -91,6 +92,19 @@ export function checkLicence(raw: string): VerifyVerdict {
     };
   }
 
+  if (/^(?:9|14|18|21|22|23|24)K(?:995|958|916|875|833|750|585|375)?$/.test(text)) {
+    return {
+      status: "invalid",
+      title: "That is a fineness mark, not a HUID",
+      detail: `${text} is a gold grade such as 22K/916 or 23K/958. It is not a 6-character jewellery HUID and not an IS number. ${NOT_A_GRANT}`,
+      scheme: "Hallmark · HUID",
+      marks: [text],
+      officialUrl: HUID,
+      officialLabel: "Open hallmarking",
+      confidence: "none",
+    };
+  }
+
   if (/^[A-Z0-9]{6}$/.test(text) && /[A-Z]/.test(text) && /\d/.test(text) && !text.startsWith("CM") && !HUID_BLOCK.test(text)) {
     return {
       status: "format-ok",
@@ -117,7 +131,7 @@ export function checkLicence(raw: string): VerifyVerdict {
 }
 
 export function checkBrand(raw: string): VerifyVerdict {
-  const query = raw.normalize("NFKC").trim().slice(0, 160);
+  const query = foldSpokenQuery(raw.normalize("NFKC").trim().slice(0, 160));
   if (query.length < 2) {
     return {
       status: "invalid",
@@ -131,7 +145,7 @@ export function checkBrand(raw: string): VerifyVerdict {
     };
   }
 
-  const isHit = /\bIS[\s/.-]*(\d{3,6})\b/i.exec(query);
+  const isHit = /\bIS[\s/.:-]*(\d{3,6})(?!\d)(?!\s*(?:k|kt|carat|karat)\b)/i.exec(query);
   const family = matchProductFamily(query) ?? (isHit ? familyForIs(isHit[1]) : null);
   const clarify = shouldClarify(query);
   const scheme = schemeLabel(family?.scheme);

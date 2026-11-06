@@ -129,7 +129,7 @@ function ngrams(toks: string[]): string[] {
 }
 
 function expandQuery(q: string): string {
-  let glossed = glossIndic(q);
+  const glossed = glossIndic(q);
   const raw = tokens(glossed);
   const extra: string[] = [];
   for (const t of raw) extra.push(...(SYNONYMS[t] || []));
@@ -167,7 +167,7 @@ function cosine(qv: Map<number, number>, doc: { i: number[]; v: number[] }): num
 
 function isNumbers(query: string): string[] {
   const out: string[] = [];
-  const re = /\bIS[\s/.-]*(\d+)/gi;
+  const re = /\bIS[\s/.:-]*(\d+)(?!\d)(?!\s*(?:k|kt|carat|karat)\b)/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(query))) out.push(m[1]);
   return out;
@@ -179,7 +179,7 @@ function queryIsNumbers(query: string): string[] {
   const reIndian = /\bindian\s+standards?\s+(\d{3,5})\b/gi;
   let m: RegExpExecArray | null;
   while ((m = reIndian.exec(query))) out.push(m[1]);
-  const reYear = /(?:^|[^\dA-Za-z])(\d{3,5})\s*[:/\-]\s*((?:19|20)\d{2})\b/g;
+  const reYear = /(?:^|[^\dA-Za-z])(\d{3,5})\s*[:/-]\s*((?:19|20)\d{2})\b/g;
   while ((m = reYear.exec(query))) {
     if (catPost.isn.has(m[1])) out.push(m[1]);
   }
@@ -1714,7 +1714,7 @@ export function vectorRetrieve(query: string): Retrieval {
   const identifierLike =
     ids.length > 0 &&
     q.trim().length < 48 &&
-    /^(?:indian\s+standards?\s+)?(?:is[\s/.-]*)?\d{3,5}(?:\s*[:/\-]\s*(?:19|20)\d{2}|\s+(?:19|20)\d{2})?$/i.test(q.trim());
+    /^(?:indian\s+standards?\s+)?(?:is[\s/.-]*)?\d{3,5}(?:\s*[:/-]\s*(?:19|20)\d{2}|\s+(?:19|20)\d{2})?$/i.test(q.trim());
   if (identifierLike) {
     const exact = finalHits.filter((h) => {
       const n = isNumbers(h.title)[0];

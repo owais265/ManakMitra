@@ -104,9 +104,10 @@ function destRect(ratio = 16 / 10): Box {
   };
 }
 
-function Slide({ pose, children }: { pose: Pose; children: ReactNode }) {
+function Slide({ pose, slot, children }: { pose: Pose; slot: string; children: ReactNode }) {
   return (
     <div
+      data-slot={slot}
       className="mm-slide absolute overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_40px_-24px_rgba(11,31,58,0.6)]"
       style={{
         left: `${pose.x}%`,
@@ -139,9 +140,9 @@ function Device({
       className={`flex h-full flex-col rounded-[1.7rem] bg-white p-2 shadow-[0_30px_70px_-28px_rgba(11,31,58,0.55)] ring-1 ring-line sm:p-3 dark:bg-[#151d30] dark:ring-white/10 ${onPlay ? 'cursor-pointer' : ''}`}
       onClick={onPlay}
     >
-      <div className="relative min-h-0 flex-1 overflow-hidden rounded-[1.15rem] bg-paper">
+      <div className="mm-film relative min-h-0 flex-1 overflow-hidden rounded-[1.15rem] bg-paper">
         <div className="absolute inset-0" aria-hidden>
-          <Slide pose={poses[0]}>
+          <Slide pose={poses[0]} slot="lead">
             <div className="px-3 py-3 sm:px-4 sm:py-4">
               <p className="text-[10px] font-semibold tracking-[0.16em] text-bis-navy uppercase sm:text-xs">
                 {t.eyebrow}
@@ -151,7 +152,7 @@ function Device({
               </p>
             </div>
           </Slide>
-          <Slide pose={poses[1]}>
+          <Slide pose={poses[1]} slot="step">
             <div className="px-3 py-3 sm:px-5 sm:py-4">
               <div className="flex items-center gap-2">
                 <ManakMark className="h-7 w-7 shrink-0" />
@@ -165,13 +166,13 @@ function Device({
           {caps.map((cap, i) => {
             const Icon = ICONS[i] ?? FileSearch;
             return (
-              <Slide key={cap?.title ?? i} pose={poses[i + 2]}>
+              <Slide key={cap?.title ?? i} pose={poses[i + 2]} slot={`cap-${i}`}>
                 <div className="px-3 py-3">
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-bis-navy">
                     <Icon className="h-4 w-4" strokeWidth={1.9} />
                   </span>
-                  <p className="mt-2 line-clamp-2 break-words text-sm font-semibold text-ink">{cap?.title}</p>
-                  <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-slate-600">{cap?.body}</p>
+                  <p className="mm-cap-title mt-2 line-clamp-2 break-words text-sm font-semibold text-ink">{cap?.title}</p>
+                  <p className="mm-cap-body mt-1 line-clamp-3 text-xs leading-relaxed text-slate-600">{cap?.body}</p>
                 </div>
               </Slide>
             );

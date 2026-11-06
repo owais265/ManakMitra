@@ -19,6 +19,7 @@ mapDigits("٠١٢٣٤٥٦٧٨٩");
 export function foldSpokenQuery(raw: string): string {
   let text = "";
   for (const ch of raw) text += DIGIT[ch] ?? ch;
+  text = text.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-");
   const spoken = [
     /\bI[\s.]*S\b(?=\s*\d)/gi,
     /आई[\s.]*एस/g,
@@ -32,6 +33,9 @@ export function foldSpokenQuery(raw: string): string {
     /آئی[\s.]*ایس/g,
   ];
   for (const re of spoken) text = text.replace(re, "IS");
+  text = text.replace(/\bI[\s.]*S(?=[\s.-]*\d)/gi, "IS");
+  text = text.replace(/\bIS[\s.]*-[\s.]*(?=\d)/gi, "IS ");
+  text = text.replace(/\bIS\.(?=\s*\d)/gi, "IS");
   text = text.replace(/बी[\s.]*आई[\s.]*एस/g, "BIS");
   const typos: Array<[RegExp, string]> = [
     [/\bcemenet\b/gi, "cement"],

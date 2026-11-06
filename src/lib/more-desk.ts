@@ -96,10 +96,13 @@ function digitsToAscii(text: string): string {
   return out;
 }
 
+const GRADE_TOKEN = /^(?:9|14|18|21|22|23|24)K(?:995|958|916|875|833|750|585|375)?$/;
+
 export function huidToken(raw: string): string {
   const text = digitsToAscii(raw).toUpperCase();
   const tokens = text.split(/[^A-Z0-9]+/).filter((part) => part && part !== "HUID");
   for (const token of tokens) {
+    if (GRADE_TOKEN.test(token)) continue;
     if (token.length === 6 && /[A-Z]/.test(token) && /\d/.test(token)) return token;
   }
   return "";
@@ -182,12 +185,14 @@ export function certScheme(raw: string): CertScheme {
 }
 
 function hasIsNumber(original: string, q: string): boolean {
-  if (/\bIS[\s/.:-]*\d{3,6}\b/.test(original) || /\bIS[\s/.:-]*\d{3,6}\b/.test(q)) return true;
-  const lower = original.match(/\bis[\s/.:-]*(\d{3,6})\b/);
-  if (!lower) return false;
-  const fineness = /^(995|958|916|875|750|585|375|999|970|925|900|835|800|950|850)$/.test(lower[1]);
-  if (fineness && !/\b(standard|isi)\b/i.test(original)) return false;
-  return true;
+  const re = /\bIS[\s/.:-]*(\d{3,6})(?!\d)(?!\s*(?:k|kt|carat|karat)\b)/i;
+  if (re.test(original) || re.test(q)) {
+    const hit = original.match(re) || q.match(re);
+    const fineness = hit ? /^(995|958|916|875|750|585|375|999|970|925|900|835|800|950|850)$/.test(hit[1]) : false;
+    if (fineness && !/\b(standard|isi)\b/i.test(original)) return false;
+    return true;
+  }
+  return false;
 }
 
 export function feeOrClause(q: string): boolean {

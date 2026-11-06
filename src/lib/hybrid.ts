@@ -87,7 +87,7 @@ const GENERIC_TOKEN =
 function distinctiveTokens(q: string): string[] {
   return q
     .toLowerCase()
-    .split(/[^a-z0-9\u0900-\u097f]+/)
+    .split(/[^a-z0-9\p{Script=Devanagari}]+/u)
     .filter((t) => t.length >= 4 && !GENERIC_TOKEN.test(t));
 }
 

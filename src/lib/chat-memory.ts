@@ -26,7 +26,7 @@ function cleanTurns(value: unknown): MemoryTurn[] {
     if (!item || typeof item !== "object") continue;
     const row = item as { id?: unknown; role?: unknown; text?: unknown; timestamp?: unknown };
     if (row.role !== "user" && row.role !== "ai") continue;
-    const text = String(row.text ?? "").replace(/\u0000/g, "").trim().slice(0, 4000);
+    const text = String(row.text ?? "").split("\u0000").join("").trim().slice(0, 4000);
     if (!text) continue;
     const id = String(row.id ?? "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
     turns.push({

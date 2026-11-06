@@ -166,7 +166,7 @@ export default function SiteHeader({
         {language === 'hi' ? 'मुख्य सामग्री पर जाएँ' : 'Skip to content'}
       </a>
       <div className={bar}>
-        <Link to="/" className="flex min-h-11 min-w-0 items-center gap-2.5" onClick={closeMenus}>
+        <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2" onClick={closeMenus}>
           <ManakMark
             className={
               variant === 'landing'
@@ -174,8 +174,8 @@ export default function SiteHeader({
                 : 'h-8 w-8 shrink-0 rounded-full'
             }
           />
-          <span className="min-w-0">
-            <span className="block truncate text-[15px] font-semibold tracking-tight text-ink sm:text-base dark:text-slate-50">
+          <span>
+            <span className="block whitespace-nowrap text-[15px] font-semibold tracking-tight text-ink sm:text-base dark:text-slate-50">
               ManakMitra
             </span>
             {variant === 'landing' ? (
@@ -257,7 +257,7 @@ export default function SiteHeader({
           </button>
         </nav>
 
-        <div className={`relative z-10 ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2.5 ${blend ? '' : 'bg-white dark:bg-[#0c1222]'}`}>
+        <div className={`relative z-10 ml-auto flex shrink items-center gap-1 sm:gap-2.5 ${blend ? '' : 'bg-white dark:bg-[#0c1222]'}`}>
           <button
             type="button"
             className={`inline-flex items-center justify-center rounded border border-line text-ink xl:hidden dark:border-slate-600 dark:text-slate-200 ${blend ? 'h-9 w-9' : 'h-11 w-11'}`}
@@ -285,7 +285,7 @@ export default function SiteHeader({
             aria-label={copy.langLabel}
             value={language}
             onChange={(e) => setLang(e.target.value as AppLang)}
-            className={`h-9 max-w-[4.6rem] shrink truncate rounded border border-line bg-white px-1.5 text-xs text-ink sm:max-w-[9rem] sm:px-2 dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100 ${blend ? '' : 'sm:h-11 sm:text-sm'}`}
+            className={`h-9 max-w-[3.25rem] shrink rounded border border-line bg-white px-1 text-xs text-ink sm:max-w-[9rem] sm:px-2 dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100 ${blend ? '' : 'sm:h-11 sm:text-sm'}`}
           >
             {APP_LANGS.map((l) => (
               <option key={l.id} value={l.id}>

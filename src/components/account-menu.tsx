@@ -13,7 +13,7 @@ export function HeaderAuth({ tall }: { tall: boolean }) {
     return (
       <Link
         to="/login"
-        className={`inline-flex items-center rounded border border-line bg-white px-2.5 text-xs font-medium text-ink hover:bg-paper sm:text-sm dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100 dark:hover:bg-[#1b2740] ${box}`}
+        className={`inline-flex items-center rounded border border-line bg-white px-2 text-xs font-medium text-ink hover:bg-paper sm:px-2.5 sm:text-sm dark:border-slate-600 dark:bg-[#151d30] dark:text-slate-100 dark:hover:bg-[#1b2740] ${box}`}
       >
         Login
       </Link>

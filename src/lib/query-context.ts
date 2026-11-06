@@ -11,7 +11,7 @@ export type RewriteDebug = {
   switchedFamily: string | null;
 };
 
-const IS_RE = /\bIS[\s/.-]*(\d+)/gi;
+const IS_RE = /\bIS[\s/.:-]*(\d+)(?!\d)(?!\s*(?:k|kt|carat|karat)\b)/gi;
 
 /** Strong follow-up cues — kept for cue detection only. History is NOT folded. */
 export const FOLLOW_CUE_STRONG = [

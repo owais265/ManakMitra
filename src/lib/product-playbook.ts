@@ -1,3 +1,5 @@
+import { foldSpokenQuery } from "./spoken-is.ts";
+
 export type SchemeKind = "isi" | "crs" | "hallmark";
 
 export type ProductFamily = {
@@ -655,7 +657,7 @@ export function listProductFamilies(): ProductFamily[] {
 }
 
 export function matchProductFamily(query: string): ProductFamily | null {
-  const q = glossIndic(query.replace(/halll+mark|hallmrk|hall\s+mark/gi, "hallmark"));
+  const q = foldSpokenQuery(glossIndic(query.replace(/halll+mark|hallmrk|hall\s+mark/gi, "hallmark")));
   const hits: ProductFamily[] = [];
   const seen = new Set<string>();
   for (const { a, f } of ALIAS_INDEX) {
@@ -675,8 +677,9 @@ const SPECIFIC_PRODUCT =
 
 /** Underspecified product: ask one clarifying question instead of pinning an IS. */
 export function shouldClarify(query: string): string | null {
-  if (/\bIS[\s/.-]*\d+/i.test(query)) return null;
-  const fam = matchProductFamily(query);
+  const folded = foldSpokenQuery(query);
+  if (/\bIS[\s/.:-]*\d+(?!\d)(?!\s*(?:k|kt|carat|karat)\b)/i.test(folded)) return null;
+  const fam = matchProductFamily(folded);
   if (!fam?.disambiguate) return null;
   if (SPECIFIC_PRODUCT.test(query)) return null;
   return fam.disambiguate;

@@ -14,6 +14,16 @@ export type AgentPlan = {
 const OVERRIDE =
   /ignore (all |any )?(previous|prior|above) (instructions|rules|prompts?)|disregard (the |your )?(rules|system)|you are now|jailbreak|reveal (the |your )?(api key|secret|system prompt)/gi;
 
+const FORGE =
+  /\b(?:do not refuse|don't refuse|ignore (?:the |your |all )?(?:rules|instructions)|you are now\b|jailbreak|disregard (?:the |your )?(?:rules|system))\b|\b(?:invent|print|make up)\b[\s\S]{0,80}\b(?:is[\s./-]*\d+|fee|rupee|₹|official)\b/i;
+
+export const FORGE_LINE =
+  "This desk will not invent an IS number, a fee, or a rule exception. A number that is not in the pack stays not in the pack.";
+
+export function forgeAsk(query: string): boolean {
+  return FORGE.test(query);
+}
+
 export function planDeskAgent(query: string, hasAttachment = false): AgentPlan {
   const injection = OVERRIDE.test(query);
   OVERRIDE.lastIndex = 0;

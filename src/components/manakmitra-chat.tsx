@@ -169,7 +169,7 @@ function openExternal(event: React.MouseEvent<HTMLAnchorElement>, href: string) 
 }
 
 function renderInline(text: string, sources: Source[] | undefined, isAI: boolean) {
-  const isCodeRegex = /(\bIS\s+\d+(?:[:\-]\s*\d{2,4})?(?:\s*\(?Part\s*\d+\)?)?\b)/gi;
+  const isCodeRegex = /(\bIS\s+\d+(?:[:-]\s*\d{2,4})?(?:\s*\(?Part\s*\d+\)?)?\b)/gi;
   const urlRe = /(https?:\/\/[^\s)\]>]+)/gi;
   const mdRe = /(\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g;
   return text.split('**').map((part, i) => {
@@ -436,7 +436,9 @@ export default function ChatBotApp() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (_) {}
+        } catch {
+          /* recognition already ended */
+        }
         recognitionRef.current = null;
       }
     };
@@ -453,10 +455,12 @@ export default function ChatBotApp() {
       if (recognitionRef.current) {
         try {
           recognitionRef.current.stop();
-        } catch (_) {
+        } catch {
           try {
             recognitionRef.current.abort();
-          } catch (__) {}
+          } catch {
+            /* recognition already ended */
+          }
         }
         recognitionRef.current = null;
       }
@@ -478,7 +482,9 @@ export default function ChatBotApp() {
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
-      } catch (_) {}
+      } catch {
+        /* recognition already ended */
+      }
       recognitionRef.current = null;
     }
 

@@ -15,7 +15,7 @@ function queryIds(query: string): Set<string> {
 function distinctive(query: string): string[] {
   return query
     .toLowerCase()
-    .split(/[^a-z0-9\u0900-\u097f]+/)
+    .split(/[^a-z0-9\p{Script=Devanagari}]+/u)
     .filter((token) => token.length >= 4 && !STOP.has(token));
 }
 

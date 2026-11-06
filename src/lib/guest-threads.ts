@@ -21,7 +21,7 @@ export function slimTurns(
   for (const message of messages) {
     if (message.role !== "user" && message.role !== "ai") continue;
     if (message.isStreaming) continue;
-    const text = message.text.replace(/\u0000/g, "").trim();
+    const text = message.text.split("\u0000").join("").trim();
     if (!text) continue;
     turns.push({
       id: message.id.slice(0, 80),
