@@ -18,7 +18,7 @@ import { acceptInternalHeader } from "@/lib/whatsapp";
 import { clientIp, takeLimit } from "@/lib/rate-limit";
 import { chargeGuest, guestIsLocked } from "@/lib/guest-quota";
 import { cacheGet, cacheSet, retrievalCacheKey } from "@/lib/retrieval-cache";
-import { guardCase, guardFileClaims, guardFileSpoken, guardSpoken } from "@/lib/answer-guard";
+import { guardCase, guardFileSpoken, guardSpoken } from "@/lib/answer-guard";
 import { FORGE_LINE, forgeAsk, planDeskAgent } from "@/lib/desk-agents";
 import { foldSpokenQuery } from "@/lib/spoken-is";
 import { crossVerify } from "@/lib/deep-search";

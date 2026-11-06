@@ -41,7 +41,8 @@ export function decodeDataUrl(dataUrl: string, kind: "pdf" | "docx"): Uint8Array
 
 function cleanText(raw: string): string {
   return raw
-    .replace(/\u0000/g, "")
+    .split("\u0000")
+    .join("")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
