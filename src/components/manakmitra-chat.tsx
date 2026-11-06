@@ -45,11 +45,13 @@ function historyForSend(prev: { role: string; text: string }[]): ChatTurn[] {
     .filter((m) => m.role === 'user' && m.text)
     .map((m) => ({ role: 'user' as const, text: m.text.replace(/\s+/g, ' ').trim().slice(0, 400) }))
     .filter((m) => m.text);
-  const recent = users.slice(-4);
+  const recent: ChatTurn[] = users.slice(-4);
   const anchor = topicAnchor(users);
-  if (anchor && !recent.some((turn) => turn.text.replace(/\s+/g, ' ').includes(anchor.slice(0, 48)))) {
+  if (anchor && !recent.some((turn) => (turn.text || '').replace(/\s+/g, ' ').includes(anchor.slice(0, 48)))) {
     recent.unshift({ role: 'user', text: anchor.slice(0, 400) });
   }
+  const lastAi = [...prev].reverse().find((m) => m.role === 'ai' && m.text && /\b(attached|attachment|pdf|image)\b/i.test(anchor));
+  if (lastAi) recent.push({ role: 'assistant', text: lastAi.text.replace(/\s+/g, ' ').trim().slice(0, 400) });
   return recent.slice(-6);
 }
 import { foldSpokenQuery } from '@/lib/spoken-is';

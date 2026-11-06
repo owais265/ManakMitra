@@ -498,8 +498,15 @@ export const Route = createFileRoute("/api/chat")({
           const stream = new ReadableStream({
             async start(controller) {
               const encoder = new TextEncoder();
+              const carry = { text: "" };
               const say = (text: string) => {
-                if (text) controller.enqueue(encoder.encode(text));
+                let out = text || "";
+                const subject = carry.text.replace(/\s+/g, " ").trim().slice(0, 140);
+                const key = subject.slice(0, 32).toLowerCase();
+                if (subject && out && !out.startsWith("[WORK]") && key && !out.toLowerCase().includes(key)) {
+                  out = `About the earlier question — ${subject}\n${out}`;
+                }
+                if (out) controller.enqueue(encoder.encode(out));
               };
               const step = (id: string, label: string, detail: string, t0: number) => {
                 const payload = JSON.stringify({
@@ -520,6 +527,7 @@ export const Route = createFileRoute("/api/chat")({
                 if (slotted !== query.trim()) {
                   const cue = query.trim();
                   followSubject = slotted.endsWith(cue) ? slotted.slice(0, slotted.length - cue.length).trim() : slotted;
+                  carry.text = followSubject;
                 }
                 const gateQuery = [followSubject, query].filter(Boolean).join(" ");
                 const intent = classifyIntent(followSubject ? gateQuery : query);

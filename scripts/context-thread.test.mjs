@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const jiti = createJiti(import.meta.url, { interopDefault: true });
-const { followRetrieval, isContinuation, topicAnchor } = jiti(join(root, "src/lib/query-context.ts"));
+const { followRetrieval, isContinuation, topicAnchor, boundHistory } = jiti(join(root, "src/lib/query-context.ts"));
 
 const FOLLOWS = [
   "give me exact deatiles",
@@ -118,6 +118,11 @@ const lab = followRetrieval("lab?", [{ role: "user", text: "cement plant 492001"
 assert.match(lab, /492001/);
 assert.match(lab, /cement/i);
 
-console.log(JSON.stringify({ carryFail, safeFail, threads: 100, steps: 10 }));
+const longHist = [{ role: "user", text: "i am manufacturing quartzcrucible widgets. tell me its bis certification road map" }];
+for (const q of FOLLOWS) longHist.push({ role: "user", text: q });
+const bounded = boundHistory(longHist);
+const tenth = followRetrieval("exact roadmap", bounded);
+assert.match(tenth, /quartzcrucible/);
+assert.doesNotMatch(tenth, /\b374\b/);
 if (carryFail || safeFail) process.exit(1);
 console.log("context thread tests passed");

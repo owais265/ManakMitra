@@ -224,7 +224,7 @@ const FAMILIES: ProductFamily[] = [
   },
   {
     id: "ceiling-fan",
-    aliases: ["ceiling type fan", "ceiling fan", "ceiling fans", "fan", "fans"],
+    aliases: ["ceiling type fan", "ceiling fan", "ceiling fans", "celing fan", "celing fen", "sealing fan", "fan", "fans"],
     is: ["374"],
     scheme: "isi",
     preferTitle: { "374": "Ceiling Type Fans" },
@@ -404,7 +404,7 @@ const FAMILIES: ProductFamily[] = [
   },
   {
     id: "cooker",
-    aliases: ["pressure cooker", "प्रेशर कुकर", "cooker", "कुकर"],
+    aliases: ["pressure cooker", "presure cooker", "प्रेशर कुकर", "cooker", "कुकर"],
     is: ["17870", "7466"],
     scheme: "isi",
   },

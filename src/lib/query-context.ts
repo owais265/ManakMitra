@@ -126,6 +126,14 @@ const FILLERS = new Set([
   "was",
   "be",
   "by",
+  "hoga",
+  "hogi",
+  "honge",
+  "lagega",
+  "lagegi",
+  "padega",
+  "chahiye",
+  "chahie",
   "bhi",
   "se",
   "ko",
@@ -187,6 +195,8 @@ const CONTINUE_SIGNAL = new Set([
 
 const ANCHOR_BIS =
   /\b(certif\w*|standards?|manufactur\w*|isi\b|bis\b|schemes?|hallmark\w*|licen[cs]es?|labs?|laborator(?:y|ies)|pet\b|bootels?|bottles?|plastic|qco\b|crs\b|marks?|inspections?|testing|products?|road\s*maps?|process(?:es)?|fees?|apply|application)\b/i;
+
+const ANCHOR_FILE = /\b(attached|attachment|pdf|docx|image|charter|stipend)\b/i;
 
 export const FOLLOW_CUE = new RegExp(
   `\\b(${[...FOLLOW_CUE_STRONG, ...FOLLOW_CUE_WEAK].join("|")})\\b`,
@@ -343,19 +353,25 @@ function withoutIs(text: string): string {
   return text.replace(IS_TOKEN, " ");
 }
 
-/** Last few turns only. A huge body cannot steer follow-up retrieval. */
+/** Last turns, plus the one earlier question a follow-up still depends on. */
 export function boundHistory(history: unknown): ChatTurn[] {
   if (!Array.isArray(history)) return [];
-  const out: ChatTurn[] = [];
-  for (const turn of history.slice(-8)) {
+  const all: ChatTurn[] = [];
+  const source = history.slice(-24);
+  for (const turn of source) {
     if (!turn || typeof turn !== "object") continue;
     const raw = (turn as ChatTurn).text;
     const text = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim().slice(0, 400) : "";
     if (!text) continue;
     const role = (turn as ChatTurn).role === "assistant" ? "assistant" : "user";
-    out.push({ role, text });
+    all.push({ role, text });
   }
-  return out;
+  const recent = all.slice(-6);
+  const anchor = topicAnchor(all);
+  if (anchor && !recent.some((turn) => turn.role !== "assistant" && (turn.text || "").includes(anchor.slice(0, 48)))) {
+    recent.unshift({ role: "user", text: anchor.slice(0, 400) });
+  }
+  return recent.slice(-8);
 }
 
 /** Product, scheme, and a PIN. Never an IS number from an earlier turn. */
@@ -392,11 +408,16 @@ export function followRetrieval(query: string, history?: ChatTurn[]): string {
   if (!q || !isContinuation(q) || TOPIC_BREAK.test(q)) return q;
   const anchor = topicAnchor(history);
   if (!anchor) return q;
-  if (!ANCHOR_BIS.test(anchor) && !matchProductFamily(anchor)) return q;
+  if (!ANCHOR_BIS.test(anchor) && !ANCHOR_FILE.test(anchor) && !matchProductFamily(anchor)) return q;
   const anchorFamily = matchProductFamily(anchor);
   const queryFamily = matchProductFamily(q);
   if (queryFamily && anchorFamily && queryFamily.id !== anchorFamily.id) return q;
   const city = anchor.match(/(?<!\d)([1-9]\d{5})(?!\d)/)?.[1] ?? "";
-  const prefix = city && !anchor.includes(city) ? `${anchor} ${city}` : anchor;
+  let prefix = city && !anchor.includes(city) ? `${anchor} ${city}` : anchor;
+  if (ANCHOR_FILE.test(anchor)) {
+    const prior = [...(history || [])].reverse().find((turn) => turn?.role === "assistant" && turn.text)?.text || "";
+    const note = prior.replace(/\s+/g, " ").trim().slice(0, 220);
+    if (note) prefix = `${prefix} Earlier reply: ${note}`;
+  }
   return `${prefix} ${q}`.replace(IS_TOKEN, " ").replace(/\s+/g, " ").trim().slice(0, 500);
 }
