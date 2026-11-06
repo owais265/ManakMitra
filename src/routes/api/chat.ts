@@ -704,7 +704,7 @@ export const Route = createFileRoute("/api/chat")({
                     }
                     if (recognised.length) {
                       evidence +=
-                        "\n\nRECOGNISED LABS from the loaded extract. City centre, not a surveyed gate. Call these BIS recognised. Do not claim a test scope.\n" +
+                        "\n\nRECOGNISED LABS from the loaded extract. The kilometre is from the city PIN centre, not a factory gate. If it is under 5 km, say that. Do not claim a test scope.\n" +
                         recognised.map((lab) => `- ${lab.name} | ${lab.city} | ${lab.km} km`).join("\n");
                     }
                     if (national.length) {

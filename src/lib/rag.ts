@@ -944,6 +944,16 @@ export function vectorRetrieve(query: string): Retrieval {
         if (ch && !extra.some((h) => h.title === ch.title)) extra.push(toHit(ch, 0.92));
       }
     }
+    if (unknownTyped && family) {
+      for (const id of family.is.slice(0, 3)) {
+        const ch = exactIsChunk(id);
+        if (!ch || extra.some((h) => h.title === ch.title)) continue;
+        extra.push({
+          ...toHit(ch, 0.9),
+          body: `${ch.body}\nNOTE: The IS number in the question is not in this pack. Correct it from this product row, then answer the other parts. Do not stop at the missing number.`,
+        });
+      }
+    }
     const refusePin =
       mix ||
       typedMismatch ||
